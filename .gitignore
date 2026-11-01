@@ -1,0 +1,41 @@
+# --- Secrets (M3: never commit these) ---
+.env
+.env.*
+*.pem
+*.key
+*.p12
+secrets/
+*secret*.json
+*credentials*.json
+
+# --- Salesforce CLI local state ---
+.sf/
+.sfdx/
+.localdevserver/
+**/.sfdx/
+**/.sf/
+.vscode/settings.json
+.vscode/launch.json
+
+# --- Node / tooling ---
+node_modules/
+npm-debug.log*
+coverage/
+.eslintcache
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+
+# --- Org-specific metadata that can carry secrets or org-specific values ---
+# Review before removing any of these lines. Stripe keys must NEVER be in metadata.
+force-app/**/externalCredentials/
+force-app/**/namedCredentials/
+force-app/**/customMetadata/*Stripe*
+force-app/**/customSettings/*Stripe*
+
+# --- Local scratch ---
+tmp/
+scratch/
