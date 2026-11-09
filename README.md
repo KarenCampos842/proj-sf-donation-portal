@@ -58,8 +58,8 @@ git config core.hooksPath .githooks
 # 2. Create the Salesforce project files if they do not exist yet
 sf project generate --name tmp && mv tmp/sfdx-project.json . && rm -rf tmp
 
-# 3. Authorize your Developer Edition org
-sf org login web --alias donations-dev
+# 3. Authorize your org
+sf org login web --alias donations-dev --instance-url https://test.salesforce.com
 
 # 4. Back up metadata (do this at least weekly and before each delivery)
 sf project retrieve start --target-org donations-dev
