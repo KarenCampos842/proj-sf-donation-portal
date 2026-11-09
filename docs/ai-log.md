@@ -11,6 +11,7 @@ Per class instructions, the focus is on the prompts that produced the best and t
 | 2 | 2026-11-08 | Karen Elizabeth Campos | Claude | All (board) | Worst | AI ERROR: script lost accents and the letter n with tilde in every issue. |
 | 3 | 2026-11-08 | Alan Pérez | Claude (Opus 5.5) | Backlog v2 (all) | Best | Review of backlog v2 against the guide and the Q&A session; found an AI error in the DoD |
 | 4 | 2026-11-08 | Alan Pérez | Claude (Opus 5.5) | GES-02/03/06/07/09, ADM-03/05, SEG-01 | Worst | First data model draft needed several corrections (voice, language, Apex, a privacy gap) |
+| 5 | 2026-11-09 | Karen Elizabeth Campos | ChatGPT + Agentforce (VS Code) | Shared D1 data model: DON-01/02/03/04/08/10/11/12/17/18/19/20/21; GES-02/03/06/07/09; ADM-03/05/07; PAY-02/PAY-07; SEG-01 | Best | Generated, reviewed and deployed the three D1 custom objects: 55 metadata components succeeded in donations-dev. |
 
 ---
 
@@ -189,3 +190,58 @@ About 3 h with AI vs about 8 h without.
 ```text
 Write docs/data-model.md for a team repo that is read by teammates and graders. Use English API names and Spanish labels. Prefer declarative tools (Flow, validation rules) over Apex and say where Apex is unavoidable. Include design decisions with the alternatives considered.
 ```
+
+---
+
+### Entry 5 - D1 data model generation, review and deployment
+
+- **Date:** 2026-11-09
+- **Author:** Karen Elizabeth Campos
+- **Tool / model:** ChatGPT + Agentforce (VS Code)
+- **Related story:** Shared D1 data-model dependencies: DON-01/02/03/04/08/10/11/12/17/18/19/20/21, GES-02/03/06/07/09, ADM-03/05/07, PAY-02/PAY-07 and SEG-01. The objects support these stories; deploying the data model does not by itself complete their UI, automation, payment or security behavior.
+- **Result type:** Best prompt
+
+**Prompt used**
+
+```text
+Inspect the existing Salesforce DX project and the connected sandbox before making changes.
+Use docs/data-model.md as the source of truth and implement only Delivery 1.
+Recover the existing Fundraising_Campaign__c metadata from the org instead of
+creating a duplicate. Create Payment_Attempt__c and Donation__c if they do not
+exist. Generate the SFDX object, field, relationship, formula, roll-up summary
+and validation-rule metadata in force-app/main/default/objects/. Preserve
+existing metadata, use English API names and Spanish labels, validate the XML
+and run a deployment check only. Do not create records or deploy without
+explicit authorization.
+```
+
+**What we got**
+
+The three D1 custom objects were represented in the repository: `Fundraising_Campaign__c` was retrieved and completed, while `Payment_Attempt__c` and `Donation__c` were created. The metadata included 42 custom fields, the Lookup and Master-Detail relationships, two roll-up summaries, formulas and nine validation rules. The retrieved campaign list view was preserved. The documentation was also aligned with the implemented D1 model.
+
+After review and explicit authorization, the metadata was deployed to the `donations-dev` sandbox. Salesforce reported `Succeeded`: 55 of 55 components, zero component failures and zero test errors. The objects and their fields were checked in the org after deployment. No records, production changes, commits or pushes were made.
+
+**Why it worked / why it failed**
+
+The prompt identified the project documentation as the source of truth, separated D1 from D2, specified the existing campaign object and required Agentforce to inspect and retrieve it rather than create a duplicate. It also required a review and dry-run before deployment. Iterative review was still necessary to correct field-history settings, align help text with the documentation and resolve a discrepancy about `Public_Name__c` history.
+
+**What we verified and how**
+
+- Validated the 55 metadata components with a dry-run against `donations-dev`: `Succeeded`, 55/55 components and zero errors.
+- After explicit authorization, deployed to `donations-dev`: Salesforce confirmed `Succeeded`, 55/55 components, zero failures and zero test errors. Deployment ID: `0AfVC00000PBFdF0AX`.
+- Listed metadata after deployment and confirmed that all three objects existed with 13, 13 and 16 custom fields respectively, and that the nine validation rules were present.
+- Confirmed that the repository metadata and the deployed object/field definitions were consistent.
+- Formula and roll-up behavior was not tested with records during this task.
+
+**What we corrected**
+
+- Retrieved `Fundraising_Campaign__c` from the org and updated it instead of creating a duplicate; created the other two D1 objects.
+- Confirmed `enableHistory=true` and `trackHistory=true` for `Goal__c`; enabled object and field history for `Donation__c.Public_Name__c` in accordance with the explicit field definition in `docs/data-model.md`.
+- Set and checked the external sharing model for campaigns, the Lookup and Master-Detail settings, and the roll-up summary references.
+- Corrected help text and descriptions that implied automations not yet implemented, such as RFC normalization and scheduled deletion of old payment attempts.
+- Updated `docs/data-model.md` and `docs/ai-context/PROJECT_CONTEXT.md` to align their descriptions with the current D1 model and distinguish D1 field history from D2 moderation behavior.
+- Kept D2 elements and unrelated pre-existing Salesforce objects out of this deployment.
+
+**Estimated speed-up**
+
+Approximately 2–3 h with AI vs about 5–6 h without AI (conservative estimate for metadata creation, review, validation and deployment; not timed).
