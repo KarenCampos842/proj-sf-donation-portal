@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Goal_Must_Be_Positive</fullName>
+    <active>true</active>
+    <description>Impide guardar una campaña con meta cero o negativa (GES-03).</description>
+    <errorConditionFormula><![CDATA[Goal__c <= 0]]></errorConditionFormula>
+    <errorMessage>La meta debe ser mayor a cero.</errorMessage>
+</ValidationRule>

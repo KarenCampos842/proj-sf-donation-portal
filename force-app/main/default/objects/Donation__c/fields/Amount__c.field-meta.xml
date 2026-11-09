@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Amount__c</fullName>
+    <description>Monto confirmado por el proveedor de pagos (transaction_amount). Es la base del total recaudado de la campaña.</description>
+    <inlineHelpText>Monto en MXN confirmado por el proveedor de pagos.</inlineHelpText>
+    <label>Monto</label>
+    <precision>16</precision>
+    <required>false</required>
+    <scale>2</scale>
+    <type>Currency</type>
+</CustomField>

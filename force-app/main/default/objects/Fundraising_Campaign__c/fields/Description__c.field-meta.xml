@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Description__c</fullName>
+    <description>Texto descriptivo de la campaña que se muestra en el portal. Es obligatorio para activar la campaña, pero no a nivel de campo.</description>
+    <inlineHelpText>Describe la campaña. Es necesaria para poder activarla.</inlineHelpText>
+    <label>Descripción</label>
+    <length>5000</length>
+    <type>LongTextArea</type>
+    <visibleLines>3</visibleLines>
+</CustomField>

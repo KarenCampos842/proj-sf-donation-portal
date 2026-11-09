@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Confirmed_At__c</fullName>
+    <description>Fecha y hora en que el proveedor aprobó el pago (date_approved).</description>
+    <inlineHelpText>Fecha y hora de aprobación del pago por el proveedor.</inlineHelpText>
+    <label>Fecha de confirmación</label>
+    <required>false</required>
+    <type>DateTime</type>
+</CustomField>

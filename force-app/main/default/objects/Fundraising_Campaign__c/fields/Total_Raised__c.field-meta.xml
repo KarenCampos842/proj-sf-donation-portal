@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Total_Raised__c</fullName>
+    <description>Suma del monto de las donaciones confirmadas de la campaña. No requiere filtro porque solo existen donaciones confirmadas.</description>
+    <inlineHelpText>Se calcula automáticamente a partir de las donaciones de la campaña.</inlineHelpText>
+    <label>Total recaudado</label>
+    <summarizedField>Donation__c.Amount__c</summarizedField>
+    <summaryForeignKey>Donation__c.Campaign__c</summaryForeignKey>
+    <summaryOperation>sum</summaryOperation>
+    <type>Summary</type>
+</CustomField>

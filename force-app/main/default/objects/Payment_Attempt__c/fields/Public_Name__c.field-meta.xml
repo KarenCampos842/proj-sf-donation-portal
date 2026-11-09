@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Public_Name__c</fullName>
+    <description>Nombre con el que el donante quiere aparecer públicamente. Obligatorio cuando la visibilidad es Pública, mediante regla de validación.</description>
+    <inlineHelpText>Escribe el nombre tal como quieres que se muestre.</inlineHelpText>
+    <label>Nombre público</label>
+    <length>80</length>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

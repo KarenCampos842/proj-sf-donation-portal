@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Tax_Regime__c</fullName>
+    <description>Régimen fiscal del donante según el catálogo c_RegimenFiscal del SAT (pendiente de verificación V-05). El valor API es el código SAT. La descripción de cada valor conserva su elegibilidad para persona física y moral.</description>
+    <inlineHelpText>Régimen fiscal para la factura.</inlineHelpText>
+    <label>Régimen fiscal</label>
+    <required>false</required>
+    <type>Picklist</type>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>601</fullName>
+                <default>false</default>
+                <description>Persona física: No. Persona moral: Sí.</description>
+                <label>601 - General de Ley Personas Morales</label>
+            </value>
+            <value>
+                <fullName>603</fullName>
+                <default>false</default>
+                <description>Persona física: No. Persona moral: Sí.</description>
+                <label>603 - Personas Morales con Fines no Lucrativos</label>
+            </value>
+            <value>
+                <fullName>605</fullName>
+                <default>false</default>
+                <description>Persona física: Sí. Persona moral: No.</description>
+                <label>605 - Sueldos y Salarios e Ingresos Asimilados a Salarios</label>
+            </value>
+            <value>
+                <fullName>606</fullName>
+                <default>false</default>
+                <description>Persona física: Sí. Persona moral: No.</description>
+                <label>606 - Arrendamiento</label>
+            </value>
+            <value>
+                <fullName>607</fullName>
+                <default>false</default>
+                <description>Persona física: Sí. Persona moral: No.</description>
+                <label>607 - Régimen de Enajenación o Adquisición de Bienes</label>
+            </value>
+            <value>
+                <fullName>608</fullName>
+                <default>false</default>
+                <description>Persona física: Sí. Persona moral: No.</description>
+                <label>608 - Demás ingresos</label>
+            </value>
+            <value>
+                <fullName>610</fullName>
+                <default>false</default>
+                <description>Persona física: Sí. Persona moral: Sí.</description>
+                <label>610 - Residentes en el Extranjero sin Establecimiento Permanente en México</label>
+            </value>
+            <value>
+                <fullName>611</fullName>
+                <default>false</default>
+                <description>Persona física: Sí. Persona moral: No.</description>
+                <label>611 - Ingresos por Dividendos (socios y accionistas)</label>
+            </value>
+            <value>
+                <fullName>612</fullName>
+                <default>false</default>
+                <description>Persona física: Sí. Persona moral: No.</description>
+                <label>612 - Personas Físicas con Actividades Empresariales y Profesionales</label>
+            </value>
+            <value>
+                <fullName>614</fullName>
+                <default>false</default>
+                <description>Persona física: Sí. Persona moral: No.</description>
+                <label>614 - Ingresos por intereses</label>
+            </value>
+            <value>
+                <fullName>615</fullName>
+                <default>false</default>
+                <description>Persona física: Sí. Persona moral: No.</description>
+                <label>615 - Régimen de los ingresos por obtención de premios</label>
+            </value>
+            <value>
+                <fullName>616</fullName>
+                <default>false</default>
+                <description>Persona física: Sí. Persona moral: No.</description>
+                <label>616 - Sin obligaciones fiscales</label>
+            </value>
+            <value>
+                <fullName>620</fullName>
+                <default>false</default>
+                <description>Persona física: No. Persona moral: Sí.</description>
+                <label>620 - Sociedades Cooperativas de Producción que optan por diferir sus ingresos</label>
+            </value>
+            <value>
+                <fullName>621</fullName>
+                <default>false</default>
+                <description>Persona física: Sí. Persona moral: No.</description>
+                <label>621 - Incorporación Fiscal</label>
+            </value>
+            <value>
+                <fullName>622</fullName>
+                <default>false</default>
+                <description>Persona física: No. Persona moral: Sí.</description>
+                <label>622 - Actividades Agrícolas, Ganaderas, Silvícolas y Pesqueras</label>
+            </value>
+            <value>
+                <fullName>623</fullName>
+                <default>false</default>
+                <description>Persona física: No. Persona moral: Sí.</description>
+                <label>623 - Opcional para Grupos de Sociedades</label>
+            </value>
+            <value>
+                <fullName>624</fullName>
+                <default>false</default>
+                <description>Persona física: No. Persona moral: Sí.</description>
+                <label>624 - Coordinados</label>
+            </value>
+            <value>
+                <fullName>625</fullName>
+                <default>false</default>
+                <description>Persona física: Sí. Persona moral: No.</description>
+                <label>625 - Actividades Empresariales con ingresos a través de Plataformas Tecnológicas</label>
+            </value>
+            <value>
+                <fullName>626</fullName>
+                <default>false</default>
+                <description>Persona física: Sí. Persona moral: Sí.</description>
+                <label>626 - Régimen Simplificado de Confianza</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

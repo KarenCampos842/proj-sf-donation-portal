@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Is_Publicly_Visible__c</fullName>
+    <description>Indica si el portal debe listar la campaña: está Activa o Pausada y ya inició. El portal la usa para mostrar campañas.</description>
+    <formula><![CDATA[AND(
+  OR(ISPICKVAL(Status__c, "Active"), ISPICKVAL(Status__c, "Paused")),
+  Start_Date__c <= TODAY()
+)]]></formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <inlineHelpText>Se marca automáticamente cuando la campaña es visible en el portal.</inlineHelpText>
+    <label>Visible en el portal</label>
+    <type>Checkbox</type>
+</CustomField>

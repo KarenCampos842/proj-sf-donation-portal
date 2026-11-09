@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Preference_Id__c</fullName>
+    <description>Identificador de preferencia que devuelve el proveedor de pagos al crear el pago. Gestionado por el workstream A.</description>
+    <inlineHelpText>Id que devuelve el proveedor de pagos.</inlineHelpText>
+    <label>Id de preferencia</label>
+    <length>64</length>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

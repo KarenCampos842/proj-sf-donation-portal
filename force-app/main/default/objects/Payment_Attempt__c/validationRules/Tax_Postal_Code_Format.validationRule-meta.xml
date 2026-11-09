@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Tax_Postal_Code_Format</fullName>
+    <active>true</active>
+    <description>Exige que el código postal fiscal tenga exactamente 5 dígitos cuando se solicita factura (DON-12).</description>
+    <errorConditionFormula><![CDATA[Invoice_Requested__c && NOT(REGEX(Tax_Postal_Code__c, "^[0-9]{5}$"))]]></errorConditionFormula>
+    <errorMessage>El código postal debe tener 5 dígitos.</errorMessage>
+</ValidationRule>

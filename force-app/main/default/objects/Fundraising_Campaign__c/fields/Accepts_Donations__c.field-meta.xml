@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Accepts_Donations__c</fullName>
+    <description>Indica si la campaña puede recibir donaciones hoy: está Activa, ya inició y no ha pasado su fecha de cierre. Se verifica en el servidor antes de abrir un pago.</description>
+    <formula><![CDATA[AND(
+  ISPICKVAL(Status__c, "Active"),
+  Start_Date__c <= TODAY(),
+  OR(ISBLANK(End_Date__c), End_Date__c >= TODAY())
+)]]></formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <inlineHelpText>Se marca automáticamente cuando la campaña está activa y dentro de sus fechas.</inlineHelpText>
+    <label>Acepta donaciones</label>
+    <type>Checkbox</type>
+</CustomField>

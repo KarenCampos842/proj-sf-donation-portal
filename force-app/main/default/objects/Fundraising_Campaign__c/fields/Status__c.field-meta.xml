@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Status__c</fullName>
+    <description>Estado del ciclo de vida de la campaña: Borrador, Activa, Pausada o Cerrada. Determina si acepta donaciones y si es visible en el portal.</description>
+    <inlineHelpText>Una campaña nueva inicia en Borrador. Para activarla necesita una descripción.</inlineHelpText>
+    <label>Estado</label>
+    <required>false</required>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Draft</fullName>
+                <default>true</default>
+                <label>Borrador</label>
+            </value>
+            <value>
+                <fullName>Active</fullName>
+                <default>false</default>
+                <label>Activa</label>
+            </value>
+            <value>
+                <fullName>Paused</fullName>
+                <default>false</default>
+                <label>Pausada</label>
+            </value>
+            <value>
+                <fullName>Closed</fullName>
+                <default>false</default>
+                <label>Cerrada</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

@@ -10,17 +10,20 @@ Public donation portal on Salesforce Developer Edition + **Mercado Pago (test mo
 
 - Never output or ask for real keys. Use placeholders such as `<MERCADO_PAGO_ACCESS_TOKEN>`.
 - Mercado Pago secrets go in Named/External Credentials or protected settings, never in code or versioned metadata.
-- Guest user: least privilege only (read campaigns, create donations; no read/edit on donations).
+- Guest user: least privilege only. Read access to the public fields of active/paused campaigns; no access to `Donation__c` or `Payment_Attempt__c` (attempts and donations are created by system-mode processes).
 - No SOQL/DML inside loops. No hard-coded IDs. Friendly error messages.
 - Any Apex must include unit tests and pass Salesforce Code Analyzer.
 - Anonymous donations never expose the donor name (site, thank-you page, receipt email) and can request an invoice (separated from public visibility).
 - RFC validation is pattern-only (no SAT lookup, no CFDI).
 
-## Data model (working draft)
+## Data model
 
-- Campaign (`Campaign` or custom): name, goal, progress (sum of Paid donations only)
-- `Donation__c`: amount, status (Pending / Paid), modality (Anonymous / Credit / Invoice), donor name, email, RFC, invoice requested, gateway reference, confirmation method (Manual / Automatic)
-- `Rejected_Notice__c` (Delivery 2): date/time, rejection reason
+Source of truth: `docs/data-model.md` (read it for fields, formulas and validation rules). Summary:
+
+- `Fundraising_Campaign__c` (D1, custom object instead of the standard `Campaign`, decision D-02): name, description, goal, start/end dates, status (`Draft` / `Active` / `Paused` / `Closed`), general-campaign flag, image URL and alt text. Progress is calculated from confirmed donations: `Total_Raised__c` (roll-up SUM of `Donation__c.Amount__c`), `Donation_Count__c` (roll-up COUNT) and `Progress_Percent__c` (formula, not capped at 100%).
+- `Payment_Attempt__c` (D1, Lookup to the campaign): what the donor entered before paying. It is not a donation and does not count toward progress. Status: `Started` (default) / `Confirmed` / `Rejected` / `Cancelled`. Holds email, visibility, public name, invoice request and tax data.
+- `Donation__c` (D1, Master-Detail to the campaign): created only after the provider confirms the payment, so there is no Pending state. `Payment_Status__c` has a single value, `Confirmed`. Visibility is `Anonymous` / `Public` and is independent from the invoice request; `Modality__c` is a formula ("Anónima" or "Con nombre", plus " + factura" when an invoice is requested). Provider reference: `Provider_Payment_Id__c` (unique, External ID).
+- `Rejected_Notice__c` and `Donation_Amount_Setting__mdt` (Delivery 2): rejected provider notices and suggested/minimum amounts. Other D2 fields (privacy notice, confirmation source, receipt sent, close reason) are described in `docs/data-model.md`.
 
 ## Response style we want
 

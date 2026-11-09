@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Invoice_Data_Required</fullName>
+    <active>true</active>
+    <description>Exige nombre o razón social, RFC, código postal fiscal y régimen fiscal cuando se solicita factura (DON-12).</description>
+    <errorConditionFormula><![CDATA[Invoice_Requested__c && (ISBLANK(Legal_Name__c) || ISBLANK(RFC__c) || ISBLANK(Tax_Postal_Code__c) || ISPICKVAL(Tax_Regime__c, ""))]]></errorConditionFormula>
+    <errorMessage>Para pedir factura faltan datos fiscales.</errorMessage>
+</ValidationRule>

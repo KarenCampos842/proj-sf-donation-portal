@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Taxpayer_Type__c</fullName>
+    <description>Tipo de persona deducido de la longitud del RFC: 12 caracteres es Moral y 13 es Física.</description>
+    <formula><![CDATA[IF(LEN(RFC__c) = 12, "Moral", IF(LEN(RFC__c) = 13, "Física", ""))]]></formula>
+    <formulaTreatBlanksAs>BlankAsBlank</formulaTreatBlanksAs>
+    <inlineHelpText>Se calcula automáticamente a partir del RFC.</inlineHelpText>
+    <label>Tipo de persona</label>
+    <type>Text</type>
+</CustomField>

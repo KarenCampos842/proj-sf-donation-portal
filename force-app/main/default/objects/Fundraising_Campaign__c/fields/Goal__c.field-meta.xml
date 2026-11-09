@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Goal__c</fullName>
+    <description>Meta de recaudación de la campaña en MXN. Es la base del cálculo del porcentaje de avance. Su historial de cambios está habilitado.</description>
+    <inlineHelpText>Monto en MXN que se quiere recaudar. Debe ser mayor a cero.</inlineHelpText>
+    <label>Meta</label>
+    <precision>16</precision>
+    <required>true</required>
+    <scale>2</scale>
+    <trackHistory>true</trackHistory>
+    <type>Currency</type>
+</CustomField>

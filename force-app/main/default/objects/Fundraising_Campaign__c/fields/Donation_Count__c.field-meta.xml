@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Donation_Count__c</fullName>
+    <description>Cantidad de donaciones confirmadas registradas en la campaña (GES-15).</description>
+    <inlineHelpText>Se calcula automáticamente a partir de las donaciones de la campaña.</inlineHelpText>
+    <label>Número de donaciones</label>
+    <summaryForeignKey>Donation__c.Campaign__c</summaryForeignKey>
+    <summaryOperation>count</summaryOperation>
+    <type>Summary</type>
+</CustomField>

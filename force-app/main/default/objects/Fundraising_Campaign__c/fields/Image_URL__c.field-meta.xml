@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Image_URL__c</fullName>
+    <description>URL de la imagen de la campaña (decisión D-03). Si está vacía, el portal muestra una imagen neutra.</description>
+    <inlineHelpText>Dirección web de la imagen de la campaña. Es opcional.</inlineHelpText>
+    <label>URL de la imagen</label>
+    <required>false</required>
+    <type>Url</type>
+</CustomField>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Email__c</fullName>
+    <description>Correo del donante, copiado del intento de pago por el proceso de confirmación. Se usa para enviar la constancia.</description>
+    <inlineHelpText>Correo del donante.</inlineHelpText>
+    <label>Correo</label>
+    <required>false</required>
+    <type>Email</type>
+</CustomField>

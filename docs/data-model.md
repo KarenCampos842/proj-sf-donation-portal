@@ -152,7 +152,7 @@ Created only by the payment confirmation process (workstream A), after the provi
 | Id del intento | `Attempt_Id__c` | Text(18) | Confirmation process (`external_reference`). Kept after the attempt is deleted | D1 |
 | Correo | `Email__c` | Email | Confirmation process | D1 |
 | Visibilidad | `Visibility__c` | Picklist | Confirmation process; the moderator can change Public → Anonymous (client, Slack 2026-11-04) | D1 |
-| Nombre público | `Public_Name__c` | Text(80) | Confirmation process; the moderator can correct it. Field history enabled | D1 |
+| Nombre público | `Public_Name__c` | Text(80) | Confirmation process; the moderator can correct it. Field history enabled in D1 (the field setting is part of the D1 metadata; the moderation feature that uses it, MOD-03, is D2) | D1 |
 | Modalidad | `Modality__c` | Formula (Text) | See below (RF-S2) | D1 |
 | Solicita factura | `Invoice_Requested__c` | Checkbox | Confirmation process | D1 |
 | Nombre o razón social | `Legal_Name__c` | Text(254) | Confirmation process | D1 |
@@ -179,6 +179,8 @@ IF(ISPICKVAL(Visibility__c, "Anonymous"), "Anónima", "Con nombre")
 |---|---|---|---|
 | `Public_Name_Required` | `ISPICKVAL(Visibility__c, "Public") && ISBLANK(Public_Name__c)` | "Una donación pública necesita nombre." | MOD-03 |
 | `Anonymous_Cannot_Become_Public` | `ISCHANGED(Visibility__c) && ISPICKVAL(PRIORVALUE(Visibility__c), "Anonymous")` | "Una donación anónima no se puede hacer pública." | RF-D2, MOD-03 |
+
+Both rules belong to D2 (MOD-03, RF-D2) and are not part of the D1 metadata. The history tracking on `Public_Name__c` (see the field table above) is the only MOD-03-related element delivered in D1.
 
 `Anonymous_Cannot_Become_Public` protects the donor's choice: a moderator can hide a name but can never expose an anonymous donor (RF-D2 CA1).
 
@@ -293,7 +295,7 @@ Three roles, as defined by the client: campaign manager, moderator and system ad
 | ADM-05 Invoice requests | "Solicitan factura" list view; no guest access to `Donation__c` |
 | SEG-01 Visitor security test | Section 6.2 |
 | General campaign | `Is_General__c`, `General_Campaign_Always_Open` |
-| MOD-03 Correct a public name (D2) | `Moderator` permission set, field history on `Public_Name__c`, `Anonymous_Cannot_Become_Public` |
+| MOD-03 Correct a public name (D2) | `Moderator` permission set, `Anonymous_Cannot_Become_Public`. The field history on `Public_Name__c` is configured in D1 (section 4); the moderation feature is D2 |
 
 ---
 

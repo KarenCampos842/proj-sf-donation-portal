@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Is_General__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>Marca la campaña general de donaciones solicitada por el cliente, que siempre permanece abierta: no lleva fecha de cierre ni puede cerrarse.</description>
+    <inlineHelpText>Marca esta casilla solo para la campaña general siempre abierta.</inlineHelpText>
+    <label>Campaña general</label>
+    <type>Checkbox</type>
+</CustomField>

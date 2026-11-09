@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Modality__c</fullName>
+    <description>Resume cómo se hizo la donación: Anónima o Con nombre, más " + factura" si se solicitó factura (RF-S2).</description>
+    <formula><![CDATA[IF(ISPICKVAL(Visibility__c, "Anonymous"), "Anónima", "Con nombre") & IF(Invoice_Requested__c, " + factura", "")]]></formula>
+    <formulaTreatBlanksAs>BlankAsBlank</formulaTreatBlanksAs>
+    <inlineHelpText>Se calcula automáticamente a partir de la visibilidad y la solicitud de factura.</inlineHelpText>
+    <label>Modalidad</label>
+    <type>Text</type>
+</CustomField>

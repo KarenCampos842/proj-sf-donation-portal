@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>El objeto Donación registra pagos confirmados por el proveedor y copia los datos del intento de pago. Incluye monto, visibilidad, trazabilidad del pago y datos fiscales; calcula la modalidad y el tipo de persona. Es hija de Campaña y alimenta su recaudación.</description>
+    <enableBulkApi>true</enableBulkApi>
+    <enableHistory>true</enableHistory>
+    <enableSharing>true</enableSharing>
+    <enableStreamingApi>true</enableStreamingApi>
+    <externalSharingModel>ControlledByParent</externalSharingModel>
+    <label>Donación</label>
+    <nameField>
+        <displayFormat>DON-{000000}</displayFormat>
+        <label>Folio</label>
+        <startingNumber>1</startingNumber>
+        <type>AutoNumber</type>
+    </nameField>
+    <pluralLabel>Donaciones</pluralLabel>
+    <sharingModel>ControlledByParent</sharingModel>
+    <visibility>Public</visibility>
+</CustomObject>

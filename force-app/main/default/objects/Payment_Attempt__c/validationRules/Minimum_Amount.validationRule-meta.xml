@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Minimum_Amount</fullName>
+    <active>true</active>
+    <description>Impide intentos de pago menores al monto mínimo de $50 MXN (DON-08, DON-09).</description>
+    <errorConditionFormula><![CDATA[Amount__c < 50]]></errorConditionFormula>
+    <errorMessage>El monto mínimo es de $50 MXN.</errorMessage>
+</ValidationRule>
