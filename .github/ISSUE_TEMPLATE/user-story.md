@@ -1,22 +1,16 @@
----
-name: User story
-about: Backlog item with acceptance criteria
-title: "US-XX: "
-labels: user-story
----
-
-**RF covered:**
-**Milestone:** Delivery 1 / Delivery 2
+**RF covered:** [RF-XX]
+**Milestone:** Delivery 1 (o Delivery 2)
 
 ## Story
 As a ..., I want ..., so that ...
 
 ## Acceptance criteria (Given / When / Then)
-- [ ] **AC1.**
-- [ ] **AC2.**
+- [ ] **AC1.** Given ... When ... Then ...
+- [ ] **AC2.** Given ... When ... Then ...
 
-## Team-defined criteria (include negative cases)
-- [ ]
+## Technical tasks (TAC)
+- [ ] TAC 1: ...
+- [ ] TAC 2: ...
 
 ## Evidence
-_Link to video timestamp, screenshot or demo. Story counts as fulfilled only when ALL criteria have evidence._
+- [ ] _Link a commit, captura o video timestamp. La historia solo cuenta como cumplida si todos los criterios tienen evidencia._
