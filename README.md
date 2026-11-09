@@ -40,7 +40,6 @@ The backlog has 44 stories: 22 in Delivery 1, 21 in Delivery 2 and 1 without a f
 │   ├── security.md             # visitor security test + personal data classification
 │   ├── contributions.md        # per-member contribution log
 │   ├── questions-and-reports.md# questions to client/advisor and problem reports
-│   ├── tablero.md              # story table with links to the GitHub issues
 │   ├── backlog/                # backlog notes / exports (board is the source of truth)
 │   └── evidence/               # screenshots (NO secrets, NO real personal data)
 ├── force-app/                  # Salesforce metadata (retrieved with SF CLI)
