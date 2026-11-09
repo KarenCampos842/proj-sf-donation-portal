@@ -4,16 +4,16 @@ Base context to give any AI assistant at the start of a session (paste it as the
 
 ## Project
 
-Public donation portal on Salesforce Developer Edition + Stripe **test mode** to fund student trips to Mexico Dreamin 2026. All data is fictitious. Nothing goes to production.
+Public donation portal on Salesforce Developer Edition + **Mercado Pago (test mode, Checkout Pro)** to fund student trips to Mexico Dreamin 2026. All data is fictitious. Nothing goes to production.
 
 ## Hard rules
 
-- Never output or ask for real keys. Use placeholders such as `<STRIPE_SECRET_KEY>`.
-- Stripe secrets go in Named/External Credentials or protected settings, never in code or versioned metadata.
+- Never output or ask for real keys. Use placeholders such as `<MERCADO_PAGO_ACCESS_TOKEN>`.
+- Mercado Pago secrets go in Named/External Credentials or protected settings, never in code or versioned metadata.
 - Guest user: least privilege only (read campaigns, create donations; no read/edit on donations).
 - No SOQL/DML inside loops. No hard-coded IDs. Friendly error messages.
 - Any Apex must include unit tests and pass Salesforce Code Analyzer.
-- Anonymous donations never expose the donor name (site, thank-you page, receipt email) and cannot request an invoice.
+- Anonymous donations never expose the donor name (site, thank-you page, receipt email) and can request an invoice (separated from public visibility).
 - RFC validation is pattern-only (no SAT lookup, no CFDI).
 
 ## Data model (working draft)
