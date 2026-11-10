@@ -255,6 +255,9 @@ public with sharing class CampaignPortalController {
     private without sharing class ClosedCampaignReader {
         @TestVisible
         private Fundraising_Campaign__c find(Id campaignId) {
+            if (!Fundraising_Campaign__c.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).isAccessible()) {
+                throw new QueryException('The user cannot read Fundraising_Campaign__c');
+            }
             List<Fundraising_Campaign__c> records = [
                 SELECT
                     Id,
