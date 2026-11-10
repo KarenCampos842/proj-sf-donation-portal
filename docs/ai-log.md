@@ -1,352 +1,347 @@
 # AI Usage Log
 
-Log each relevant AI use at the time it happens, not at the end. Never paste keys, tokens or personal data into an AI tool or into this file.
-Per class instructions, the focus is on the prompts that produced the best and the worst results. Keep the short metadata line on every entry so the log also satisfies the written project guide (author, date, tool, story, verification, speed-up).
+Record relevant AI use when it happens. Never paste API keys, tokens, credentials, payment-card details or personal donor data into an AI tool or this file.
+
+This log keeps only the most useful **best-prompt** and **worst-result** examples. Each entry includes author, date, tool, related stories, verification and estimated time saved (or lost), as required by the project guide. Estimates are not measured unless explicitly stated.
 
 ## Summary
 
-| # | Date | Author | Tool | Story | Type | Result |
+| # | Date | Author | Tool / model | Related story | Result | Verification / speed-up |
 |---|---|---|---|---|---|---|
-| 1 | 2026-11-08 | Karen Elizabeth Campos | Claude | All (board) | Best | Created 43 GitHub issues from the backlog PDF with one script. |
-| 2 | 2026-11-08 | Karen Elizabeth Campos | Claude | All (board) | Worst | AI ERROR: script lost accents and the letter n with tilde in every issue. |
-| 3 | 2026-11-08 | Alan Pérez | Claude (Opus 5.5) | Backlog v2 (all) | Best | Review of backlog v2 against the guide and the Q&A session; found an AI error in the DoD |
-| 4 | 2026-11-08 | Alan Pérez | Claude (Opus 5.5) | GES-02/03/06/07/09, ADM-03/05, SEG-01 | Worst | First data model draft needed several corrections (voice, language, Apex, a privacy gap) |
-| 5 | 2026-11-09 | Karen Elizabeth Campos | ChatGPT + Agentforce (VS Code) | Shared D1 data model: DON-01/02/03/04/08/10/11/12/17/18/19/20/21; GES-02/03/06/07/09; ADM-03/05/07; PAY-02/PAY-07; SEG-01 | Best | Generated, reviewed and deployed the three D1 custom objects: 55 metadata components succeeded in donations-dev. |
-| 6 | 2026-11-09 | Rodrigo Colli | Claude Code (Opus 5.5) | PAY-07, PAY-02, ADM-07, DON-19, DON-21, DON-20 | Best | Built, tested and deployed the payment flows and the two Mercado Pago callout actions (PR #47). |
-| 7 | 2026-11-09 | Rodrigo Colli | Claude Code (Opus 5.5) | PAY-07, PAY-02 | Worst | AI ERROR: proposed Apex against the project rule, and generated flow metadata Salesforce rejected. |
+| 1 | 2026-11-08 | Karen Elizabeth Campos | Claude | All 44 backlog stories | Best | 43 issues created in bulk; dry run and sample issues checked. ~30 min vs. 3–4 h, team estimate. |
+| 2 | 2026-11-08 | Karen Elizabeth Campos | Claude | All backlog stories | Worst | Windows encoding broke Spanish accents; corrected with UTF-8 and a safe `--fix` mode. ~20 min lost. |
+| 3 | 2026-11-09 | Karen Elizabeth Campos | ChatGPT + Agentforce (VS Code) | Shared Delivery 1 data model | Best | 55 metadata components deployed successfully; org objects/fields checked. ~2–3 h vs. 5–6 h, estimate. |
+| 4 | 2026-11-09 | Rodrigo Colli | Claude Code (Opus 5.5) | PAY-07, PAY-02, ADM-07, DON-19/20/21 | Best | Payment flows and Mercado Pago callout actions delivered in PR #47; check-only deployments and tests passed. ~6 h vs. 16–20 h, estimate. |
+| 5 | 2026-11-09 | Rodrigo Colli | Claude Code (Opus 5.5) | PAY-07, PAY-02 | Worst | AI proposed Apex against the declarative-first rule and generated rejected Flow metadata; fixed after check-only validation. ~30 min lost. |
+| 6 | 2026-11-09 | Karen Elizabeth Campos | ChatGPT + Agentforce (VS Code) | Shared D1 data model: DON-01/02/03/04/08/10/11/12/17/18/19/20/21; GES-02/03/06/07/09; ADM-03/05/07; PAY-02/PAY-07; SEG-01 | Best | Generated and incorporated metadata for `Fundraising_Campaign__c`, `Payment_Attempt__c` and `Donation__c`; Salesforce reported 55/55 components deployed successfully. |
+| 7 | 2026-11-10 | Karen Elizabeth Campos | ChatGPT + Agentforce (VS Code) | DON-01/02/03/04/10/11; campaign data and Guest catalog | Best | Five existing campaigns updated, three visible `[PRUEBA]` campaigns moved to Draft, three seeded recognition records made Anonymous; Guest catalog and direct URLs checked. Time not measured. |
 
 ---
 
-## Entries
+## Selected entries
 
-<!-- Add entries below, newest last. -->
-
-### Entry 1 - Backlog PDF to GitHub issues in bulk
+### Entry 1 — Bulk creation of backlog issues from the PDF
 
 - **Date:** 2026-11-08
 - **Author:** Karen Elizabeth Campos
 - **Tool / model:** Claude
-- **Related story:** all 44 stories (RNF-12, board with ID, RF, milestone, story, AC, status and evidence)
+- **Related stories:** All 44 stories; RNF-12 and GitHub board structure
 - **Result type:** Best prompt
+- **Verification:** Dry run counted 44 stories (22 Delivery 1, 21 Delivery 2, 1 unscheduled). 43 issues were created because DON-01 already existed; a sample of issues was checked in GitHub.
+- **Estimated speed-up:** About 30 minutes with AI vs. 3–4 hours manually; team estimate, not timed.
 
-**Prompt used**
+**Prompt summary**
 
 ```text
-I need to create my project stories but I do not want to do it one by one.
-[Pasted the format of issue #1: RF covered, Story, Acceptance criteria
-(Given / When / Then), Technical tasks (TAC), Evidence.]
-The stories must be based on the attached PDF (backlog v2) and these changes:
-move DON-09, DON-17, DON-18, GES-11 and ADM-01 to Delivery 2, remove the extra
-criteria (360 px, pagination, image validation, change history), remove the 75 %
-coverage rule from the Definition of Done. The board needs ID, RF, milestone,
-story, AC, status and evidence, and must be linked from the README.
+Create the project stories in bulk from backlog v2, using the exact structure
+of issue #1: RF covered, Story, Given/When/Then acceptance criteria, technical
+tasks and evidence. Apply the agreed Delivery 1 / Delivery 2 scope changes,
+remove the excluded extra criteria, preserve Spanish text, and include the
+required board fields: ID, RF, milestone, story, AC, status and evidence.
 ```
 
-**What we got**
+**Result and lesson**
 
-A Python script (`scripts/crear_issues.py`) that uses the GitHub CLI to create every story in the format of issue #1, with its milestone, assignee and board entry, and that writes `docs/tablero.md`.
+The AI produced `scripts/crear_issues.py` to create issues through GitHub CLI rather than one by one. The exact issue format, source backlog and explicit scope changes made the task repeatable. The first output still had the encoding problem described in Entry 2.
 
-**Why it worked / why it failed**
-
-We gave the exact output format, the source document and the list of cuts, so the AI had nothing to guess. We also asked for the board columns the guide requires.
-
-**What we verified and how**
-
-- Dry run before creating anything: 44 stories, 22 in Delivery 1, 21 in Delivery 2, 1 without date. After running it, 43 issues were created (DON-01 already existed).
-- Checked a few issues in GitHub.
-
-**What we corrected**
-
-See entry 2: error in this same output.
-
-**Estimated speed-up**
-
-About 30 min with AI vs about 3 to 4 h creating 44 issues by hand (team to confirm).
-
----
-
-### Entry 2 - Script that lost accents and special characters
+### Entry 2 — Windows encoding error in generated issue content
 
 - **Date:** 2026-11-08
 - **Author:** Karen Elizabeth Campos
 - **Tool / model:** Claude
-- **Related story:** all stories (board)
-- **Result type:** Worst prompt
+- **Related stories:** All backlog stories
+- **Result type:** Worst result
+- **Verification:** Several GitHub issues were opened and showed missing or corrupted Spanish accents and `ñ` characters.
+- **Estimated time lost:** About 20 minutes.
 
 **Prompt used**
 
 ```text
-Same prompt as entry 1. We did not say anything about accents, because we
-assumed the AI would handle Spanish text.
+Same request as Entry 1. The operating system and encoding requirements
+were not stated.
 ```
 
-**What we got**
+**What went wrong**
 
-A script that created the 43 issues with the Spanish accents and the letter n with tilde missing or broken.
+The generated script passed Spanish issue text through the Windows console encoding instead of UTF-8. It worked in the AI environment but corrupted text on the team's Windows machines.
 
-**Why it worked / why it failed**
+**Correction and lesson**
 
-The script passed the issue text to the GitHub CLI using the Windows console encoding instead of UTF-8. It worked in the AI's test environment and failed on our Windows machines. Our prompt did not say which operating system we use.
+The script was changed to force UTF-8 and provide a `--fix` mode that rewrites existing issue titles and bodies without deleting issues or changing milestones, assignees or board fields.
 
-**What we verified and how**
-
-Opened several issues in GitHub and saw the wrong characters.
-
-**What we corrected**
-
-AI ERROR. The AI forced UTF-8 in the script and added a `--fix` mode that rewrites the title and body of the issues that already exist, without deleting them, so milestones, assignees and board columns stayed as they were. We ran `--fix` and checked again.
-
-**Estimated speed-up**
-
-It cost us about 20 min instead of saving time.
-
-**Better prompt (for worst results)**
+**Better prompt**
 
 ```text
-I use Windows 11 with PowerShell. The text is in Spanish with accents and special characters; make sure everything is sent as UTF-8 and give me a way to check it before creating the issues.
+We use Windows 11 and PowerShell. The issue content is Spanish and includes
+accented characters and ñ. Make every file and GitHub CLI input UTF-8, and
+provide a dry-run or preview so we can inspect the output before creating or
+rewriting issues.
 ```
 
----
-
-### Entry 3 - Backlog v2 review
-
-- **Date:** 2026-11-08
-- **Author:** Alan Pérez
-- **Tool / model:** Claude (Opus 5.5)
-- **Related story:** Backlog v2 (all stories)
-- **Result type:** Best prompt
-
-**Prompt used**
-
-```text
-Summary: shared the project guide, the Q&A session transcript, backlog v2 and a summary of the team's status, and asked for a review against the guide's minimums and acceptance criteria before splitting the work.
-```
-
-**What we got**
-
-A list of risks: Delivery 1 scope too large (27 stories, ~130 acceptance criteria), no shared org decided yet, and a Definition of Done requirement that was not in the guide. It also proposed which stories to move to Delivery 2.
-
-**Why it worked / why it failed**
-
-The prompt included all the sources (guide, session, backlog), so the AI could compare them against each other instead of answering from general knowledge.
-
-**What we verified and how**
-
-- Checked in Salesforce's documentation that the 75% code coverage requirement applies to production deployments, not to sandbox or Developer Edition orgs.
-- Checked in Mercado Pago's documentation that testing Checkout Pro requires test seller and buyer accounts.
-- Checked the guide: it does not require a coverage percentage.
-
-**What we corrected**
-
-**AI ERROR** (in backlog v2, which was also produced with AI): the DoD said 75% coverage was required "to deploy to Developer Edition". Detected by checking the official documentation. The 75% target was removed from the DoD; tests are still required.
-
-The assistant also assumed we were on Developer Edition and warned about its license limits; that did not apply once we confirmed the team uses the program's sandbox.
-
-**Estimated speed-up**
-
-About 1 h with AI vs about 3 h without.
-
----
-
-### Entry 4 - Data model first draft
-
-- **Date:** 2026-11-08
-- **Author:** Alan Pérez
-- **Tool / model:** Claude (Opus 5.5)
-- **Related story:** GES-02, GES-03, GES-06, GES-07, GES-09, ADM-03, ADM-05, SEG-01
-- **Result type:** Worst prompt
-
-**Prompt used**
-
-```text
-Summary: asked for the data model (objects, fields, API names, access) for workstream C, based on backlog v2 and the client's answers on Slack.
-```
-
-**What we got**
-
-A complete first draft (objects, fields, formulas, validation rules, permissions, personal data classification). It needed several rounds of corrections before it was ready: final version in `docs/data-model.md`.
-
-**Why it worked / why it failed**
-
-The prompt did not say who the document was for, which language the repo uses, or that we prefer declarative tools over Apex. The AI filled those gaps with wrong assumptions.
-
-**What we verified and how**
-
-- Checked in Salesforce's documentation that criteria-based sharing rules cannot use formula fields, and how the master-detail sharing setting works.
-- Tested the RFC validation pattern against the examples in backlog v2 (valid and invalid cases).
-- Checked that every field used in formulas and rules exists in the document.
-
-**What we corrected**
-
-- **AI ERROR:** it proposed normalizing the RFC "in the code that creates the record". I asked why we would use Apex if it should be avoided; the fix is a before-save flow, which runs before validation rules.
-- **AI ERROR:** giving the moderator permission to change visibility allowed turning an anonymous donation into a public one, against RF-D2. Found when reviewing the draft; fixed with the `Anonymous_Cannot_Become_Public` validation rule.
-- API names were in Spanish while the repo is in English; changed to English API names with Spanish labels.
-- The text was written as personal notes ("my stories", "useful for the oral defense"); rewritten as a project document for the team and reviewers.
-
-**Estimated speed-up**
-
-About 3 h with AI vs about 8 h without.
-
-**Better prompt (for worst results)**
-
-```text
-Write docs/data-model.md for a team repo that is read by teammates and graders. Use English API names and Spanish labels. Prefer declarative tools (Flow, validation rules) over Apex and say where Apex is unavoidable. Include design decisions with the alternatives considered.
-```
-
----
-
-### Entry 5 - D1 data model generation, review and deployment
+### Entry 3 — Delivery 1 data model: inspect, generate, validate and deploy
 
 - **Date:** 2026-11-09
 - **Author:** Karen Elizabeth Campos
 - **Tool / model:** ChatGPT + Agentforce (VS Code)
-- **Related story:** Shared D1 data-model dependencies: DON-01/02/03/04/08/10/11/12/17/18/19/20/21, GES-02/03/06/07/09, ADM-03/05/07, PAY-02/PAY-07 and SEG-01. The objects support these stories; deploying the data model does not by itself complete their UI, automation, payment or security behavior.
+- **Related stories:** Shared D1 dependencies for DON-01/02/03/04/08/10/11/12/17/18/19/20/21, GES-02/03/06/07/09, ADM-03/05/07, PAY-02/PAY-07 and SEG-01
 - **Result type:** Best prompt
+- **Verification:** Salesforce reported 55/55 metadata components deployed successfully, with zero component failures and zero test errors. The three objects, fields and validation rules were checked in the org. Formula and roll-up behavior with records was not part of that deployment check.
+- **Estimated speed-up:** Approximately 2–3 hours vs. 5–6 hours; conservative estimate, not timed.
 
-**Prompt used**
+**Prompt used (key requirements, condensed from the full prompt)**
 
 ```text
-Inspect the existing Salesforce DX project and the connected sandbox before making changes.
-Use docs/data-model.md as the source of truth and implement only Delivery 1.
-Recover the existing Fundraising_Campaign__c metadata from the org instead of
-creating a duplicate. Create Payment_Attempt__c and Donation__c if they do not
-exist. Generate the SFDX object, field, relationship, formula, roll-up summary
-and validation-rule metadata in force-app/main/default/objects/. Preserve
-existing metadata, use English API names and Spanish labels, validate the XML
-and run a deployment check only. Do not create records or deploy without
-explicit authorization.
+Act as a Salesforce architect and Salesforce DX developer. Work in the
+existing VS Code project and implement only the Delivery 1 metadata for:
+Fundraising_Campaign__c, Payment_Attempt__c and Donation__c.
+
+Before editing, inspect the repository and connected Salesforce org. Read
+these project documents first:
+- docs/data-model.md (source of truth for API names, labels, field types,
+  relationships, formulas, validation rules and Delivery 1 scope)
+- docs/ai-context/PROJECT_CONTEXT.md
+- docs/backlog/README.md
+
+Initial situation to verify, not blindly assume:
+- Fundraising_Campaign__c exists in the org but may have no records; its
+  metadata may not yet be present locally.
+- Payment_Attempt__c and Donation__c must be created only if they do not
+  already exist.
+- Distinguish object metadata from Salesforce records. This task creates
+  metadata only: do not create campaign or donation records.
+
+Implementation requirements:
+1. Retrieve Fundraising_Campaign__c from the org, compare it with the data
+   model and complete only missing or incorrect metadata; do not duplicate
+   the object, fields or valid settings.
+2. Create or retrieve Payment_Attempt__c with its Lookup to the campaign,
+   auto-number folio, documented fields, picklists and D1 validation rules.
+3. Create or retrieve Donation__c with its Master-Detail relationship to
+   the campaign, read-only relationship behavior, documented fields,
+   formulas, unique External ID provider payment field and Confirmed status.
+4. Implement the campaign roll-up SUM and COUNT fields, progress formula,
+   donation-eligibility formula, public-visibility formula and documented
+   validation rules exactly as specified in docs/data-model.md.
+5. Preserve English API names, Spanish labels, exact field lengths,
+   precision, scale, defaults, restricted picklist values and history
+   settings. Do not add undocumented rules or constraints.
+6. Do not implement Delivery 2 fields or features (including privacy-notice
+   fields, receipt flags, rejected notices, amount custom metadata or the
+   MOD-03 / RF-D2 moderation rules).
+7. Do not add unrelated Flows, Apex, LWCs, permission sets or sharing rules.
+
+Generate standard Salesforce DX metadata under
+force-app/main/default/objects/. Validate XML, filenames, references,
+relationships, formulas, roll-ups and validation rules. Do not deploy or
+create records. Do not commit or push. Report initial state, objects,
+files, relationships, formulas, validation rules, unresolved decisions
+(including SAT tax-regime verification V-05) and validation results.
+Never claim an object or setting was retrieved, created or verified unless
+it was actually checked.
 ```
 
-**What we got**
+**Result and lesson**
 
-The three D1 custom objects were represented in the repository: `Fundraising_Campaign__c` was retrieved and completed, while `Payment_Attempt__c` and `Donation__c` were created. The metadata included 42 custom fields, the Lookup and Master-Detail relationships, two roll-up summaries, formulas and nine validation rules. The retrieved campaign list view was preserved. The documentation was also aligned with the implemented D1 model.
+The existing `Fundraising_Campaign__c` metadata was retrieved and completed
+rather than duplicated; `Payment_Attempt__c` and `Donation__c` metadata were
+created for Delivery 1. The resulting model included the three custom
+objects, 42 custom fields, Lookup and Master-Detail relationships, two
+roll-up summaries, formulas and nine validation rules. After review and
+separate explicit authorization, Salesforce reported a successful deployment
+of 55/55 metadata components with zero component failures and zero test
+errors. No campaign or donation records were created by this metadata task.
 
-After review and explicit authorization, the metadata was deployed to the `donations-dev` sandbox. Salesforce reported `Succeeded`: 55 of 55 components, zero component failures and zero test errors. The objects and their fields were checked in the org after deployment. No records, production changes, commits or pushes were made.
+The prompt was especially valuable because it separated metadata from data
+records, established `docs/data-model.md` as the authority, required retrieval
+of the pre-existing campaign object, prevented duplicates, and explicitly
+excluded Delivery 2 scope. The main lesson was to inspect both the org and
+repository before generation and keep deployment as a separate authorized
+step. Iterative review was still needed to align history settings and help
+text with the documented model.
 
-**Why it worked / why it failed**
-
-The prompt identified the project documentation as the source of truth, separated D1 from D2, specified the existing campaign object and required Agentforce to inspect and retrieve it rather than create a duplicate. It also required a review and dry-run before deployment. Iterative review was still necessary to correct field-history settings, align help text with the documentation and resolve a discrepancy about `Public_Name__c` history.
-
-**What we verified and how**
-
-- Validated the 55 metadata components with a dry-run against `donations-dev`: `Succeeded`, 55/55 components and zero errors.
-- After explicit authorization, deployed to `donations-dev`: Salesforce confirmed `Succeeded`, 55/55 components, zero failures and zero test errors. Deployment ID: `0AfVC00000PBFdF0AX`.
-- Listed metadata after deployment and confirmed that all three objects existed with 13, 13 and 16 custom fields respectively, and that the nine validation rules were present.
-- Confirmed that the repository metadata and the deployed object/field definitions were consistent.
-- Formula and roll-up behavior was not tested with records during this task.
-
-**What we corrected**
-
-- Retrieved `Fundraising_Campaign__c` from the org and updated it instead of creating a duplicate; created the other two D1 objects.
-- Confirmed `enableHistory=true` and `trackHistory=true` for `Goal__c`; enabled object and field history for `Donation__c.Public_Name__c` in accordance with the explicit field definition in `docs/data-model.md`.
-- Set and checked the external sharing model for campaigns, the Lookup and Master-Detail settings, and the roll-up summary references.
-- Corrected help text and descriptions that implied automations not yet implemented, such as RFC normalization and scheduled deletion of old payment attempts.
-- Updated `docs/data-model.md` and `docs/ai-context/PROJECT_CONTEXT.md` to align their descriptions with the current D1 model and distinguish D1 field history from D2 moderation behavior.
-- Kept D2 elements and unrelated pre-existing Salesforce objects out of this deployment.
-
-**Estimated speed-up**
-
-Approximately 2–3 h with AI vs about 5–6 h without AI (conservative estimate for metadata creation, review, validation and deployment; not timed).
-
----
-
-### Entry 6 - Payment flows with minimal Apex for the callouts
+### Entry 4 — Mercado Pago payment flows with Flow-first implementation
 
 - **Date:** 2026-11-09
 - **Author:** Rodrigo Colli
-- **Tool / model:** Claude Code (Opus 5.5), in VS Code, connected to the repo, `gh` and the `donations-dev` org
-- **Related story:** PAY-07, PAY-02, ADM-07, DON-19, DON-21, DON-20
+- **Tool / model:** Claude Code (Opus 5.5), VS Code
+- **Related stories:** PAY-07, PAY-02, ADM-07, DON-19, DON-20 and DON-21
 - **Result type:** Best prompt
+- **Verification:** Check-only deployments and tests were run before deployment; Code Analyzer reported no severity 1–3 findings. The Mercado Pago test account `/users/me` endpoint identified a `test_user`, a preference was created and a fake payment lookup returned NotFound. Delivered in PR #47.
+- **Estimated speed-up:** About 6 hours vs. 16–20 hours; estimate, not timed.
 
-**Prompt used**
+**Prompt / decision summary**
 
 ```text
-Summary of my prompts and decisions during the session:
-- Filter the GitHub Projects board to my cards and order them by dependency.
-- Use the class sandbox (donations-dev) as the team org; retrieve the D1 objects
-  and compare them with docs/data-model.md before building anything.
-- Asked whether PAY-07 could be built with Flow instead of Apex, and then set the
-  rule for the whole workstream: "everything that can be done with a Flow, in Flow".
-- For DON-19, chose Flow + minimal invocable Apex only for the callout, because the
-  card requires tests with simulated provider responses (approved, error, timeout).
-- Chose Checkout Pro via the Preferences API over Checkout API, so card data is
-  captured by Mercado Pago and never touches Salesforce.
-- Configured the External Credential, Named Credential and permission set myself in
-  Setup; the access token was never pasted into the chat or the repo.
-- Required check-only validation before every deployment, and confirmed nothing
-  was committed to main before opening the PR.
+Use the class Sandbox donations-dev and compare the existing D1 objects with
+docs/data-model.md before implementing. Use Flow wherever possible and Apex
+only where Flow cannot perform the required callout. For Checkout Pro, create
+the preference server-side and let Mercado Pago capture card data. Keep all
+credentials in Named/External Credentials, validate with check-only deploys
+and tests, and do not commit or push without authorization.
 ```
 
-**What we got**
+**Result and lesson**
 
-Five flows (`Payment_Attempt_Create`, `Payment_Preference_Create`, `Payment_Return_Process`, `Donation_Register`, `Payment_Attempt_Delete_Stale`), the `Rejected_Notice__c` object, two invocable Apex classes for the Mercado Pago callouts with `HttpCalloutMock` tests, the ADM-07 layout and search, and the credential setup documented in `security.md`. Delivered in PR #47.
+Five payment-related flows, the `Rejected_Notice__c` object, two invocable Apex callout actions with `HttpCalloutMock` tests, and the ADM-07 layout/search were delivered. Flow-first instructions, org inspection and validation gates reduced rework and protected credentials.
 
-**Why it worked / why it failed**
-
-The assistant checked the org, the repo and the data model before writing anything, validated every change with a check-only deployment before the real one, and stopped to ask on the decisions that were mine: which org, Flow vs Apex, deploying, pushing.
-
-**What we verified and how**
-
-- Check-only deployments with tests before each real deployment: 34 temporary tests for the first flows (not committed), then 12 and 17 permanent tests for the callout actions, 96% coverage each.
-- Code Analyzer (Recommended): no severity 1–3 issues.
-- Live checks against the Mercado Pago test account: `/users/me` returned an account tagged `test_user`, a preference was created, and a payment lookup returned NotFound for a fake id.
-- Git history searched for Mercado Pago tokens: no matches.
-
-**What we corrected**
-
-- The pre-commit hook only looked for Stripe keys; it now also blocks Mercado Pago tokens.
-- See entry 7 for the AI errors.
-
-**Estimated speed-up**
-
-About 6 h with AI vs about 16–20 h without (not timed; to confirm).
-
----
-
-### Entry 7 - Wrong first recommendations and rejected flow metadata
+### Entry 5 — Wrong Apex recommendation and rejected Flow metadata
 
 - **Date:** 2026-11-09
 - **Author:** Rodrigo Colli
 - **Tool / model:** Claude Code (Opus 5.5)
-- **Related story:** PAY-07, PAY-02
-- **Result type:** Worst prompt
+- **Related stories:** PAY-07 and PAY-02
+- **Result type:** Worst result
+- **Verification:** Check-only deployment exposed the invalid Flow metadata before it was deployed to the Sandbox.
+- **Estimated time lost:** About 30 minutes.
 
-**Prompt used**
-
-```text
-Summary: "start with the card" (PAY-07), without restating which tools the project
-prefers or how the portal form would be built.
-```
-
-**What we got**
-
-The assistant started designing an Apex class for PAY-07, and later generated flow XML by hand that Salesforce rejected.
-
-**Why it worked / why it failed**
-
-My first prompt ("start with the card") did not restate the project rule "declarative first, Apex only where Flow cannot do the job". The assistant started designing Apex for PAY-07; I caught it by asking whether the card could be built with flows, and the design was changed to Flow. The flow XML was also written without checking which elements each flow type supports.
-
-**What we verified and how**
-
-Every flow was validated with a check-only deployment before deploying; the errors appeared there, not in the org.
-
-**What we corrected**
-
-- **AI ERROR:** proposed Apex for PAY-07 against the project rule. Changed to Flow after I asked.
-- **AI ERROR:** generated a flow element (`environmentTypes`) in a position Salesforce rejects, and used "Roll Back Records", which autolaunched flows do not allow. Fixed by removing it and letting an unhandled error roll back the whole transaction.
-- **AI ERROR:** said the class sandbox could not be the team org because the guide says Developer Edition; the team org was that sandbox.
-- **AI ERROR:** said the daily cleanup would run at 21:00; the org scheduled it at 03:00 (Mérida).
-
-**Estimated speed-up**
-
-About 30 min lost on the detours.
-
-**Better prompt (for worst results)**
+**Initial prompt summary**
 
 ```text
-Implement PAY-07 in donations-dev following docs/data-model.md. Use Flow first and
-Apex only where Flow cannot meet a requirement, and justify each Apex class. Revalidate
-campaign, amount, visibility and tax regime on the server; the guest user must have no
-permission on Payment_Attempt__c. Validate every metadata change with a check-only
-deployment and tests before deploying, and do not commit to main.
+“Start with the card” (PAY-07), without restating the project's Flow-first
+rule, the org context or the required payment architecture.
 ```
+
+**What went wrong**
+
+The assistant first proposed Apex for a task that should be declarative, then produced Flow metadata with an unsupported element placement and a rollback setting that the flow type did not allow. It also made incorrect assumptions about the team's Sandbox and the scheduled cleanup time.
+
+**Correction and lesson**
+
+The implementation was changed to Flow with only the necessary invocable Apex for callouts. Every Flow was checked with a dry run before deployment.
+
+**Better prompt**
+
+```text
+Implement PAY-07 in donations-dev using docs/data-model.md. Use Flow first
+and Apex only where Flow cannot meet a requirement; justify each Apex class.
+Revalidate campaign, amount, visibility and tax data on the server. The Guest
+user must have no Payment_Attempt__c permissions. Check every metadata change
+with a dry-run and tests before deployment. Do not commit to main.
+```
+
+### Entry 6 — Salesforce custom-object metadata implementation for Delivery 1
+
+- **Date:** 2026-11-09
+- **Author:** Karen Elizabeth Campos
+- **Tool / model:** ChatGPT + Agentforce (VS Code)
+- **Related stories:** Shared D1 data-model dependencies for DON-01/02/03/04/08/10/11/12/17/18/19/20/21, GES-02/03/06/07/09, ADM-03/05/07, PAY-02/PAY-07 and SEG-01
+- **Result type:** Best prompt
+- **Verification:** The metadata deployment to `donations-dev` reported `Succeeded`: 55 of 55 components, zero component failures and zero test errors. The objects, fields and validation rules were checked in the org. This metadata task did not create campaign or donation records; formula and roll-up behavior with records was not verified as part of the deployment.
+- **Estimated speed-up:** Approximately 2–3 hours with AI vs. 5–6 hours without AI; conservative estimate, not timed.
+
+**Prompt used (structured summary of the detailed implementation prompt)**
+
+```text
+Act as an experienced Salesforce architect and Salesforce DX (SFDX)
+developer. Work directly in the existing VS Code project to implement only
+the Delivery 1 metadata for these three custom objects:
+
+1. Fundraising_Campaign__c — Campaign.
+2. Payment_Attempt__c — Payment Attempt (PAY-07).
+3. Donation__c — Donation.
+
+Before changing files, inspect the repository and the connected Salesforce
+organization. Read these documents first:
+- docs/data-model.md (authoritative source for API names, labels, field
+  types, relationships, formulas, validation rules and D1 scope).
+- docs/ai-context/PROJECT_CONTEXT.md.
+- docs/backlog/README.md.
+
+Do not assume the initial state is still true: verify it. At the time of the
+task, Fundraising_Campaign__c existed in the org but its metadata was not yet
+in the local repository; Payment_Attempt__c and Donation__c had to be created
+only if absent. Distinguish object metadata from Salesforce records: this
+task creates metadata only, not demo campaign or donation records.
+
+Implementation:
+1. Retrieve the existing Fundraising_Campaign__c metadata. Compare it with
+   docs/data-model.md and complete only missing or incorrect items. Never
+   create a duplicate object or field and do not remove valid configuration.
+2. Create or retrieve Payment_Attempt__c, including its auto-number folio,
+   documented fields, Lookup to Fundraising_Campaign__c, picklists and D1
+   validation rules.
+3. Create or retrieve Donation__c, including its auto-number folio,
+   Master-Detail relationship to Fundraising_Campaign__c, read-only
+   relationship behavior, documented fields and formulas.
+4. Implement the campaign roll-up summaries (SUM of confirmed donation
+   amounts and COUNT of related donations), progress percentage,
+   donation-eligibility and public-visibility formulas, and all D1
+   validation rules exactly as documented.
+5. Preserve exact API names, Spanish labels, field types and lengths,
+   currency precision/scale, picklist API values and labels, defaults,
+   restricted-picklist settings, unique/External ID configuration and
+   Goal__c field history. Do not make Description__c required at field
+   level; its requirement is enforced when activating a campaign.
+6. Preserve the documented 19 tax-regime values and their eligibility
+   reference for physical/legal persons. Do not invent extra filtering
+   behavior in object metadata. Report SAT Anexo 20 verification V-05 as
+   pending, as documented.
+7. Exclude Delivery 2 features, including Close_Reason__c, privacy-notice
+   fields, Confirmation_Source__c, Receipt_Sent__c, Rejected_Notice__c,
+   Donation_Amount_Setting__mdt and additional moderation rules for MOD-03
+   / RF-D2. Also do not add unrelated permission sets, sharing rules,
+   list views, flows, Apex classes, LWCs, test records or automations.
+
+Generate standard Salesforce DX metadata under
+force-app/main/default/objects/. Validate XML well-formedness, filenames,
+object and field references, relationship types, formula compatibility,
+roll-up relationships, validation conditions and messages. Adapt to valid
+metadata already present; do not overwrite files without reviewing them.
+
+Do not modify sfdx-project.json or API version without a documented reason.
+Do not modify unrelated files. Do not create Salesforce records, deploy,
+apply org changes, commit or push. If org access is unavailable, report the
+blocker; never simulate a retrieve or claim an unverified setting.
+
+Final report must cover: initial org/repository state; each object's API
+name, labels, name field, sharing model and deployment status; generated or
+updated paths; Lookup and Master-Detail relationships; formulas and
+validation rules; unresolved documentation items (especially V-05); XML
+and structural validation; and whether the metadata is ready for a later
+authorized deployment check.
+```
+
+**Result and lesson**
+
+The existing `Fundraising_Campaign__c` metadata was retrieved and completed rather than duplicated. `Payment_Attempt__c` and `Donation__c` were added according to the D1 data model. The implementation covered the three objects, 42 custom fields, Lookup and Master-Detail relationships, two roll-up summaries, formulas and nine validation rules. After review and separate explicit authorization, Salesforce reported a successful deployment of 55/55 components with zero failures and zero test errors.
+
+The prompt worked because it set `docs/data-model.md` as the source of truth, required inspection before generation, clearly separated object metadata from records, protected existing metadata, made the D1/D2 boundary explicit and separated validation from deployment authorization. The remaining lesson is to report unverified runtime behavior separately: a successful metadata deployment does not by itself prove formula and roll-up results with actual records.
+
+---
+
+### Entry 7 — Existing campaign records and public Guest catalog cleanup
+
+- **Date:** 2026-11-10
+- **Author:** Karen Elizabeth Campos
+- **Tool / model:** ChatGPT + Agentforce (VS Code)
+- **Related stories:** DON-01, DON-02, DON-03, DON-04, DON-10 and DON-11
+- **Result type:** Best prompt
+- **Verification:** The five existing campaign records were updated by ID without duplication; three visible `[PRUEBA]` records were changed to Draft; three seeded public-recognition donations were changed to Anonymous. Agentforce reported a Guest-browser check of 32/32 at 1280 px and 360 px, with the catalog showing four intended cards and Draft records unavailable by direct URL. Campaign totals and donation relationships were rechecked.
+- **Estimated speed-up:** Approximately 1–2 h with AI vs. 3–4 h without AI (rough estimate; not timed).
+
+**Prompt summary**
+
+```text
+Inspect the existing campaign records by Salesforce ID and update those
+records in place. Preserve IDs, goals, dates, statuses unless explicitly
+approved, and all donation relationships. Never rerun the original tree
+import because it inserts records and may create duplicates. Retire only the
+three identified test campaigns from the public catalog by changing their
+status to Draft after checking validation rules. Preserve donations. For the
+three seeded recognition records, change only Visibility__c to Anonymous;
+do not invent donor identities or alter amounts, payment status or campaign
+relationships. Verify the public catalog and direct URLs as an unauthenticated
+Guest, and make no code, permission or payment changes.
+```
+
+**Result and lesson**
+
+The five intended portal campaigns retained their Salesforce IDs and donation
+relationships while their public names/descriptions were updated. The three
+test campaigns that had appeared publicly were set to Draft; their records
+and donations were preserved. Three seeded recognition entries were
+anonymized, and the public totals continued to display correctly. The key
+safeguard was to inspect existing records and update by ID rather than reload
+demo JSON. The four recently uploaded campaign images still require
+confirmation of their public distributions and field updates before they can
+be marked complete.

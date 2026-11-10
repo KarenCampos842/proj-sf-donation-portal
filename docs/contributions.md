@@ -4,8 +4,8 @@ One table per milestone. Every row must link to evidence (commits, AI log entrie
 
 Focus of each member (from the backlog split):
 - **Rodrigo Colli (@RodrigoPeraza):** payments with Mercado Pago.
-- **Karen Elizabeth Campos (@KarenCampos842):** public portal.
-- **Alan Perez Romero (@Alambrep):** internal operation and security test.
+- **Karen Elizabeth Campos (@KarenCampos842):** public portal and Salesforce object implementation.
+- **Alan Perez Romero (@Alambrep):** internal operation, security testing, and data model.
 
 Stories link to their GitHub issue in [`tablero.md`](tablero.md). Fill in hours and evidence as each story is finished.
 
@@ -13,9 +13,9 @@ Stories link to their GitHub issue in [`tablero.md`](tablero.md). Fill in hours 
 
 | Member | Stories / tasks | Evidence | Approx. hours |
 |---|---|---|---|
-| Rodrigo Colli | DON-19, DON-20, DON-21, PAY-02, PAY-07, ADM-07; TEC-02 (Mercado Pago test), TEC-05 (credentials), TEC-08 (professor clarifications) | _commit links, AI log #, screenshots_ | _h_ |
-| Alan Perez Romero | GES-02, GES-03, GES-06, GES-07, GES-09, ADM-03, ADM-05, SEG-01; TEC-01 (org setup), TEC-04 (data model), TEC-06 (demo data) | _commit links, AI log #, screenshots_ | _h_ |
-| Karen Elizabeth Campos | DON-01, DON-02, DON-03, DON-04, DON-08, DON-10, DON-11, DON-12; TEC-03 (Experience Cloud site); backlog as GitHub issues and board (AI log #1) | _commit links, AI log #, screenshots_ | _h_ |
+| Rodrigo Colli | DON-19, DON-20, DON-21, PAY-02, PAY-07, ADM-07; TEC-02 (Mercado Pago test), TEC-05 (credentials), TEC-08 (professor clarifications) | *Commit links, AI log #, screenshots* | *To be estimated* |
+| Alan Perez Romero | GES-02, GES-03, GES-06, GES-07, GES-09, ADM-03, ADM-05, SEG-01; TEC-01 (org setup), TEC-04 (data model — `docs/data-model.md`), TEC-06 (demo data) | *Commit links, AI log #, data-model.md* | *To be estimated* |
+| Karen Elizabeth Campos | DON-01, DON-02, DON-03, DON-04, DON-08, DON-10, DON-11, DON-12; TEC-03 (Experience Cloud site); implementation of the three Salesforce objects (`Fundraising_Campaign__c`, `Payment_Attempt__c`, `Donation__c`); backlog as GitHub issues and board (AI log #1) | *Commit links, AI log entries, GitHub issues, screenshots* | **Approximately 16 h** |
 
 ## Delivery 2
 
