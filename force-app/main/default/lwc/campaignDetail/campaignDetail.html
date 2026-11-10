@@ -1,0 +1,113 @@
+<template>
+    <div class="detail">
+        <div class="detail__back">
+            <lightning-button
+                variant="base"
+                label={messages.back}
+                icon-name="utility:chevronleft"
+                onclick={handleBack}
+            ></lightning-button>
+        </div>
+
+        <template lwc:if={isLoading}>
+            <div class="state state--loading" role="status">
+                <lightning-spinner size="medium" alternative-text={messages.loading}></lightning-spinner>
+            </div>
+        </template>
+
+        <template lwc:if={hasError}>
+            <div class="state" role="alert">
+                <p class="state__message">{messages.error}</p>
+                <lightning-button label={messages.retry} onclick={handleRetry}></lightning-button>
+            </div>
+        </template>
+
+        <template lwc:if={isNotFound}>
+            <div class="state" role="status">
+                <p class="state__message">{messages.notFound}</p>
+                <lightning-button
+                    variant="brand"
+                    label={messages.viewAvailable}
+                    onclick={handleBack}
+                ></lightning-button>
+            </div>
+        </template>
+
+        <template lwc:if={hasCampaign}>
+            <article class="layout">
+                <header class="layout__header">
+                    <div class="media">
+                        <template lwc:if={showImage}>
+                            <img
+                                class="media__image"
+                                src={campaign.imageUrl}
+                                alt={imageAlt}
+                                onerror={handleImageError}
+                            />
+                        </template>
+                        <template lwc:else>
+                            <div class="media__placeholder" role="img" aria-label={placeholderLabel}>
+                                <lightning-icon icon-name="utility:image" size="large" aria-hidden="true"></lightning-icon>
+                            </div>
+                        </template>
+                    </div>
+
+                    <div class="title-row">
+                        <span class={badgeClass}>{badgeLabel}</span>
+                        <template lwc:if={campaign.isGeneral}>
+                            <span class="tag">{messages.generalCampaign}</span>
+                        </template>
+                    </div>
+                    <h1 class="title">{campaign.name}</h1>
+                </header>
+
+                <aside class="layout__aside">
+                    <div class="panel">
+                        <c-campaign-progress
+                            total-raised={campaign.totalRaised}
+                            goal={campaign.goal}
+                            progress-percent={campaign.progressPercent}
+                            donation-count={campaign.donationCount}
+                        ></c-campaign-progress>
+
+                        <ul class="dates">
+                            <li>{startText}</li>
+                            <template lwc:if={hasEndDate}>
+                                <li>{endText}</li>
+                            </template>
+                        </ul>
+
+                        <template lwc:if={canDonate}>
+                            <lightning-button
+                                class="panel__action"
+                                variant="brand"
+                                label={messages.donate}
+                                onclick={handleDonate}
+                            ></lightning-button>
+                        </template>
+                        <template lwc:if={cannotDonate}>
+                            <p class="notice" role="status">{notice}</p>
+                            <lightning-button
+                                class="panel__action"
+                                label={disabledButtonLabel}
+                                disabled
+                            ></lightning-button>
+                        </template>
+                    </div>
+                </aside>
+
+                <div class="layout__main">
+                    <section class="about" aria-labelledby="about-title">
+                        <h2 id="about-title" class="section-title">{messages.aboutTitle}</h2>
+                        <p class="about__text">{campaign.description}</p>
+                    </section>
+
+                    <c-donor-recognition-list
+                        campaign-id={campaign.id}
+                        demo-mode={demoMode}
+                    ></c-donor-recognition-list>
+                </div>
+            </article>
+        </template>
+    </div>
+</template>

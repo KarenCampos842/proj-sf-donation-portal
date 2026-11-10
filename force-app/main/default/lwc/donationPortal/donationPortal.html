@@ -1,0 +1,21 @@
+<template>
+    <div class="portal">
+        <template lwc:if={showList}>
+            <c-campaign-list oncampaignselect={handleCampaignSelect}></c-campaign-list>
+        </template>
+        <template lwc:elseif={showDetail}>
+            <c-campaign-detail
+                campaign-id={campaignId}
+                onbacktolist={handleBackToList}
+                ondonationstart={handleDonationStart}
+            ></c-campaign-detail>
+        </template>
+        <template lwc:elseif={showForm}>
+            <c-donation-form
+                campaign-id={campaignId}
+                campaign-name={formCampaignName}
+                onbacktocampaign={handleBackToCampaign}
+            ></c-donation-form>
+        </template>
+    </div>
+</template>

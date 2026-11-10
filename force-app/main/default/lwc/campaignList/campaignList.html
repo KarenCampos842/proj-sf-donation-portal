@@ -1,0 +1,92 @@
+<template>
+    <section class="catalog" aria-labelledby="catalog-title">
+        <header class="catalog__header">
+            <h1 id="catalog-title" class="catalog__title">{messages.title}</h1>
+            <p class="catalog__subtitle">{messages.subtitle}</p>
+        </header>
+
+        <template lwc:if={isLoading}>
+            <div class="state state--loading" role="status">
+                <lightning-spinner size="medium" alternative-text={messages.loading}></lightning-spinner>
+            </div>
+        </template>
+
+        <template lwc:if={hasError}>
+            <div class="state" role="alert">
+                <p class="state__message">{messages.error}</p>
+                <lightning-button label={messages.retry} onclick={handleRetry}></lightning-button>
+            </div>
+        </template>
+
+        <template lwc:if={isEmpty}>
+            <p class="state state__message" role="status">{messages.empty}</p>
+        </template>
+
+        <template lwc:if={hasCampaigns}>
+            <ul class="grid">
+                <template for:each={campaigns} for:item="campaign">
+                    <li key={campaign.id} class="grid__item">
+                        <article class={campaign.cardClass}>
+                            <div class="media">
+                                <template lwc:if={campaign.hasImage}>
+                                    <img
+                                        class="media__image"
+                                        src={campaign.imageUrl}
+                                        alt={campaign.imageAlt}
+                                        loading="lazy"
+                                        data-id={campaign.id}
+                                        onerror={handleImageError}
+                                    />
+                                </template>
+                                <template lwc:else>
+                                    <div class="media__placeholder" role="img" aria-label={campaign.placeholderLabel}>
+                                        <lightning-icon icon-name="utility:image" size="large" aria-hidden="true"></lightning-icon>
+                                    </div>
+                                </template>
+                            </div>
+
+                            <div class="card__body">
+                                <div class="card__tags">
+                                    <span class={campaign.badgeClass}>{campaign.badgeLabel}</span>
+                                    <template lwc:if={campaign.isGeneral}>
+                                        <span class="card__tag">{messages.generalCampaign}</span>
+                                    </template>
+                                </div>
+
+                                <h2 class="card__title">
+                                    <button
+                                        type="button"
+                                        class="card__link"
+                                        data-id={campaign.id}
+                                        aria-label={campaign.actionLabel}
+                                        onclick={handleSelect}
+                                    >
+                                        {campaign.name}
+                                    </button>
+                                </h2>
+
+                                <template lwc:if={campaign.isPaused}>
+                                    <p class="card__note">{messages.pausedNote}</p>
+                                </template>
+
+                                <c-campaign-progress
+                                    compact
+                                    total-raised={campaign.totalRaised}
+                                    goal={campaign.goal}
+                                    progress-percent={campaign.progressPercent}
+                                    donation-count={campaign.donationCount}
+                                ></c-campaign-progress>
+
+                                <template lwc:if={campaign.closesOnText}>
+                                    <p class="card__date">{campaign.closesOnText}</p>
+                                </template>
+
+                                <p class="card__cta" aria-hidden="true">{messages.viewDetail} →</p>
+                            </div>
+                        </article>
+                    </li>
+                </template>
+            </ul>
+        </template>
+    </section>
+</template>

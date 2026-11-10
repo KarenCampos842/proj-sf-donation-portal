@@ -1,0 +1,110 @@
+/* Shared design tokens. LWR sites can override the brand through the --dxp-g-* hooks; every
+   value has a fallback so the components also look right outside a site. */
+:host {
+    --portal-accent: var(--dxp-g-brand, #0b5cab);
+    --portal-on-accent: var(--dxp-g-brand-contrast, #ffffff);
+    --portal-surface: var(--dxp-g-root, #ffffff);
+    --portal-text: var(--dxp-g-root-contrast, #1b1f23);
+    --portal-text-muted: #4a5159;
+    --portal-border: #d3d8de;
+    --portal-subtle: #f3f5f7;
+    --portal-track: #e3e7eb;
+    --portal-radius: var(--slds-g-radius-border-2, 0.5rem);
+    --portal-shadow: 0 1px 2px rgb(27 31 35 / 0.08);
+    --portal-open-bg: #e6f0fa;
+    --portal-open-text: #0b3d75;
+    --portal-paused-bg: #fbf0d6;
+    --portal-paused-text: #6b4500;
+    --portal-closed-bg: #e8eaed;
+    --portal-closed-text: #2f353b;
+    --portal-focus: #0b5cab;
+
+    display: block;
+    color: var(--portal-text);
+    min-width: 0;
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.badge {
+    font-weight: 600;
+    border: 1px solid transparent;
+    border-radius: 999px;
+}
+
+.badge_open {
+    background: var(--portal-open-bg);
+    color: var(--portal-open-text);
+    border-color: var(--portal-open-text);
+}
+
+.badge_paused {
+    background: var(--portal-paused-bg);
+    color: var(--portal-paused-text);
+    border-color: var(--portal-paused-text);
+}
+
+.badge_closed {
+    background: var(--portal-closed-bg);
+    color: var(--portal-closed-text);
+    border-color: var(--portal-closed-text);
+}
+
+.badge_ended {
+    color: var(--portal-closed-text);
+    border-color: var(--portal-border);
+}
+
+.media {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    background: var(--portal-subtle);
+}
+
+.media__image {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.media__placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    color: var(--portal-text-muted);
+    background: var(--portal-subtle);
+}
+
+.state {
+    position: relative;
+    padding: 2rem 1rem;
+    text-align: center;
+    color: var(--portal-text-muted);
+    border: 1px dashed var(--portal-border);
+    border-radius: var(--portal-radius);
+    background: var(--portal-surface);
+}
+
+.state__message {
+    margin: 0 0 1rem;
+    overflow-wrap: anywhere;
+}
+
+.state--loading {
+    min-height: 7rem;
+}

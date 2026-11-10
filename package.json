@@ -1,0 +1,13 @@
+{
+    "name": "proj-sf-donation-portal",
+    "private": true,
+    "version": "1.0.0",
+    "description": "Mexico Dreamin´ Donation Portal. Tooling for Lightning Web Component unit tests.",
+    "scripts": {
+        "test:unit": "sfdx-lwc-jest",
+        "test:unit:coverage": "sfdx-lwc-jest -- --coverage"
+    },
+    "devDependencies": {
+        "@salesforce/sfdx-lwc-jest": "^7.0.1"
+    }
+}

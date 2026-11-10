@@ -1,0 +1,199 @@
+<template>
+    <div class="donation">
+        <div class="donation__back">
+            <lightning-button
+                variant="base"
+                label={messages.back}
+                icon-name="utility:chevronleft"
+                onclick={handleBack}
+            ></lightning-button>
+        </div>
+
+        <template lwc:if={hasCampaign}>
+            <section class="form" aria-labelledby="form-title">
+                <header class="form__header">
+                    <h1 id="form-title" class="form__title">{messages.title}</h1>
+                    <template lwc:if={campaignLabel}>
+                        <p class="form__campaign">{campaignLabel}</p>
+                    </template>
+                </header>
+
+                <fieldset class="block">
+                    <legend class="block__title">{messages.amount.legend}</legend>
+                    <lightning-layout multiple-rows>
+                        <template for:each={amountOptions} for:item="option">
+                            <lightning-layout-item
+                                key={option.value}
+                                size="6"
+                                small-device-size="4"
+                                medium-device-size="3"
+                                padding="around-small"
+                            >
+                                <label class="pill">
+                                    <input
+                                        class="pill__input"
+                                        type="radio"
+                                        name="amount"
+                                        value={option.value}
+                                        checked={option.checked}
+                                        onchange={handleAmountChange}
+                                    />
+                                    <span class="pill__label">{option.label}</span>
+                                </label>
+                            </lightning-layout-item>
+                        </template>
+                    </lightning-layout>
+                    <template lwc:if={amountError}>
+                        <p class="field-error" role="alert">{amountError}</p>
+                    </template>
+                </fieldset>
+
+                <div class="block">
+                    <lightning-input
+                        data-field="email"
+                        type="email"
+                        label={messages.email.label}
+                        value={form.email}
+                        required
+                        autocomplete="email"
+                        field-level-help={messages.email.help}
+                        onchange={handleFieldChange}
+                        onblur={handleFieldBlur}
+                    ></lightning-input>
+                </div>
+
+                <div class="block">
+                    <lightning-input
+                        data-name="anonymous"
+                        type="toggle"
+                        label={messages.visibility.toggle}
+                        checked={isAnonymous}
+                        message-toggle-active={messages.visibility.anonymous}
+                        message-toggle-inactive={messages.visibility.public}
+                        onchange={handleAnonymousToggle}
+                    ></lightning-input>
+                    <template lwc:if={isAnonymous}>
+                        <p class="hint">{visibilityHelp}</p>
+                    </template>
+                    <template lwc:if={showPublicName}>
+                        <lightning-input
+                            data-field="publicName"
+                            type="text"
+                            label={messages.visibility.publicName}
+                            value={form.publicName}
+                            maxlength={maxPublicNameLength}
+                            required
+                            field-level-help={messages.visibility.publicNameHelp}
+                            onchange={handleFieldChange}
+                            onblur={handleFieldBlur}
+                        ></lightning-input>
+                    </template>
+                </div>
+
+                <div class="block">
+                    <lightning-input
+                        data-name="invoice"
+                        type="toggle"
+                        label={messages.invoice.toggle}
+                        checked={invoiceRequested}
+                        message-toggle-active={messages.invoice.yes}
+                        message-toggle-inactive={messages.invoice.no}
+                        onchange={handleInvoiceToggle}
+                    ></lightning-input>
+                    <p class="hint">{messages.invoice.independent}</p>
+
+                    <template lwc:if={invoiceRequested}>
+                        <div class="invoice">
+                            <p class="hint">{messages.invoice.scope}</p>
+                            <lightning-layout multiple-rows>
+                                <lightning-layout-item size="12" padding="horizontal-small">
+                                    <lightning-input
+                                        data-field="legalName"
+                                        type="text"
+                                        label={messages.invoice.legalName}
+                                        value={form.legalName}
+                                        maxlength={maxLegalNameLength}
+                                        required
+                                        onchange={handleFieldChange}
+                                        onblur={handleFieldBlur}
+                                    ></lightning-input>
+                                </lightning-layout-item>
+                                <lightning-layout-item size="12" medium-device-size="6" padding="horizontal-small">
+                                    <lightning-input
+                                        data-field="rfc"
+                                        type="text"
+                                        label={messages.invoice.rfc}
+                                        value={form.rfc}
+                                        maxlength="20"
+                                        required
+                                        autocomplete="off"
+                                        field-level-help={messages.invoice.rfcHelp}
+                                        onchange={handleFieldChange}
+                                        onblur={handleFieldBlur}
+                                    ></lightning-input>
+                                    <template lwc:if={taxpayerTypeText}>
+                                        <p class="hint">{taxpayerTypeText}</p>
+                                    </template>
+                                </lightning-layout-item>
+                                <lightning-layout-item size="12" medium-device-size="6" padding="horizontal-small">
+                                    <lightning-input
+                                        data-field="taxPostalCode"
+                                        type="text"
+                                        label={messages.invoice.postalCode}
+                                        value={form.taxPostalCode}
+                                        maxlength="5"
+                                        required
+                                        autocomplete="postal-code"
+                                        onchange={handleFieldChange}
+                                        onblur={handleFieldBlur}
+                                    ></lightning-input>
+                                </lightning-layout-item>
+                                <lightning-layout-item size="12" padding="horizontal-small">
+                                    <lightning-combobox
+                                        data-field="taxRegime"
+                                        label={messages.invoice.regime}
+                                        placeholder={messages.invoice.regimePlaceholder}
+                                        options={regimeOptions}
+                                        value={form.taxRegime}
+                                        required
+                                        field-level-help={messages.invoice.regimeHelp}
+                                        onchange={handleRegimeChange}
+                                        onblur={handleFieldBlur}
+                                    ></lightning-combobox>
+                                </lightning-layout-item>
+                            </lightning-layout>
+                        </div>
+                    </template>
+                </div>
+
+                <template lwc:if={errorMessage}>
+                    <div class="alert" role="alert">
+                        <p class="alert__title">{messages.submit.errorTitle}</p>
+                        <p class="alert__message">{errorMessage}</p>
+                    </div>
+                </template>
+
+                <div class="actions">
+                    <lightning-button
+                        class="actions__submit"
+                        variant="brand"
+                        label={submitLabel}
+                        disabled={isSubmitting}
+                        onclick={handleSubmit}
+                    ></lightning-button>
+                    <template lwc:if={isSubmitting}>
+                        <p class="visually-hidden" role="status">{messages.submit.busy}</p>
+                    </template>
+                    <p class="hint">{messages.submit.note}</p>
+                </div>
+            </section>
+        </template>
+
+        <template lwc:else>
+            <div class="state" role="status">
+                <p class="state__message">{messages.noCampaign}</p>
+                <lightning-button variant="brand" label={messages.back} onclick={handleBack}></lightning-button>
+            </div>
+        </template>
+    </div>
+</template>
