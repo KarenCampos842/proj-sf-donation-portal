@@ -4,9 +4,10 @@
     <description>Indica si el donante quiere aparecer con nombre (Pública) o sin él (Anónima). Es independiente de la solicitud de factura.</description>
     <inlineHelpText>Elige si tu nombre se mostrará públicamente.</inlineHelpText>
     <label>Visibilidad</label>
-    <required>false</required>
+    <required>true</required>
     <type>Picklist</type>
     <valueSet>
+        <restricted>true</restricted>
         <valueSetDefinition>
             <sorted>false</sorted>
             <value>

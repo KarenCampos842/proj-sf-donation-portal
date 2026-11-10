@@ -4,9 +4,10 @@
     <description>Indica si la donación se muestra con nombre (Pública) o sin él (Anónima). La copia el proceso de confirmación y el moderador puede pasarla de Pública a Anónima.</description>
     <inlineHelpText>Define si el nombre del donante se muestra públicamente.</inlineHelpText>
     <label>Visibilidad</label>
-    <required>false</required>
+    <required>true</required>
     <type>Picklist</type>
     <valueSet>
+        <restricted>true</restricted>
         <valueSetDefinition>
             <sorted>false</sorted>
             <value>

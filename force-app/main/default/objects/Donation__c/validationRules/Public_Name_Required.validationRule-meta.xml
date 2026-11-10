@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Public_Name_Required</fullName>
+    <active>true</active>
+    <description>Una donación pública necesita nombre público (MOD-03).</description>
+    <errorConditionFormula><![CDATA[ISPICKVAL(Visibility__c, "Public") && ISBLANK(Public_Name__c)]]></errorConditionFormula>
+    <errorMessage>Una donación pública necesita nombre.</errorMessage>
+</ValidationRule>
