@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <isExposed>true</isExposed>
+    <masterLabel>Resultado del pago</masterLabel>
+    <description>Página a la que Mercado Pago devuelve al donante. Pregunta al servidor el estado real del pago a partir de payment_id.</description>
+    <targets>
+        <target>lightningCommunity__Page</target>
+        <target>lightningCommunity__Default</target>
+    </targets>
+    <targetConfigs>
+        <targetConfig targets="lightningCommunity__Default">
+            <property
+                name="homePageName"
+                type="String"
+                default="Home"
+                label="Nombre API de la página del portal"
+                description="Página a la que vuelve el donante. Por omisión: Home."
+            />
+        </targetConfig>
+    </targetConfigs>
+</LightningComponentBundle>
