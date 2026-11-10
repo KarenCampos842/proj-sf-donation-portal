@@ -1,0 +1,12 @@
+{
+  "type" : "sfdc_cms__route",
+  "title" : "Gracias",
+  "contentBody" : {
+    "activeViewId" : "Gracias",
+    "configurationTags" : [ ],
+    "pageAccess" : "UseParent",
+    "routeType" : "custom-gracias",
+    "urlPrefix" : "gracias"
+  },
+  "urlName" : "gracias"
+}
