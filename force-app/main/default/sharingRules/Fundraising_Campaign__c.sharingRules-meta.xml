@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SharingRules xmlns="http://soap.sforce.com/2006/04/metadata">
+    <sharingGuestRules>
+        <fullName>Campanas_Publicas_Invitado</fullName>
+        <accessLevel>Read</accessLevel>
+        <label>Campañas públicas para el invitado</label>
+        <sharedTo>
+            <guestUser>Mexico_Dreamin_Donation_Portal</guestUser>
+        </sharedTo>
+        <criteriaItems>
+            <field>Status__c</field>
+            <operation>equals</operation>
+            <value>Cerrada,Activa,Pausada</value>
+        </criteriaItems>
+        <includeHVUOwnedRecords>false</includeHVUOwnedRecords>
+    </sharingGuestRules>
+</SharingRules>

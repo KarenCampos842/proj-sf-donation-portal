@@ -1,0 +1,45 @@
+<template>
+    <section class="recognition" aria-labelledby="recognition-title">
+        <h2 id="recognition-title" class="recognition__title">{messages.title}</h2>
+
+        <template lwc:if={demoMode}>
+            <p class="demo" role="note">
+                <span class="slds-badge badge badge_paused">{messages.demoBadge}</span>
+                <span class="demo__text">{messages.demoNote}</span>
+            </p>
+        </template>
+
+        <template lwc:if={isLoading}>
+            <div class="state state--loading" role="status">
+                <lightning-spinner size="small" alternative-text={messages.loading}></lightning-spinner>
+            </div>
+        </template>
+
+        <template lwc:if={hasError}>
+            <div class="state" role="alert">
+                <p class="state__message">{messages.error}</p>
+                <lightning-button label={messages.retry} onclick={handleRetry}></lightning-button>
+            </div>
+        </template>
+
+        <template lwc:if={isEmpty}>
+            <p class="state state__message" role="status">{messages.empty}</p>
+        </template>
+
+        <template lwc:if={showList}>
+            <ul class="donors" aria-label={messages.listLabel}>
+                <template for:each={visibleDonors} for:item="donor">
+                    <li key={donor.key} class="donor">
+                        <span class="donor__name">{donor.publicName}</span>
+                        <span class="donor__amount">{donor.amountText}</span>
+                    </li>
+                </template>
+            </ul>
+            <template lwc:if={hasMore}>
+                <div class="more">
+                    <lightning-button label={messages.showMore} onclick={handleShowMore}></lightning-button>
+                </div>
+            </template>
+        </template>
+    </section>
+</template>
