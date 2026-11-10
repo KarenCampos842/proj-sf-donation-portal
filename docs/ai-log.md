@@ -12,6 +12,7 @@ Per class instructions, the focus is on the prompts that produced the best and t
 | 3 | 2026-11-08 | Alan Pérez | Claude (Opus 5.5) | Backlog v2 (all) | Best | Review of backlog v2 against the guide and the Q&A session; found an AI error in the DoD |
 | 4 | 2026-11-08 | Alan Pérez | Claude (Opus 5.5) | GES-02/03/06/07/09, ADM-03/05, SEG-01 | Worst | First data model draft needed several corrections (voice, language, Apex, a privacy gap) |
 | 5 | 2026-11-09 | Karen Elizabeth Campos | ChatGPT + Agentforce (VS Code) | Shared D1 data model: DON-01/02/03/04/08/10/11/12/17/18/19/20/21; GES-02/03/06/07/09; ADM-03/05/07; PAY-02/PAY-07; SEG-01 | Best | Generated, reviewed and deployed the three D1 custom objects: 55 metadata components succeeded in donations-dev. |
+| 8 | 2026-11-09 | Alan Pérez | Claude (Opus 5.5) | GES-02/03/06/07/09, ADM-03/05 | Worst | Workstream C configuration deployed; the deploy command and one verification step were wrong at first |
 
 ---
 
@@ -245,3 +246,49 @@ The prompt identified the project documentation as the source of truth, separate
 **Estimated speed-up**
 
 Approximately 2–3 h with AI vs about 5–6 h without AI (conservative estimate for metadata creation, review, validation and deployment; not timed).
+
+---
+
+### Entry 8 - Workstream C configuration (permission sets, list views, rules, flow)
+
+- **Date:** 2026-11-09
+- **Author:** Alan Pérez
+- **Tool / model:** Claude (Opus 5.5)
+- **Related story:** GES-02, GES-03, GES-06, GES-07, GES-09, ADM-03, ADM-05
+- **Result type:** Worst prompt
+
+**Prompt used**
+
+```text
+Summary: asked the AI to compare the metadata already in the repo against docs/data-model.md, list what was missing for workstream C in Delivery 1, generate that metadata, and give step-by-step instructions to deploy only those files to the sandbox.
+```
+
+**What we got**
+
+A comparison of the deployed objects against the data model (they matched, except for missing items) and 14 metadata files: three permission sets, three list views, two tabs, two `Donation__c` validation rules, a before-save flow that normalizes the RFC, and `Visibility__c` changed to required and restricted. Also a deployment command limited to those files, so the deploy would not overwrite other changes in the org.
+
+**Why it worked / why it failed**
+
+The comparison and the metadata were correct and deployed on the first try. The prompt did not mention the operating system or the shell, so the AI gave a command format that does not work in PowerShell, and one verification step assumed the admin user could see the new tabs.
+
+**What we verified and how**
+
+- Ran the deployment with `--dry-run` first, then deployed successfully.
+- In the org: the three permission sets appear in Setup; the flow "Intento de pago - Normalizar RFC" is active; the views "Estado y avance de campañas", "Todas las donaciones" and "Solicitan factura" exist; both tabs show their icons.
+- Not tested yet: the permission sets with a test user, and the RFC flow with a record.
+
+**What we corrected**
+
+- **AI ERROR:** the deploy command used `\` line continuations, which only work in bash. VS Code warned before pasting a 9-line command into PowerShell; replaced with a one-line command that works in any shell.
+- **AI ERROR:** the AI said to check the new tabs by searching in the App Launcher. They did not appear, because tabs are only visible to users with one of the new permission sets and the admin user had none. Verified instead by opening the objects' list URLs directly.
+- **AI ERROR:** the AI gave the data import command without checking field access. The import failed with `FlsError` on `Description__c`, because fields deployed through metadata give no access to any profile. Fixed with a team-only permission set, `Portal_Developer`, assigned to the team members.
+
+**Estimated speed-up**
+
+About 1.5 h with AI vs about 5 h without.
+
+**Better prompt (for worst results)**
+
+```text
+I am on Windows with PowerShell in VS Code. Give commands that work in PowerShell. For each verification step, tell me which user or permission set it requires.
+```

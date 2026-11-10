@@ -14,7 +14,7 @@ Stories link to their GitHub issue in [`tablero.md`](tablero.md). Fill in hours 
 | Member | Stories / tasks | Evidence | Approx. hours |
 |---|---|---|---|
 | Rodrigo Colli | DON-19, DON-20, DON-21, PAY-02, PAY-07, ADM-07; TEC-02 (Mercado Pago test), TEC-05 (credentials), TEC-08 (professor clarifications) | _commit links, AI log #, screenshots_ | _h_ |
-| Alan Perez Romero | GES-02, GES-03, GES-06, GES-07, GES-09, ADM-03, ADM-05, SEG-01; TEC-01 (org setup), TEC-04 (data model), TEC-06 (demo data) | _commit links, AI log #, screenshots_ | _h_ |
+| Alan Perez Romero | GES-02, GES-03, GES-06, GES-07, GES-09, ADM-03, ADM-05, SEG-01; TEC-01 (org setup), TEC-04 (data model), TEC-06 (demo data) | `docs/data-model.md` (PR #2); workstream C configuration (PR #46); demo data and developer permission set (this PR); AI log #3, #4, #8; Q-07 | ~8 h |
 | Karen Elizabeth Campos | DON-01, DON-02, DON-03, DON-04, DON-08, DON-10, DON-11, DON-12; TEC-03 (Experience Cloud site); backlog as GitHub issues and board (AI log #1) | _commit links, AI log #, screenshots_ | _h_ |
 
 ## Delivery 2
