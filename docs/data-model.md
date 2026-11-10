@@ -101,7 +101,7 @@ Created before the payment opens, from the form. It is not a donation: it does n
 | Campaña | `Campaign__c` | Lookup(`Fundraising_Campaign__c`) | Required | D1 |
 | Monto | `Amount__c` | Currency(16, 2) | Minimum $50 MXN | D1 |
 | Correo | `Email__c` | Email | Always required. The Email type validates the format (DON-10) | D1 |
-| Visibilidad | `Visibility__c` | Picklist | `Anonymous` "Anónima", `Public` "Pública" | D1 |
+| Visibilidad | `Visibility__c` | Picklist (restricted, required) | `Anonymous` "Anónima", `Public` "Pública" | D1 |
 | Nombre público | `Public_Name__c` | Text(80) | Required if `Public` (see section 7, minimization) | D1 |
 | Solicita factura | `Invoice_Requested__c` | Checkbox | Independent from visibility | D1 |
 | Nombre o razón social | `Legal_Name__c` | Text(254) | Required with invoice | D1 |
@@ -151,7 +151,7 @@ Created only by the payment confirmation process (workstream A), after the provi
 | Id de pago del proveedor | `Provider_Payment_Id__c` | Text(64), Unique, External ID | Confirmation process. Traceability (ADM-07) and duplicate prevention (PAY-03) | D1 |
 | Id del intento | `Attempt_Id__c` | Text(18) | Confirmation process (`external_reference`). Kept after the attempt is deleted | D1 |
 | Correo | `Email__c` | Email | Confirmation process | D1 |
-| Visibilidad | `Visibility__c` | Picklist | Confirmation process; the moderator can change Public → Anonymous (client, Slack 2026-11-04) | D1 |
+| Visibilidad | `Visibility__c` | Picklist (restricted, required) | Confirmation process; the moderator can change Public → Anonymous (client, Slack 2026-11-04). Because it is required, any user with edit access to donations can edit it; only `Moderator` has that access | D1 |
 | Nombre público | `Public_Name__c` | Text(80) | Confirmation process; the moderator can correct it. Field history enabled in D1 (the field setting is part of the D1 metadata; the moderation feature that uses it, MOD-03, is D2) | D1 |
 | Modalidad | `Modality__c` | Formula (Text) | See below (RF-S2) | D1 |
 | Solicita factura | `Invoice_Requested__c` | Checkbox | Confirmation process | D1 |
@@ -228,7 +228,7 @@ Three roles, as defined by the client: campaign manager, moderator and system ad
 | Tax data | Visible | Visible | Visible (decision D-04) |
 | `Payment_Attempt__c` | No access | No access | No access |
 | `Rejected_Notice__c` (D2) | No access | No access | Read |
-| Assign permission sets | No | No | Yes |
+| Assign permission sets | No | No | Yes, in D2 (ADM-01) |
 
 - Email visibility for the three roles was requested by the client.
 - No project role has access to `Payment_Attempt__c`: it holds data of people who may never donate, and no daily task needs it. Donation tracing (ADM-07) uses `Provider_Payment_Id__c` on the donation.

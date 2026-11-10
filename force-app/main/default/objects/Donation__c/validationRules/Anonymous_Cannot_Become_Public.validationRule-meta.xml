@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Anonymous_Cannot_Become_Public</fullName>
+    <active>true</active>
+    <description>Protege la decisión del donante: una donación anónima nunca se puede hacer pública (RF-D2, MOD-03).</description>
+    <errorConditionFormula><![CDATA[ISCHANGED(Visibility__c) && ISPICKVAL(PRIORVALUE(Visibility__c), "Anonymous")]]></errorConditionFormula>
+    <errorMessage>Una donación anónima no se puede hacer pública.</errorMessage>
+</ValidationRule>
