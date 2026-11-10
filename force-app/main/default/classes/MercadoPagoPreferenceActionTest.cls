@@ -226,6 +226,22 @@ private class MercadoPagoPreferenceActionTest {
     }
 
     @IsTest
+    static void flowOpensEachAttemptOnlyOnce() {
+        Payment_Attempt__c a = attempt('Active');
+        a.Preference_Id__c = 'already-opened';
+        Database.update(a, AccessLevel.SYSTEM_MODE);
+        ProviderMock mock = new ProviderMock(201, APPROVED_BODY);
+        Test.setMock(HttpCalloutMock.class, mock);
+        Test.startTest();
+        Flow.Interview i = runFlow(a.Id);
+        Test.stopTest();
+        Assert.areEqual('No pudimos abrir el pago, intenta de nuevo', i.getVariableValue('errorMessage'));
+        Assert.isNull(mock.lastRequest, 'Mercado Pago must not be called again');
+        Assert.areEqual('already-opened',
+            [SELECT Preference_Id__c FROM Payment_Attempt__c WHERE Id = :a.Id WITH SYSTEM_MODE].Preference_Id__c);
+    }
+
+    @IsTest
     static void flowRejectsUnknownAttempt() {
         Test.setMock(HttpCalloutMock.class, new ProviderMock(201, APPROVED_BODY));
         Test.startTest();

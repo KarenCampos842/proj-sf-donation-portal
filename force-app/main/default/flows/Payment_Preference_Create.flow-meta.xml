@@ -107,6 +107,13 @@
                     <stringValue>Started</stringValue>
                 </rightValue>
             </conditions>
+            <conditions>
+                <leftValueReference>Get_Attempt.Preference_Id__c</leftValueReference>
+                <operator>IsNull</operator>
+                <rightValue>
+                    <booleanValue>true</booleanValue>
+                </rightValue>
+            </conditions>
             <connector>
                 <targetReference>Get_Campaign</targetReference>
             </connector>
@@ -170,7 +177,7 @@
             <label>Yes</label>
         </rules>
     </decisions>
-    <description>DON-19. Abre el pago de un intento ya creado por Payment_Attempt_Create: revalida que el intento siga en Started y que la campaña acepte donaciones, crea la preferencia de Mercado Pago (acción Apex MercadoPagoPreferenceAction) con el monto guardado en el servidor y devuelve checkoutUrl. Si la campaña cerró o el proveedor falla, borra el intento para no dejarlo a medias y devuelve errorMessage. Debe correr en una transacción distinta a la que creó el intento (Salesforce no permite una llamada externa después de guardar datos en la misma transacción). No crea donaciones.</description>
+    <description>DON-19. Abre el pago de un intento ya creado por Payment_Attempt_Create: revalida que el intento siga en Started, que su pago no se haya abierto antes (Preference_Id__c vacío, así un Id adivinado no sirve para reabrir el pago de otra persona) y que la campaña acepte donaciones, crea la preferencia de Mercado Pago (acción Apex MercadoPagoPreferenceAction) con el monto guardado en el servidor y devuelve checkoutUrl. Si la campaña cerró o el proveedor falla, borra el intento para no dejarlo a medias y devuelve errorMessage. Debe correr en una transacción distinta a la que creó el intento (Salesforce no permite una llamada externa después de guardar datos en la misma transacción). No crea donaciones.</description>
     <formulas>
         <name>fxTitle</name>
         <dataType>String</dataType>
@@ -259,6 +266,7 @@
         <queriedFields>Amount__c</queriedFields>
         <queriedFields>Campaign__c</queriedFields>
         <queriedFields>Status__c</queriedFields>
+        <queriedFields>Preference_Id__c</queriedFields>
         <storeOutputAutomatically>true</storeOutputAutomatically>
     </recordLookups>
     <recordLookups>
