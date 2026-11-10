@@ -6,11 +6,10 @@
  * callouts itself, so there is no DML before a callout in the same transaction. The form must
  * call startDonation and openPayment as two separate Apex calls (docs/payments-api.md).
  *
- * MOCK NOTICE. The default gateway, MockPaymentGateway, is NOT connected to Workstream A: it
- * returns a temporary attempt Id and an example.com URL, and saves nothing. Workstream A ships
- * DonationPaymentController (startDonation and openPayment, which run the flows
- * Payment_Attempt_Create and Payment_Preference_Create). Until a real gateway replaces the mock,
- * this class must not be used in a published site: no payment can be made through it.
+ * PAYMENT CODE. The default gateway, DonationPaymentGateway, delegates to Workstream A's
+ * DonationPaymentController (startDonation and openPayment). That controller runs the flows
+ * Payment_Attempt_Create and Payment_Preference_Create in system mode, so the guest user needs no
+ * permission on Payment_Attempt__c. docs/payments-api.md describes the contract.
  *
  * Every rule that the form checks in the browser is repeated here, because the browser can
  * never be trusted. Messages are in Spanish and safe to show to the donor.
@@ -52,9 +51,6 @@ public with sharing class DonationIntakeService {
     @TestVisible
     private static final String MSG_PAYMENT_FAILED = 'No pudimos abrir el pago, intenta de nuevo';
 
-    @TestVisible
-    private static final String MOCK_CHECKOUT_URL = 'https://www.example.com/checkout-simulado?attempt=';
-
     // E1 uses fixed amounts (DON-08). DON-09 and ADM-13 (E2) make them configurable.
     private static final List<Integer> SUGGESTED_AMOUNTS = new List<Integer>{
         100,
@@ -89,7 +85,7 @@ public with sharing class DonationIntakeService {
     };
 
     @TestVisible
-    private static PaymentGateway gateway = new MockPaymentGateway();
+    private static PaymentGateway gateway = new DonationPaymentGateway();
 
     /**
      * Bridge to the payment code of Workstream A. Implementations must not be called with data
@@ -137,9 +133,9 @@ public with sharing class DonationIntakeService {
     }
 
     /**
-     * Step 1. Validates the form data and asks Workstream A to save the payment attempt. With the
-     * real gateway this is where A's flow Payment_Attempt_Create runs. It does not create a
-     * donation and does not call Mercado Pago.
+     * Step 1. Validates the form data and asks Workstream A to save the payment attempt. This is
+     * where A's flow Payment_Attempt_Create runs, through DonationPaymentController. It does not
+     * create a donation and does not call Mercado Pago.
      *
      * @param request form data
      * @return Id of the payment attempt, to pass to openPayment
@@ -160,9 +156,9 @@ public with sharing class DonationIntakeService {
     }
 
     /**
-     * Step 2. Asks Workstream A to open the Mercado Pago payment of an attempt. With the real
-     * gateway this is where A's flow Payment_Preference_Create makes the callout. Call it only
-     * after startDonation has returned, as a separate Apex call.
+     * Step 2. Asks Workstream A to open the Mercado Pago payment of an attempt. This is where
+     * A's flow Payment_Preference_Create makes the callout, through DonationPaymentController. Call
+     * it only after startDonation has returned, as a separate Apex call.
      *
      * @param attemptId value returned by startDonation
      * @return Mercado Pago checkout URL (always https)
@@ -332,17 +328,29 @@ public with sharing class DonationIntakeService {
     }
 
     /**
-     * Placeholder until Workstream A's code is connected. It saves nothing and calls nothing.
+     * Delegates to Workstream A's DonationPaymentController, which validates again and runs the
+     * flows that save the payment attempt and open the Mercado Pago payment. Errors thrown by A are
+     * AuraHandledExceptions with Spanish messages and reach the donor as they are.
      */
     @TestVisible
-    private class MockPaymentGateway implements PaymentGateway {
+    private class DonationPaymentGateway implements PaymentGateway {
         public String createAttempt(DonationFormInputDTO request) {
-            String keyPrefix = Payment_Attempt__c.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).getKeyPrefix();
-            return String.valueOf(Id.valueOf(keyPrefix + '000000000000'));
+            DonationPaymentController.DonationRequest paymentRequest = new DonationPaymentController.DonationRequest();
+            paymentRequest.campaignId = request.campaignId;
+            paymentRequest.amount = request.amount;
+            paymentRequest.email = request.email;
+            paymentRequest.visibility = request.visibility;
+            paymentRequest.publicName = request.publicName;
+            paymentRequest.invoiceRequested = request.invoiceRequested;
+            paymentRequest.legalName = request.legalName;
+            paymentRequest.rfc = request.rfc;
+            paymentRequest.taxPostalCode = request.taxPostalCode;
+            paymentRequest.taxRegime = request.taxRegime;
+            return DonationPaymentController.startDonation(paymentRequest);
         }
 
         public String createCheckout(Id attemptId) {
-            return MOCK_CHECKOUT_URL + attemptId;
+            return DonationPaymentController.openPayment(String.valueOf(attemptId));
         }
     }
 }

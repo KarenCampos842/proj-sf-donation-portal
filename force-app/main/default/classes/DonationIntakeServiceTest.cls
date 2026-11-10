@@ -621,23 +621,159 @@ private class DonationIntakeServiceTest {
         Test.stopTest();
     }
 
-    // Default mock gateway
+    // Real gateway: Workstream A's DonationPaymentController and flows. Only the Mercado Pago
+    // HTTP response is simulated.
+
+    private class ProviderMock implements HttpCalloutMock {
+        public Integer calls = 0;
+        private final Integer statusCode;
+        private final String body;
+
+        ProviderMock(Integer statusCode, String body) {
+            this.statusCode = statusCode;
+            this.body = body;
+        }
+
+        public HttpResponse respond(HttpRequest request) {
+            calls++;
+            HttpResponse response = new HttpResponse();
+            response.setStatusCode(statusCode);
+            response.setBody(body);
+            return response;
+        }
+    }
+
+    private static final String PROVIDER_CHECKOUT_URL = 'https://www.mercadopago.com.mx/checkout/v1/redirect?pref_id=123-pref';
+    private static final String PROVIDER_APPROVED_BODY = '{"id":"123-pref","init_point":"' + PROVIDER_CHECKOUT_URL + '"}';
+
+    private static String startWithRealGateway(DonationIntakeService.DonationFormInputDTO request) {
+        String attemptId;
+        System.runAs(PortalTestDataFactory.getUser(PortalTestDataFactory.GUEST_LAST_NAME)) {
+            attemptId = DonationIntakeService.startDonation(request);
+        }
+        return attemptId;
+    }
+
+    private static Payment_Attempt__c attemptOf(String attemptId) {
+        return [
+            SELECT
+                Campaign__c, Amount__c, Email__c, Visibility__c, Public_Name__c, Invoice_Requested__c,
+                Legal_Name__c, RFC__c, Taxpayer_Type__c, Tax_Postal_Code__c, Tax_Regime__c, Status__c, Preference_Id__c
+            FROM Payment_Attempt__c
+            WHERE Id = :attemptId
+            WITH SYSTEM_MODE
+        ];
+    }
 
     @IsTest
-    static void shouldReturnTemporaryAttemptAndExampleUrl_WhenMockGatewayIsUsed() {
-        String attemptId;
-        String url;
+    static void shouldSaveAttemptThroughWorkstreamA_WhenAnonymousRequestIsValid() {
+        DonationIntakeService.DonationFormInputDTO request = validAnonymousRequest();
 
         Test.startTest();
-        System.runAs(PortalTestDataFactory.getUser(PortalTestDataFactory.GUEST_LAST_NAME)) {
-            attemptId = DonationIntakeService.startDonation(validAnonymousRequest());
-            url = DonationIntakeService.openPayment(attemptId);
+        String attemptId = startWithRealGateway(request);
+        Test.stopTest();
+
+        Assert.areEqual(Payment_Attempt__c.SObjectType, Id.valueOf(attemptId).getSObjectType(), 'A Payment_Attempt__c Id');
+        Payment_Attempt__c attempt = attemptOf(attemptId);
+        Assert.areEqual(request.campaignId, String.valueOf(attempt.Campaign__c), 'Campaign');
+        Assert.areEqual(500, attempt.Amount__c, 'Amount');
+        Assert.areEqual('donante@example.com', attempt.Email__c, 'Email');
+        Assert.areEqual('Anonymous', attempt.Visibility__c, 'Visibility');
+        Assert.isNull(attempt.Public_Name__c, 'No public name for an anonymous donation');
+        Assert.isFalse(attempt.Invoice_Requested__c, 'No invoice');
+        Assert.areEqual('Started', attempt.Status__c, 'A new attempt starts as Started');
+        Assert.areEqual(0, [SELECT COUNT() FROM Donation__c WITH SYSTEM_MODE], 'An attempt is not a donation');
+    }
+
+    @IsTest
+    static void shouldSavePublicNameAndFiscalData_WhenPublicInvoiceRequestIsSent() {
+        DonationIntakeService.DonationFormInputDTO request = validPublicInvoiceRequest();
+        request.rfc = '  abc 010203 xy1 ';
+
+        Test.startTest();
+        String attemptId = startWithRealGateway(request);
+        Test.stopTest();
+
+        Payment_Attempt__c attempt = attemptOf(attemptId);
+        Assert.areEqual('Public', attempt.Visibility__c, 'Visibility');
+        Assert.areEqual('Familia Pérez', attempt.Public_Name__c, 'Public name');
+        Assert.isTrue(attempt.Invoice_Requested__c, 'Invoice requested');
+        Assert.areEqual('Familia Pérez S.A. de C.V.', attempt.Legal_Name__c, 'Legal name');
+        Assert.areEqual(COMPANY_RFC, attempt.RFC__c, 'RFC is stored uppercase without spaces');
+        Assert.areEqual('Moral', attempt.Taxpayer_Type__c, 'Taxpayer type comes from the RFC length');
+        Assert.areEqual('97000', attempt.Tax_Postal_Code__c, 'Postal code');
+        Assert.areEqual('601', attempt.Tax_Regime__c, 'Regime');
+    }
+
+    @IsTest
+    static void shouldSaveFiscalDataAndStayAnonymous_WhenInvoiceIsRequestedWithAnonymousVisibility() {
+        DonationIntakeService.DonationFormInputDTO request = validPublicInvoiceRequest();
+        request.visibility = 'Anonymous';
+
+        Test.startTest();
+        String attemptId = startWithRealGateway(request);
+        Test.stopTest();
+
+        Payment_Attempt__c attempt = attemptOf(attemptId);
+        Assert.areEqual('Anonymous', attempt.Visibility__c, 'Visibility');
+        Assert.isNull(attempt.Public_Name__c, 'Anonymous has no public name');
+        Assert.isTrue(attempt.Invoice_Requested__c, 'The invoice is independent from visibility');
+        Assert.areEqual(COMPANY_RFC, attempt.RFC__c, 'Fiscal data is saved');
+    }
+
+    @IsTest
+    static void shouldReturnCheckoutUrlAndKeepAttemptUnconfirmed_WhenProviderApprovesThePreference() {
+        String attemptId = startWithRealGateway(validAnonymousRequest());
+        ProviderMock provider = new ProviderMock(201, PROVIDER_APPROVED_BODY);
+        Test.setMock(HttpCalloutMock.class, provider);
+
+        Test.startTest();
+        String url = DonationIntakeService.openPayment(attemptId);
+        Test.stopTest();
+
+        Assert.areEqual(PROVIDER_CHECKOUT_URL, url, 'The Checkout URL comes from Mercado Pago');
+        Assert.areEqual(1, provider.calls, 'One preference is created');
+        Payment_Attempt__c attempt = attemptOf(attemptId);
+        Assert.areEqual('123-pref', attempt.Preference_Id__c, 'The preference Id is stored');
+        Assert.areEqual('Started', attempt.Status__c, 'Opening the payment does not confirm it');
+        Assert.areEqual(0, [SELECT COUNT() FROM Donation__c WITH SYSTEM_MODE], 'No donation exists until the provider confirms the payment');
+    }
+
+    @IsTest
+    static void shouldDeleteAttemptAndShowFriendlyMessage_WhenProviderFails() {
+        String attemptId = startWithRealGateway(validAnonymousRequest());
+        Test.setMock(HttpCalloutMock.class, new ProviderMock(500, '{}'));
+
+        Test.startTest();
+        try {
+            DonationIntakeService.openPayment(attemptId);
+            Assert.fail('Expected a friendly error');
+        } catch (AuraHandledException e) {
+            Assert.areEqual(DonationIntakeService.MSG_PAYMENT_FAILED, e.getMessage(), 'Message from Workstream A');
         }
         Test.stopTest();
 
-        Assert.areEqual(Payment_Attempt__c.SObjectType, Id.valueOf(attemptId).getSObjectType(), 'The temporary Id looks like a Payment_Attempt__c Id');
-        Assert.areEqual(DonationIntakeService.MOCK_CHECKOUT_URL + attemptId, url, 'The mock URL is clearly not a real checkout');
-        Assert.areEqual(0, [SELECT COUNT() FROM Payment_Attempt__c WITH SYSTEM_MODE], 'The mock saves nothing');
+        Assert.areEqual(0, [SELECT COUNT() FROM Payment_Attempt__c WITH SYSTEM_MODE], 'A failed attempt is deleted so the donor can try again');
+        Assert.areEqual(0, [SELECT COUNT() FROM Donation__c WITH SYSTEM_MODE], 'No donation');
+    }
+
+    @IsTest
+    static void shouldNotOpenThePaymentTwice_WhenTheSameAttemptIsOpenedAgain() {
+        String attemptId = startWithRealGateway(validAnonymousRequest());
+        ProviderMock provider = new ProviderMock(201, PROVIDER_APPROVED_BODY);
+        Test.setMock(HttpCalloutMock.class, provider);
+
+        Test.startTest();
+        DonationIntakeService.openPayment(attemptId);
+        try {
+            DonationIntakeService.openPayment(attemptId);
+            Assert.fail('Expected the second opening to be rejected');
+        } catch (AuraHandledException e) {
+            Assert.isFalse(String.isBlank(e.getMessage()), 'The donor receives a message');
+        }
+        Test.stopTest();
+
+        Assert.areEqual(1, provider.calls, 'Mercado Pago is called once per attempt');
     }
 
     // Helpers
