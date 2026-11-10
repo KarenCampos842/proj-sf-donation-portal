@@ -1,10 +1,10 @@
 # AI Usage Log
-
+ 
 Log each relevant AI use at the time it happens, not at the end. Never paste keys, tokens or personal data into an AI tool or into this file.
 Per class instructions, the focus is on the prompts that produced the best and the worst results. Keep the short metadata line on every entry so the log also satisfies the written project guide (author, date, tool, story, verification, speed-up).
-
+ 
 ## Summary
-
+ 
 | # | Date | Author | Tool | Story | Type | Result |
 |---|---|---|---|---|---|---|
 | 1 | 2026-11-08 | Karen Elizabeth Campos | Claude | All (board) | Best | Created 43 GitHub issues from the backlog PDF with one script. |
@@ -12,24 +12,25 @@ Per class instructions, the focus is on the prompts that produced the best and t
 | 3 | 2026-11-08 | Alan Pérez | Claude (Opus 5.5) | Backlog v2 (all) | Best | Review of backlog v2 against the guide and the Q&A session; found an AI error in the DoD |
 | 4 | 2026-11-08 | Alan Pérez | Claude (Opus 5.5) | GES-02/03/06/07/09, ADM-03/05, SEG-01 | Worst | First data model draft needed several corrections (voice, language, Apex, a privacy gap) |
 | 5 | 2026-11-09 | Karen Elizabeth Campos | ChatGPT + Agentforce (VS Code) | Shared D1 data model: DON-01/02/03/04/08/10/11/12/17/18/19/20/21; GES-02/03/06/07/09; ADM-03/05/07; PAY-02/PAY-07; SEG-01 | Best | Generated, reviewed and deployed the three D1 custom objects: 55 metadata components succeeded in donations-dev. |
+| 6 | 2026-11-09 | Rodrigo Colli | Claude Code (Opus 5.5) | PAY-07, PAY-02, ADM-07, DON-19, DON-21, DON-20 | Best | Built, tested and deployed the payment flows and the two Mercado Pago callout actions (PR #47). |
+| 7 | 2026-11-09 | Rodrigo Colli | Claude Code (Opus 5.5) | PAY-07, PAY-02 | Worst | AI ERROR: proposed Apex against the project rule, and generated flow metadata Salesforce rejected. |
 | 8 | 2026-11-09 | Alan Pérez | Claude (Opus 5.5) | GES-02/03/06/07/09, ADM-03/05 | Worst | Workstream C configuration deployed; the deploy command and one verification step were wrong at first |
-
+ 
 ---
-
+ 
 ## Entries
-
+ 
 <!-- Add entries below, newest last. -->
-
+ 
 ### Entry 1 - Backlog PDF to GitHub issues in bulk
-
+ 
 - **Date:** 2026-11-08
 - **Author:** Karen Elizabeth Campos
 - **Tool / model:** Claude
 - **Related story:** all 44 stories (RNF-12, board with ID, RF, milestone, story, AC, status and evidence)
 - **Result type:** Best prompt
-
 **Prompt used**
-
+ 
 ```text
 I need to create my project stories but I do not want to do it one by one.
 [Pasted the format of issue #1: RF covered, Story, Acceptance criteria
@@ -40,170 +41,162 @@ criteria (360 px, pagination, image validation, change history), remove the 75 %
 coverage rule from the Definition of Done. The board needs ID, RF, milestone,
 story, AC, status and evidence, and must be linked from the README.
 ```
-
+ 
 **What we got**
-
+ 
 A Python script (`scripts/crear_issues.py`) that uses the GitHub CLI to create every story in the format of issue #1, with its milestone, assignee and board entry, and that writes `docs/tablero.md`.
-
+ 
 **Why it worked / why it failed**
-
+ 
 We gave the exact output format, the source document and the list of cuts, so the AI had nothing to guess. We also asked for the board columns the guide requires.
-
+ 
 **What we verified and how**
-
+ 
 - Dry run before creating anything: 44 stories, 22 in Delivery 1, 21 in Delivery 2, 1 without date. After running it, 43 issues were created (DON-01 already existed).
 - Checked a few issues in GitHub.
-
 **What we corrected**
-
+ 
 See entry 2: error in this same output.
-
+ 
 **Estimated speed-up**
-
+ 
 About 30 min with AI vs about 3 to 4 h creating 44 issues by hand (team to confirm).
-
+ 
 ---
-
+ 
 ### Entry 2 - Script that lost accents and special characters
-
+ 
 - **Date:** 2026-11-08
 - **Author:** Karen Elizabeth Campos
 - **Tool / model:** Claude
 - **Related story:** all stories (board)
 - **Result type:** Worst prompt
-
 **Prompt used**
-
+ 
 ```text
 Same prompt as entry 1. We did not say anything about accents, because we
 assumed the AI would handle Spanish text.
 ```
-
+ 
 **What we got**
-
+ 
 A script that created the 43 issues with the Spanish accents and the letter n with tilde missing or broken.
-
+ 
 **Why it worked / why it failed**
-
+ 
 The script passed the issue text to the GitHub CLI using the Windows console encoding instead of UTF-8. It worked in the AI's test environment and failed on our Windows machines. Our prompt did not say which operating system we use.
-
+ 
 **What we verified and how**
-
+ 
 Opened several issues in GitHub and saw the wrong characters.
-
+ 
 **What we corrected**
-
+ 
 AI ERROR. The AI forced UTF-8 in the script and added a `--fix` mode that rewrites the title and body of the issues that already exist, without deleting them, so milestones, assignees and board columns stayed as they were. We ran `--fix` and checked again.
-
+ 
 **Estimated speed-up**
-
+ 
 It cost us about 20 min instead of saving time.
-
+ 
 **Better prompt (for worst results)**
-
+ 
 ```text
 I use Windows 11 with PowerShell. The text is in Spanish with accents and special characters; make sure everything is sent as UTF-8 and give me a way to check it before creating the issues.
 ```
-
+ 
 ---
-
+ 
 ### Entry 3 - Backlog v2 review
-
+ 
 - **Date:** 2026-11-08
 - **Author:** Alan Pérez
 - **Tool / model:** Claude (Opus 5.5)
 - **Related story:** Backlog v2 (all stories)
 - **Result type:** Best prompt
-
 **Prompt used**
-
+ 
 ```text
 Summary: shared the project guide, the Q&A session transcript, backlog v2 and a summary of the team's status, and asked for a review against the guide's minimums and acceptance criteria before splitting the work.
 ```
-
+ 
 **What we got**
-
+ 
 A list of risks: Delivery 1 scope too large (27 stories, ~130 acceptance criteria), no shared org decided yet, and a Definition of Done requirement that was not in the guide. It also proposed which stories to move to Delivery 2.
-
+ 
 **Why it worked / why it failed**
-
+ 
 The prompt included all the sources (guide, session, backlog), so the AI could compare them against each other instead of answering from general knowledge.
-
+ 
 **What we verified and how**
-
+ 
 - Checked in Salesforce's documentation that the 75% code coverage requirement applies to production deployments, not to sandbox or Developer Edition orgs.
 - Checked in Mercado Pago's documentation that testing Checkout Pro requires test seller and buyer accounts.
 - Checked the guide: it does not require a coverage percentage.
-
 **What we corrected**
-
+ 
 **AI ERROR** (in backlog v2, which was also produced with AI): the DoD said 75% coverage was required "to deploy to Developer Edition". Detected by checking the official documentation. The 75% target was removed from the DoD; tests are still required.
-
+ 
 The assistant also assumed we were on Developer Edition and warned about its license limits; that did not apply once we confirmed the team uses the program's sandbox.
-
+ 
 **Estimated speed-up**
-
+ 
 About 1 h with AI vs about 3 h without.
-
+ 
 ---
-
+ 
 ### Entry 4 - Data model first draft
-
+ 
 - **Date:** 2026-11-08
 - **Author:** Alan Pérez
 - **Tool / model:** Claude (Opus 5.5)
 - **Related story:** GES-02, GES-03, GES-06, GES-07, GES-09, ADM-03, ADM-05, SEG-01
 - **Result type:** Worst prompt
-
 **Prompt used**
-
+ 
 ```text
 Summary: asked for the data model (objects, fields, API names, access) for workstream C, based on backlog v2 and the client's answers on Slack.
 ```
-
+ 
 **What we got**
-
+ 
 A complete first draft (objects, fields, formulas, validation rules, permissions, personal data classification). It needed several rounds of corrections before it was ready: final version in `docs/data-model.md`.
-
+ 
 **Why it worked / why it failed**
-
+ 
 The prompt did not say who the document was for, which language the repo uses, or that we prefer declarative tools over Apex. The AI filled those gaps with wrong assumptions.
-
+ 
 **What we verified and how**
-
+ 
 - Checked in Salesforce's documentation that criteria-based sharing rules cannot use formula fields, and how the master-detail sharing setting works.
 - Tested the RFC validation pattern against the examples in backlog v2 (valid and invalid cases).
 - Checked that every field used in formulas and rules exists in the document.
-
 **What we corrected**
-
+ 
 - **AI ERROR:** it proposed normalizing the RFC "in the code that creates the record". I asked why we would use Apex if it should be avoided; the fix is a before-save flow, which runs before validation rules.
 - **AI ERROR:** giving the moderator permission to change visibility allowed turning an anonymous donation into a public one, against RF-D2. Found when reviewing the draft; fixed with the `Anonymous_Cannot_Become_Public` validation rule.
 - API names were in Spanish while the repo is in English; changed to English API names with Spanish labels.
 - The text was written as personal notes ("my stories", "useful for the oral defense"); rewritten as a project document for the team and reviewers.
-
 **Estimated speed-up**
-
+ 
 About 3 h with AI vs about 8 h without.
-
+ 
 **Better prompt (for worst results)**
-
+ 
 ```text
 Write docs/data-model.md for a team repo that is read by teammates and graders. Use English API names and Spanish labels. Prefer declarative tools (Flow, validation rules) over Apex and say where Apex is unavoidable. Include design decisions with the alternatives considered.
 ```
-
+ 
 ---
-
+ 
 ### Entry 5 - D1 data model generation, review and deployment
-
+ 
 - **Date:** 2026-11-09
 - **Author:** Karen Elizabeth Campos
 - **Tool / model:** ChatGPT + Agentforce (VS Code)
 - **Related story:** Shared D1 data-model dependencies: DON-01/02/03/04/08/10/11/12/17/18/19/20/21, GES-02/03/06/07/09, ADM-03/05/07, PAY-02/PAY-07 and SEG-01. The objects support these stories; deploying the data model does not by itself complete their UI, automation, payment or security behavior.
 - **Result type:** Best prompt
-
 **Prompt used**
-
+ 
 ```text
 Inspect the existing Salesforce DX project and the connected sandbox before making changes.
 Use docs/data-model.md as the source of truth and implement only Delivery 1.
@@ -215,80 +208,175 @@ existing metadata, use English API names and Spanish labels, validate the XML
 and run a deployment check only. Do not create records or deploy without
 explicit authorization.
 ```
-
+ 
 **What we got**
-
+ 
 The three D1 custom objects were represented in the repository: `Fundraising_Campaign__c` was retrieved and completed, while `Payment_Attempt__c` and `Donation__c` were created. The metadata included 42 custom fields, the Lookup and Master-Detail relationships, two roll-up summaries, formulas and nine validation rules. The retrieved campaign list view was preserved. The documentation was also aligned with the implemented D1 model.
-
+ 
 After review and explicit authorization, the metadata was deployed to the `donations-dev` sandbox. Salesforce reported `Succeeded`: 55 of 55 components, zero component failures and zero test errors. The objects and their fields were checked in the org after deployment. No records, production changes, commits or pushes were made.
-
+ 
 **Why it worked / why it failed**
-
+ 
 The prompt identified the project documentation as the source of truth, separated D1 from D2, specified the existing campaign object and required Agentforce to inspect and retrieve it rather than create a duplicate. It also required a review and dry-run before deployment. Iterative review was still necessary to correct field-history settings, align help text with the documentation and resolve a discrepancy about `Public_Name__c` history.
-
+ 
 **What we verified and how**
-
+ 
 - Validated the 55 metadata components with a dry-run against `donations-dev`: `Succeeded`, 55/55 components and zero errors.
 - After explicit authorization, deployed to `donations-dev`: Salesforce confirmed `Succeeded`, 55/55 components, zero failures and zero test errors. Deployment ID: `0AfVC00000PBFdF0AX`.
 - Listed metadata after deployment and confirmed that all three objects existed with 13, 13 and 16 custom fields respectively, and that the nine validation rules were present.
 - Confirmed that the repository metadata and the deployed object/field definitions were consistent.
 - Formula and roll-up behavior was not tested with records during this task.
-
 **What we corrected**
-
+ 
 - Retrieved `Fundraising_Campaign__c` from the org and updated it instead of creating a duplicate; created the other two D1 objects.
 - Confirmed `enableHistory=true` and `trackHistory=true` for `Goal__c`; enabled object and field history for `Donation__c.Public_Name__c` in accordance with the explicit field definition in `docs/data-model.md`.
 - Set and checked the external sharing model for campaigns, the Lookup and Master-Detail settings, and the roll-up summary references.
 - Corrected help text and descriptions that implied automations not yet implemented, such as RFC normalization and scheduled deletion of old payment attempts.
 - Updated `docs/data-model.md` and `docs/ai-context/PROJECT_CONTEXT.md` to align their descriptions with the current D1 model and distinguish D1 field history from D2 moderation behavior.
 - Kept D2 elements and unrelated pre-existing Salesforce objects out of this deployment.
-
 **Estimated speed-up**
-
+ 
 Approximately 2–3 h with AI vs about 5–6 h without AI (conservative estimate for metadata creation, review, validation and deployment; not timed).
-
+ 
 ---
-
+ 
+### Entry 6 - Payment flows with minimal Apex for the callouts
+ 
+- **Date:** 2026-11-09
+- **Author:** Rodrigo Colli
+- **Tool / model:** Claude Code (Opus 5.5), in VS Code, connected to the repo, `gh` and the `donations-dev` org
+- **Related story:** PAY-07, PAY-02, ADM-07, DON-19, DON-21, DON-20
+- **Result type:** Best prompt
+**Prompt used**
+ 
+```text
+Summary of my prompts and decisions during the session:
+- Filter the GitHub Projects board to my cards and order them by dependency.
+- Use the class sandbox (donations-dev) as the team org; retrieve the D1 objects
+  and compare them with docs/data-model.md before building anything.
+- Asked whether PAY-07 could be built with Flow instead of Apex, and then set the
+  rule for the whole workstream: "everything that can be done with a Flow, in Flow".
+- For DON-19, chose Flow + minimal invocable Apex only for the callout, because the
+  card requires tests with simulated provider responses (approved, error, timeout).
+- Chose Checkout Pro via the Preferences API over Checkout API, so card data is
+  captured by Mercado Pago and never touches Salesforce.
+- Configured the External Credential, Named Credential and permission set myself in
+  Setup; the access token was never pasted into the chat or the repo.
+- Required check-only validation before every deployment, and confirmed nothing
+  was committed to main before opening the PR.
+```
+ 
+**What we got**
+ 
+Five flows (`Payment_Attempt_Create`, `Payment_Preference_Create`, `Payment_Return_Process`, `Donation_Register`, `Payment_Attempt_Delete_Stale`), the `Rejected_Notice__c` object, two invocable Apex classes for the Mercado Pago callouts with `HttpCalloutMock` tests, the ADM-07 layout and search, and the credential setup documented in `security.md`. Delivered in PR #47.
+ 
+**Why it worked / why it failed**
+ 
+The assistant checked the org, the repo and the data model before writing anything, validated every change with a check-only deployment before the real one, and stopped to ask on the decisions that were mine: which org, Flow vs Apex, deploying, pushing.
+ 
+**What we verified and how**
+ 
+- Check-only deployments with tests before each real deployment: 34 temporary tests for the first flows (not committed), then 12 and 17 permanent tests for the callout actions, 96% coverage each.
+- Code Analyzer (Recommended): no severity 1–3 issues.
+- Live checks against the Mercado Pago test account: `/users/me` returned an account tagged `test_user`, a preference was created, and a payment lookup returned NotFound for a fake id.
+- Git history searched for Mercado Pago tokens: no matches.
+**What we corrected**
+ 
+- The pre-commit hook only looked for Stripe keys; it now also blocks Mercado Pago tokens.
+- See entry 7 for the AI errors.
+**Estimated speed-up**
+ 
+About 6 h with AI vs about 16–20 h without (not timed; to confirm).
+ 
+---
+ 
+### Entry 7 - Wrong first recommendations and rejected flow metadata
+ 
+- **Date:** 2026-11-09
+- **Author:** Rodrigo Colli
+- **Tool / model:** Claude Code (Opus 5.5)
+- **Related story:** PAY-07, PAY-02
+- **Result type:** Worst prompt
+**Prompt used**
+ 
+```text
+Summary: "start with the card" (PAY-07), without restating which tools the project
+prefers or how the portal form would be built.
+```
+ 
+**What we got**
+ 
+The assistant started designing an Apex class for PAY-07, and later generated flow XML by hand that Salesforce rejected.
+ 
+**Why it worked / why it failed**
+ 
+My first prompt ("start with the card") did not restate the project rule "declarative first, Apex only where Flow cannot do the job". The assistant started designing Apex for PAY-07; I caught it by asking whether the card could be built with flows, and the design was changed to Flow. The flow XML was also written without checking which elements each flow type supports.
+ 
+**What we verified and how**
+ 
+Every flow was validated with a check-only deployment before deploying; the errors appeared there, not in the org.
+ 
+**What we corrected**
+ 
+- **AI ERROR:** proposed Apex for PAY-07 against the project rule. Changed to Flow after I asked.
+- **AI ERROR:** generated a flow element (`environmentTypes`) in a position Salesforce rejects, and used "Roll Back Records", which autolaunched flows do not allow. Fixed by removing it and letting an unhandled error roll back the whole transaction.
+- **AI ERROR:** said the class sandbox could not be the team org because the guide says Developer Edition; the team org was that sandbox.
+- **AI ERROR:** said the daily cleanup would run at 21:00; the org scheduled it at 03:00 (Mérida).
+**Estimated speed-up**
+ 
+About 30 min lost on the detours.
+ 
+**Better prompt (for worst results)**
+ 
+```text
+Implement PAY-07 in donations-dev following docs/data-model.md. Use Flow first and
+Apex only where Flow cannot meet a requirement, and justify each Apex class. Revalidate
+campaign, amount, visibility and tax regime on the server; the guest user must have no
+permission on Payment_Attempt__c. Validate every metadata change with a check-only
+deployment and tests before deploying, and do not commit to main.
+```
+ 
+---
+ 
 ### Entry 8 - Workstream C configuration (permission sets, list views, rules, flow)
-
+ 
 - **Date:** 2026-11-09
 - **Author:** Alan Pérez
 - **Tool / model:** Claude (Opus 5.5)
 - **Related story:** GES-02, GES-03, GES-06, GES-07, GES-09, ADM-03, ADM-05
 - **Result type:** Worst prompt
-
 **Prompt used**
-
+ 
 ```text
 Summary: asked the AI to compare the metadata already in the repo against docs/data-model.md, list what was missing for workstream C in Delivery 1, generate that metadata, and give step-by-step instructions to deploy only those files to the sandbox.
 ```
-
+ 
 **What we got**
-
+ 
 A comparison of the deployed objects against the data model (they matched, except for missing items) and 14 metadata files: three permission sets, three list views, two tabs, two `Donation__c` validation rules, a before-save flow that normalizes the RFC, and `Visibility__c` changed to required and restricted. Also a deployment command limited to those files, so the deploy would not overwrite other changes in the org.
-
+ 
 **Why it worked / why it failed**
-
+ 
 The comparison and the metadata were correct and deployed on the first try. The prompt did not mention the operating system or the shell, so the AI gave a command format that does not work in PowerShell, and one verification step assumed the admin user could see the new tabs.
-
+ 
 **What we verified and how**
-
+ 
 - Ran the deployment with `--dry-run` first, then deployed successfully.
 - In the org: the three permission sets appear in Setup; the flow "Intento de pago - Normalizar RFC" is active; the views "Estado y avance de campañas", "Todas las donaciones" and "Solicitan factura" exist; both tabs show their icons.
-- Not tested yet: the permission sets with a test user, and the RFC flow with a record.
-
+- Tested the RFC flow from the CLI: the input `eku 9003173c9` was saved as `EKU9003173C9` (taxpayer type "Moral").
+- Not tested yet: the permission sets with a test user.
 **What we corrected**
-
+ 
 - **AI ERROR:** the deploy command used `\` line continuations, which only work in bash. VS Code warned before pasting a 9-line command into PowerShell; replaced with a one-line command that works in any shell.
 - **AI ERROR:** the AI said to check the new tabs by searching in the App Launcher. They did not appear, because tabs are only visible to users with one of the new permission sets and the admin user had none. Verified instead by opening the objects' list URLs directly.
 - **AI ERROR:** the AI gave the data import command without checking field access. The import failed with `FlsError` on `Description__c`, because fields deployed through metadata give no access to any profile. Fixed with a team-only permission set, `Portal_Developer`, assigned to the team members.
-
 **Estimated speed-up**
-
+ 
 About 1.5 h with AI vs about 5 h without.
-
+ 
 **Better prompt (for worst results)**
-
+ 
 ```text
 I am on Windows with PowerShell in VS Code. Give commands that work in PowerShell. For each verification step, tell me which user or permission set it requires.
 ```
+ 
