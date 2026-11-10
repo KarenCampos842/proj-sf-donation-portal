@@ -51,10 +51,21 @@ Created records are owned by an internal default user (TEC-01).
 
 ## 3. Where the Mercado Pago credentials live
 
-- Storage mechanism: access token in a **Named Credential / External Credential**; webhook secret key in a **protected setting**. Nothing in code, site or repo (TEC-05).
+- Storage mechanism: access token in a **Named Credential / External Credential**; webhook secret key in a **protected setting** (D2). Nothing in code, site or repo (TEC-05).
+- Configured in `donations-dev` on 2026-11-09 by hand in Setup. `.gitignore` excludes `externalCredentials/` and `namedCredentials/`, so these components are never versioned. Names only, never values:
+
+  | Component | Name | Notes |
+  |---|---|---|
+  | External Credential | `MercadoPago` (label "Mercado Pago") | Authentication protocol: Custom |
+  | Principal | `MercadoPagoTest` (Named Principal) | Holds the authentication parameter `AccessToken`: the access token of a Mercado Pago **test** account |
+  | Custom header | `Authorization` = `{!'Bearer ' & $Credential.MercadoPago.AccessToken}` | The token is resolved by Salesforce at callout time; it never appears in code, flows or logs |
+  | Named Credential | `MercadoPagoAPI` (label "Mercado Pago API") | URL `https://api.mercadopago.com`. "Generate Authorization Header" off, "Allow Formulas in HTTP Header" on. No managed package namespaces allowed |
+  | Permission set | `Mercado_Pago_Callout` (label "Mercado Pago Callout") | Grants External Credential Principal Access to `MercadoPago - MercadoPagoTest`. Assigned to the payments developer. The site guest user will need it when the portal starts the payment (DON-19); it grants no object access |
+
+- Test-mode check (M1): `GET callout:MercadoPagoAPI/users/me` returned 200 for a Mexican account (`site_id` MLM) tagged `test_user` by Mercado Pago (2026-11-09).
 - How we verified they are not in code, site, or repo history:
-  - [ ] `git log -p | grep -E "APP_USR-|TEST-[0-9]"` returns nothing (check the prefix of the test credentials in the Mercado Pago panel)
-  - [ ] Pre-commit hook enabled (`git config core.hooksPath .githooks`) and updated to look for Mercado Pago tokens
+  - [x] `git log -p --all` searched for `APP_USR-<digits>` and `TEST-<digits>`: no matches (2026-11-09)
+  - [x] Pre-commit hook enabled (`git config core.hooksPath .githooks`) and updated to look for Mercado Pago tokens (`APP_USR-…` / `TEST-…`), keeping the Stripe patterns. Each team member must enable it in their own clone
   - [ ] No keys in screenshots, AI log, or prompts
 - If a key leaks: rotate it the same day and tell the professor.
 
@@ -77,7 +88,7 @@ Created records are owned by an internal default user (TEC-01).
 ## 5. Known risks
 
 - **Spam on the public form** (accepted risk, WON-08): someone can fill the form many times. Minimum mitigation: limit attempts per email and per hour.
-- **Abandoned attempts** keep personal data of people who did not donate. Mitigation: a daily scheduled job deletes unconfirmed attempts older than 7 days (PAY-07).
+- **Abandoned attempts** keep personal data of people who did not donate. Mitigation: the scheduled flow `Payment_Attempt_Delete_Stale` runs daily and deletes attempts whose status is not `Confirmed` and that are older than 7 days (PAY-07). Two open points: deleted records stay in the Recycle Bin for up to 15 days (flows cannot hard-delete), and confirmed attempts are kept, which differs from decision D-01 in `data-model.md` (to be settled by the team).
 - **Salesforce System Administrator profile** can edit everything in the org. No project role can edit amount, reference or payment status; this profile is outside that rule and is documented here (RNF-03).
 - **Daily email limit** of the Developer Edition org for external addresses (DON-23). Tests use only team emails.
 - **Anonymous with invoice** is allowed (confirmed in the 2026-11-04 session, Q-01). The name stays hidden in the portal and the fiscal data is used only for the invoice request, kept apart from public data and visible to staff only.

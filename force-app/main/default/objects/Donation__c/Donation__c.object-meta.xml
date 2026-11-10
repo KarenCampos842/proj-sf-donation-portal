@@ -4,6 +4,7 @@
     <description>El objeto Donación registra pagos confirmados por el proveedor y copia los datos del intento de pago. Incluye monto, visibilidad, trazabilidad del pago y datos fiscales; calcula la modalidad y el tipo de persona. Es hija de Campaña y alimenta su recaudación.</description>
     <enableBulkApi>true</enableBulkApi>
     <enableHistory>true</enableHistory>
+    <enableSearch>true</enableSearch>
     <enableSharing>true</enableSharing>
     <enableStreamingApi>true</enableStreamingApi>
     <externalSharingModel>ControlledByParent</externalSharingModel>
