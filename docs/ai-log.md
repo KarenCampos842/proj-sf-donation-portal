@@ -12,6 +12,8 @@ Per class instructions, the focus is on the prompts that produced the best and t
 | 3 | 2026-11-08 | Alan Pérez | Claude (Opus 5.5) | Backlog v2 (all) | Best | Review of backlog v2 against the guide and the Q&A session; found an AI error in the DoD |
 | 4 | 2026-11-08 | Alan Pérez | Claude (Opus 5.5) | GES-02/03/06/07/09, ADM-03/05, SEG-01 | Worst | First data model draft needed several corrections (voice, language, Apex, a privacy gap) |
 | 5 | 2026-11-09 | Karen Elizabeth Campos | ChatGPT + Agentforce (VS Code) | Shared D1 data model: DON-01/02/03/04/08/10/11/12/17/18/19/20/21; GES-02/03/06/07/09; ADM-03/05/07; PAY-02/PAY-07; SEG-01 | Best | Generated, reviewed and deployed the three D1 custom objects: 55 metadata components succeeded in donations-dev. |
+| 6 | 2026-11-09 | Rodrigo Colli | Claude Code (Opus 5.5) | PAY-07, PAY-02, ADM-07, DON-19, DON-21, DON-20 | Best | Built, tested and deployed the payment flows and the two Mercado Pago callout actions (PR #47). |
+| 7 | 2026-11-09 | Rodrigo Colli | Claude Code (Opus 5.5) | PAY-07, PAY-02 | Worst | AI ERROR: proposed Apex against the project rule, and generated flow metadata Salesforce rejected. |
 
 ---
 
@@ -245,3 +247,106 @@ The prompt identified the project documentation as the source of truth, separate
 **Estimated speed-up**
 
 Approximately 2–3 h with AI vs about 5–6 h without AI (conservative estimate for metadata creation, review, validation and deployment; not timed).
+
+---
+
+### Entry 6 - Payment flows with minimal Apex for the callouts
+
+- **Date:** 2026-11-09
+- **Author:** Rodrigo Colli
+- **Tool / model:** Claude Code (Opus 5.5), in VS Code, connected to the repo, `gh` and the `donations-dev` org
+- **Related story:** PAY-07, PAY-02, ADM-07, DON-19, DON-21, DON-20
+- **Result type:** Best prompt
+
+**Prompt used**
+
+```text
+Summary of my prompts and decisions during the session:
+- Filter the GitHub Projects board to my cards and order them by dependency.
+- Use the class sandbox (donations-dev) as the team org; retrieve the D1 objects
+  and compare them with docs/data-model.md before building anything.
+- Asked whether PAY-07 could be built with Flow instead of Apex, and then set the
+  rule for the whole workstream: "everything that can be done with a Flow, in Flow".
+- For DON-19, chose Flow + minimal invocable Apex only for the callout, because the
+  card requires tests with simulated provider responses (approved, error, timeout).
+- Chose Checkout Pro via the Preferences API over Checkout API, so card data is
+  captured by Mercado Pago and never touches Salesforce.
+- Configured the External Credential, Named Credential and permission set myself in
+  Setup; the access token was never pasted into the chat or the repo.
+- Required check-only validation before every deployment, and confirmed nothing
+  was committed to main before opening the PR.
+```
+
+**What we got**
+
+Five flows (`Payment_Attempt_Create`, `Payment_Preference_Create`, `Payment_Return_Process`, `Donation_Register`, `Payment_Attempt_Delete_Stale`), the `Rejected_Notice__c` object, two invocable Apex classes for the Mercado Pago callouts with `HttpCalloutMock` tests, the ADM-07 layout and search, and the credential setup documented in `security.md`. Delivered in PR #47.
+
+**Why it worked / why it failed**
+
+The assistant checked the org, the repo and the data model before writing anything, validated every change with a check-only deployment before the real one, and stopped to ask on the decisions that were mine: which org, Flow vs Apex, deploying, pushing.
+
+**What we verified and how**
+
+- Check-only deployments with tests before each real deployment: 34 temporary tests for the first flows (not committed), then 12 and 17 permanent tests for the callout actions, 96% coverage each.
+- Code Analyzer (Recommended): no severity 1–3 issues.
+- Live checks against the Mercado Pago test account: `/users/me` returned an account tagged `test_user`, a preference was created, and a payment lookup returned NotFound for a fake id.
+- Git history searched for Mercado Pago tokens: no matches.
+
+**What we corrected**
+
+- The pre-commit hook only looked for Stripe keys; it now also blocks Mercado Pago tokens.
+- See entry 7 for the AI errors.
+
+**Estimated speed-up**
+
+About 6 h with AI vs about 16–20 h without (not timed; to confirm).
+
+---
+
+### Entry 7 - Wrong first recommendations and rejected flow metadata
+
+- **Date:** 2026-11-09
+- **Author:** Rodrigo Colli
+- **Tool / model:** Claude Code (Opus 5.5)
+- **Related story:** PAY-07, PAY-02
+- **Result type:** Worst prompt
+
+**Prompt used**
+
+```text
+Summary: "start with the card" (PAY-07), without restating which tools the project
+prefers or how the portal form would be built.
+```
+
+**What we got**
+
+The assistant started designing an Apex class for PAY-07, and later generated flow XML by hand that Salesforce rejected.
+
+**Why it worked / why it failed**
+
+My first prompt ("start with the card") did not restate the project rule "declarative first, Apex only where Flow cannot do the job". The assistant started designing Apex for PAY-07; I caught it by asking whether the card could be built with flows, and the design was changed to Flow. The flow XML was also written without checking which elements each flow type supports.
+
+**What we verified and how**
+
+Every flow was validated with a check-only deployment before deploying; the errors appeared there, not in the org.
+
+**What we corrected**
+
+- **AI ERROR:** proposed Apex for PAY-07 against the project rule. Changed to Flow after I asked.
+- **AI ERROR:** generated a flow element (`environmentTypes`) in a position Salesforce rejects, and used "Roll Back Records", which autolaunched flows do not allow. Fixed by removing it and letting an unhandled error roll back the whole transaction.
+- **AI ERROR:** said the class sandbox could not be the team org because the guide says Developer Edition; the team org was that sandbox.
+- **AI ERROR:** said the daily cleanup would run at 21:00; the org scheduled it at 03:00 (Mérida).
+
+**Estimated speed-up**
+
+About 30 min lost on the detours.
+
+**Better prompt (for worst results)**
+
+```text
+Implement PAY-07 in donations-dev following docs/data-model.md. Use Flow first and
+Apex only where Flow cannot meet a requirement, and justify each Apex class. Revalidate
+campaign, amount, visibility and tax regime on the server; the guest user must have no
+permission on Payment_Attempt__c. Validate every metadata change with a check-only
+deployment and tests before deploying, and do not commit to main.
+```

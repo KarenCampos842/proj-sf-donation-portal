@@ -1,16 +1,20 @@
 #!/usr/bin/env bash
-# Blocks commits that contain Stripe-style secrets (M3).
+# Blocks commits that contain payment-provider secrets (M3):
+# Mercado Pago access tokens / keys (APP_USR-... or TEST-... followed by digits)
+# and Stripe-style keys, kept from the first version of this hook.
 # Enable with: git config core.hooksPath .githooks
 
-PATTERN='(sk|rk)_(test|live)_[A-Za-z0-9]{8,}|whsec_[A-Za-z0-9]{8,}'
+MP_PATTERN='(APP_USR|TEST)-[0-9]{6,}-[A-Za-z0-9-]{6,}'
+STRIPE_PATTERN='(sk|rk)_(test|live)_[A-Za-z0-9]{8,}|whsec_[A-Za-z0-9]{8,}'
+PATTERN="$MP_PATTERN|$STRIPE_PATTERN"
 
 # Only inspect added lines of the staged diff.
 HITS=$(git diff --cached -U0 --no-color | grep -E '^\+' | grep -vE '^\+\+\+' | grep -E "$PATTERN")
 
 if [ -n "$HITS" ]; then
-  echo "COMMIT BLOCKED: possible Stripe secret found in staged changes."
-  echo "Remove it, and if it was ever pasted anywhere public, rotate it in Stripe today."
-  echo "$HITS" | sed -E 's/((sk|rk)_(test|live)_|whsec_)[A-Za-z0-9]+/\1****REDACTED****/g'
+  echo "COMMIT BLOCKED: possible payment-provider secret found in staged changes."
+  echo "Remove it. If it was ever pasted anywhere public, rotate it the same day and tell the professor."
+  echo "$HITS" | sed -E 's/((APP_USR|TEST)-|(sk|rk)_(test|live)_|whsec_)[A-Za-z0-9-]+/\1****REDACTED****/g'
   exit 1
 fi
 exit 0
