@@ -1,0 +1,1 @@
+Evidence: DonationIntakeServiceTest and DonationPaymentControllerTest. Automated tests verify that names exceeding the 80-character limit are rejected and the donation process cannot continue.

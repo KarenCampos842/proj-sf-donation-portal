@@ -1,0 +1,1 @@
+Evidence: PublicNameSanitizerTest, DonationIntakeServiceTest, and DonationPaymentControllerTest. Automated tests verify that HTML tags and script-like input are sanitized before being stored, preserving harmless text without executing code.
