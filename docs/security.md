@@ -49,6 +49,8 @@ Goal: show that a visitor without login cannot **read** or **modify** other dono
 
 Created records are owned by an internal default user (TEC-01).
 
+Internal read access to payment attempts: permission set `Payment_Attempt_Viewer` (read-only, view all, no create/edit/delete) lets the payments owner audit attempts and take evidence. `Donation_Admin` still has no access to attempts. Never assign `Payment_Attempt_Viewer` to the site guest user. Assigned to the payments developer on 2026-11-10.
+
 ## 3. Where the Mercado Pago credentials live
 
 - Storage mechanism: access token in a **Named Credential / External Credential**; webhook secret key in a **protected setting** (D2). Nothing in code, site or repo (TEC-05).
