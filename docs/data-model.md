@@ -2,6 +2,7 @@
 
 **Owner:** Alan Pérez (workstream C) · **Version:** draft 1 · 2026-11-08
 **Sources:** backlog v2, project guide, Q&A session, and the client's answers on Slack (Maliachi, 2026-11-04).
+**Implementation status (checked 2026-11-10):** the three Delivery 1 objects are deployed in `donations-dev`, together with `Rejected_Notice__c`, which the payment flows of Workstream A already use. The notes marked "Status 2026-11-10" below record where the deployed Sandbox differs from this draft; the draft text itself is kept as written.
 
 This document is the single reference for objects, fields and API names. Any new field or rename is proposed here before it is created in the org.
 
@@ -29,7 +30,7 @@ Donation_Amount_Setting__mdt                         (custom metadata, D2)
 | `Fundraising_Campaign__c` | Campaña | Campaigns, goal and progress | C (management), B (portal) | D1 |
 | `Payment_Attempt__c` | Intento de pago | What the donor entered before paying (PAY-07) | A, B | D1 |
 | `Donation__c` | Donación | A donation whose payment the provider has confirmed | A (creates), C (reads) | D1 |
-| `Rejected_Notice__c` | Aviso rechazado | Provider notices that were rejected (ADM-12, RF-S4) | A | D2 |
+| `Rejected_Notice__c` | Aviso rechazado | Provider notices that were rejected (ADM-12, RF-S4) | A | D2 (the object is already deployed; see §5) |
 | `Donation_Amount_Setting__mdt` | Configuración de montos | Suggested amounts and minimum (ADM-13) | B | D2 |
 
 A custom campaign object is used instead of the standard `Campaign` (decision D-02). The relationship fields on the child objects are named `Campaign__c` (relationship name `Campaign__r`).
@@ -135,6 +136,8 @@ In D2, the `50` in `Minimum_Amount` is replaced by `$CustomMetadata.Donation_Amo
 
 **Retention:** attempts older than 7 days are deleted by a scheduled flow (PAY-07, decision D-01).
 
+**Status 2026-11-10:** the deployed flow `Payment_Attempt_Delete_Stale` runs daily and deletes only attempts whose status is **not** `Confirmed` and that are older than 7 days. Confirmed attempts are kept. Decision D-01, which proposes deleting all attempts older than 7 days including confirmed ones, is **not implemented** and is still proposed (see §8). Deleted records stay in the Recycle Bin. Because `Attempt_Id__c` is kept on the donation, a confirmed donation never depends on its attempt being present.
+
 ---
 
 ## 4. `Donation__c` — Donación
@@ -194,6 +197,8 @@ Both rules belong to D2 (MOD-03, RF-D2) and are not part of the D1 metadata. The
 
 **`Rejected_Notice__c`** "Aviso rechazado" (ADM-12, RF-S4). Owned by workstream A; fields may change.
 
+**Status 2026-11-10:** the object is deployed. The subflow `Donation_Register` creates a notice when the return check finds an amount that does not match the attempt or no matching attempt. The webhook-related reasons (invalid signature, repeated notice, unsupported notice type) belong to Delivery 2 (PAY-01, PAY-03, PAY-06, ADM-12). Any other failure of the return check returns a generic error without a notice.
+
 | Label (UI) | API name | Type |
 |---|---|---|
 | Folio | `Name` | Auto Number `REJ-{000000}` |
@@ -241,12 +246,12 @@ Three roles, as defined by the client: campaign manager, moderator and system ad
 | | Access | Reason |
 |---|---|---|
 | `Fundraising_Campaign__c` | Read, public fields only: `Name`, `Description__c`, `Goal__c`, dates, `Status__c`, `Is_General__c`, image fields, `Total_Raised__c`, `Donation_Count__c`, `Progress_Percent__c`, `Accepts_Donations__c`, `Is_Publicly_Visible__c` | Show campaigns and progress (DON-01 to DON-03) |
-| Guest sharing rule on `Fundraising_Campaign__c` | Criterion: `Status__c` = Active or Paused | Draft campaigns are never shared. Criteria-based sharing rules cannot use formula fields, so the status is used. Guest sharing rules only grant read access |
+| Guest sharing rule on `Fundraising_Campaign__c` | Criterion: `Status__c` = Closed, Active or Paused (status 2026-11-10: the deployed rule also shares Closed campaigns, which the portal needs for the closed-campaign history; the first draft listed only Active and Paused) | Draft campaigns are never shared. Criteria-based sharing rules cannot use formula fields, so the status is used. Guest sharing rules only grant read access |
 | `Donation__c` | No access | Donor recognition (DON-04) is served by a system-mode process that returns only public name and amount for public donations |
 | `Payment_Attempt__c` | No access | Created by a system-mode process after server-side validation (PAY-07) |
 | `Rejected_Notice__c` | No access | |
 | API Enabled | Off | SEG-01 |
-| Apex classes and flows | Only those used by the portal | Each one is listed with its reason in `security.md` |
+| Apex classes and flows | Four Apex classes (`CampaignPortalController`, `DonationIntakeService`, `DonationPaymentController`, `DonorRecognitionService`); "Run Flows" is off | Each one is listed with its reason in `security.md` |
 
 **Known risk:** an Active campaign with a future start date is shared with the guest user even though the portal does not list it. Someone who guesses its Id could read its public fields. This is campaign data, not donor data; the risk is accepted and documented in `security.md`.
 
@@ -264,7 +269,7 @@ Three roles, as defined by the client: campaign manager, moderator and system ad
 | Tax regime | Yes, linked to the person | Only with invoice | Invoice | Internal roles (D-04) |
 | Amount | Yes, when linked to an identifiable person | Yes | Progress and recognition | Public only for public donations; aggregated in progress |
 | Card data | Yes | No, captured by the payment provider | Not needed | Nobody in Salesforce |
-| Attempt data (the items above, before payment) | Yes | Up to 7 days | Match the payment with the donor's input | No project role (only the System Administrator profile, RNF-03) |
+| Attempt data (the items above, before payment) | Yes | Up to 7 days if the attempt is not confirmed; confirmed attempts are kept for now (see D-01) | Match the payment with the donor's input | No project role (only the System Administrator profile, RNF-03) |
 | Separate last names, phone, address, CFDI use | Yes | Not collected | Data minimization | Nobody |
 
 **Minimization:** the form may ask for first and last name separately (DON-11), but a single `Public_Name__c` is stored with the text that will be displayed. For invoices, a single legal name field is used.
@@ -275,7 +280,7 @@ Three roles, as defined by the client: campaign manager, moderator and system ad
 
 | ID | Decision | Rationale | Alternative considered | Status |
 |---|---|---|---|---|
-| D-01 | Delete all attempts older than 7 days, including confirmed ones | Confirmed attempts are already copied to the donation; keeping them duplicates personal data | Keep confirmed attempts indefinitely | Proposed |
+| D-01 | Delete all attempts older than 7 days, including confirmed ones | Confirmed attempts are already copied to the donation; keeping them duplicates personal data | Keep confirmed attempts indefinitely | Proposed. The deployed flow keeps confirmed attempts (alternative), so the team has to decide and align the flow or this row |
 | D-02 | Custom `Fundraising_Campaign__c` instead of the standard `Campaign` | Guaranteed master-detail with roll-up for the total, simple guest permissions, no marketing fields (expected revenue, leads) | Standard `Campaign`: requires the Marketing User setting on every user, and roll-ups from a custom child would need to be verified within the delivery schedule | Proposed |
 | D-03 | Campaign image set by URL in D1 | Making uploaded files public for the guest user adds complexity | File upload with public links (moved to D2) | Proposed |
 | D-04 | The three internal roles can see tax data | Consistent with the client's decision on email visibility | Only `Donation_Admin`, who handles invoice requests (stricter least privilege) | Open |

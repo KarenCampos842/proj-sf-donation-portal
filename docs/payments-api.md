@@ -3,6 +3,10 @@
 Owner: Rodrigo Colli (workstream A). For: the public portal (workstream B).
 Everything below is deployed in `donations-dev`. Stories: PAY-07, DON-19, DON-20, DON-21, PAY-02.
 
+**Delivery 1 scope.** The donation is registered when the donor returns to the thank-you page (`/portal/gracias`): `getPaymentResult` looks the payment up in Mercado Pago and registers the donation. Delivery 1 has no webhook (`notification_url` is not sent). Registering a payment that was confirmed when the donor did not return is part of Delivery 2 (PAY-06, DON-24), together with signature validation (PAY-01) and duplicate handling (PAY-03). This is a planned scope boundary, not a Delivery 1 defect.
+
+**Repository note.** The public-name cleaning described in section 1 (`PublicNameSanitizer`, and the matching changes in `DonationIntakeService` and `DonationPaymentController`) was deployed to the Sandbox on 2026-11-10, but its Apex source is not committed yet, so the version of this class in the repository does not include it.
+
 The portal talks to one Apex class, `DonationPaymentController`, with three methods. Each method runs a flow in system mode, so the portal never touches `Payment_Attempt__c` or `Donation__c` directly and the guest user has no permission on them.
 
 ```
@@ -27,14 +31,16 @@ Validates everything again on the server and saves the payment attempt. It does 
 | `amount` | Number | Yes | MXN, minimum 50. The amount charged is the one saved here, not one sent later. |
 | `email` | String | Yes | Valid email. |
 | `visibility` | String | Yes | `Anonymous` or `Public` (API values, not the Spanish labels). |
-| `publicName` | String | If `Public` | Ignored and not stored when `Anonymous`. |
+| `publicName` | String | If `Public` | Cleaned on the server before it is saved (DON-11): HTML tags, stray `<` and `>` and control characters are removed and spaces are collapsed, keeping the text between tags. Maximum 80 characters after cleaning; raw text over 320 characters is rejected before cleaning. Rejected if it is empty after cleaning or too long. Ignored and not stored when `Anonymous`. |
 | `invoiceRequested` | Boolean | No | Independent from visibility: an anonymous donation can request an invoice. |
 | `legalName` | String | If invoice | Ignored when no invoice is requested. |
 | `rfc` | String | If invoice | Spaces removed and uppercased on the server. |
 | `taxPostalCode` | String | If invoice | 5 digits. |
 | `taxRegime` | String | If invoice | SAT code, e.g. `612` (picklist API value). |
 
-Errors: throws an `AuraHandledException` whose message is already in Spanish and safe to show, for example "El monto mínimo es de $50 MXN.", "El RFC no tiene un formato válido.", "Esta campaña ya no acepta donaciones.".
+Errors: throws an `AuraHandledException` whose message is already in Spanish and safe to show, for example "El monto mínimo es de $50 MXN.", "El RFC no tiene un formato válido.", "Esta campaña ya no acepta donaciones.", "Escribe el nombre con el que quieres aparecer." (public name empty after cleaning) and "El nombre público no puede tener más de 80 caracteres.".
+
+The public name is cleaned by `PublicNameSanitizer`. `startDonation` applies it itself, so the cleaning also covers direct calls to this method, and `DonationIntakeService` (the portal form) applies it before delegating here. Attempts saved before this cleaning existed are not changed.
 
 ### `openPayment(attemptId)` → `String checkoutUrl`
 
@@ -126,14 +132,16 @@ export default class DonationThankYou extends LightningElement {
 
 `getPaymentResult` is not cacheable (it can write records), so call it imperatively as above, not with `@wire`.
 
-## 3. Setup the portal owner must give us
+## 3. Portal setup (done)
 
-1. The thank-you page URL, to set the custom label `Donation_Return_Url` (today a placeholder: `https://www.example.com/donacion/gracias`).
-2. Which Experience Cloud site is the portal, so we can give its guest user exactly:
-   - Apex class access: `DonationPaymentController`.
-   - Permission set `Mercado Pago Callout` (access to the Mercado Pago credential; no object permissions).
+Checked in the Sandbox on 2026-11-10:
 
-   Both will be recorded in `docs/security.md`, section 2.
+1. The custom label `Donation_Return_Url` is `https://uady--class2026b.sandbox.my.site.com/portal/gracias`, the thank-you page of the Mexico Dreamin Donation Portal site (URL prefix `portal`).
+2. The site guest user has:
+   - Apex class access to `DonationPaymentController` (and to the three portal classes `CampaignPortalController`, `DonationIntakeService` and `DonorRecognitionService`).
+   - The permission set `Mercado_Pago_Callout` (access to the Mercado Pago credential; no object permissions). It is also assigned to one administrator account.
+
+   Both are recorded in `docs/security.md`, section 2.
 
 ## 4. Testing a full payment
 
