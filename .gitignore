@@ -39,3 +39,6 @@ force-app/**/customSettings/*Stripe*
 # --- Local scratch ---
 tmp/
 scratch/
+
+# Local Mercado Pago test-account data (never commit)
+docs/payment-test-data.local
