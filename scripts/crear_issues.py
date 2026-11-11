@@ -10,7 +10,7 @@ Uso:
 
 Es seguro repetirlo: omite las historias cuyo ID ya existe como issue
 (por ejemplo DON-01, que ya es el #1).
-Al final genera docs/tablero.md (ID, RF, hito, historia, AC, estado, evidencia).
+Al final genera docs/story-tracking-board.md (ID, RF, hito, historia, AC, estado, evidencia).
 """
 import argparse, json, os, subprocess, sys, time
 
@@ -580,7 +580,7 @@ def main():
 
     if not a.dry_run:
         os.makedirs("docs", exist_ok=True)
-        with open("docs/tablero.md", "w", encoding="utf-8") as f:
+        with open("docs/story-tracking-board.md", "w", encoding="utf-8") as f:
             f.write("# Tablero de historias\n\n| ID | RF | Hito | Historia | AC | Estado | Evidencia |\n"
                     "|---|---|---|---|---|---|---|\n")
             for st in S:
@@ -588,7 +588,7 @@ def main():
                 link = f"[{st['title']}]({u})" if u else st['title']
                 f.write(f"| {st['id']} | {st['rf']} | {st['hito'] or 'Sin fecha'} | {link} | "
                         f"{len(st['acs'])} | Backlog | Pendiente |\n")
-        print("Escrito docs/tablero.md (enlázalo desde el README)")
+        print("Escrito docs/story-tracking-board.md (enlázalo desde el README)")
 
 if __name__ == "__main__":
     main()

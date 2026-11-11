@@ -6,7 +6,9 @@
 
 > **Status as of November 10, 2026.** The **Mexico Dreamin Donation Portal** Experience Cloud site (Build Your Own LWR, URL prefix `portal`) is deployed and published in the team Sandbox. The public site is [https://uady--class2026b.sandbox.my.site.com/portal/](https://uady--class2026b.sandbox.my.site.com/portal/). The site has been tested as an unauthenticated Guest visitor. This is a Sandbox demonstration, not a production donation website.
 >
-> **Payment integration.** The portal no longer uses the mock payment gateway. `DonationIntakeService.DonationPaymentGateway` delegates payment creation and lookup to Workstream A's `DonationPaymentController`, using the `Payment_Attempt_Create` and `Payment_Preference_Create` flows and Mercado Pago test credentials. A manual end-to-end checkout with the project's test buyer account remains a separate validation item; do not use real payment credentials or cards.
+> **Payment integration.** The portal no longer uses the mock payment gateway. `DonationIntakeService.DonationPaymentGateway` delegates payment creation and lookup to Workstream A's `DonationPaymentController`, using the `Payment_Attempt_Create` and `Payment_Preference_Create` flows and Mercado Pago test credentials. Donations created through the portal's return flow already exist in the Sandbox (see the read-only audit in section 7), so the approved-payment path has been exercised end to end with test accounts. The rejected and pending/unknown variants still need documented evidence. Do not use real payment credentials or cards.
+>
+> **Delivery 1 return path.** The donation is registered when the donor returns to `/portal/gracias` and the server checks the payment with Mercado Pago. There is no webhook in Delivery 1; recovering a payment confirmed when the donor does not return is part of Delivery 2 (PAY-06, DON-24) and is not a Delivery 1 defect.
 
 ## 0. Deployment contents and project components
 
@@ -213,17 +215,17 @@ The actual effect of the Builder `--dxp-g-*` variables was not independently ver
 
 ## 5. Campaign records and public catalog (current Sandbox data)
 
-The five intended portal campaigns are **existing Salesforce records**. They were renamed and their descriptions updated in place; their IDs and donation relationships were preserved. Do not import the original demo JSON again: the tree import plan uses inserts and could create duplicate campaigns and donations.
+The five intended portal campaigns are **existing Salesforce records**. They were renamed and their descriptions updated in place; their IDs and donation relationships were preserved. The demo data is already loaded and has been adjusted by hand since. Do not import the original demo JSON (or run `data/demo/plan.json`, which exists only in the unmerged PR #48) again: the tree import uses inserts and would create duplicate campaigns and donations.
 
 | Public campaign name | Salesforce record ID | Status | Goal | Current image state |
 |---|---|---|---:|---|
-| Apoya la participación en Mexico Dreamin 2026 | `a1bVC000008jeEQYAY` | Active; Nov 1–19, 2026 | MXN 15,000 | Stable public Salesforce Files distribution verified |
-| Viaje y hospedaje en la Ciudad de México | `a1bVC000008jeERYAY` | Active; Nov 1–19, 2026 | MXN 30,000 | Uploaded image; public distribution/field update must be confirmed |
-| Fondo general SF Vibe Lab | `a1bVC000008jeEPYAY` | Active; no end date | MXN 20,000 | Uploaded image; public distribution/field update must be confirmed |
-| Kits de bienvenida | `a1bVC000008jeESYAY` | Paused; Nov 1–19, 2026 | MXN 5,000 | Uploaded image; public distribution/field update must be confirmed |
-| Transporte local durante el evento | `a1bVC000008jeETYAY` | Draft; starts Nov 10, 2026 | MXN 8,000 | Uploaded image; public distribution/field update must be confirmed; Draft stays hidden |
+| Apoya la participación en Mexico Dreamin 2026 | `a1bVC000008jeEQYAY` | Active; Nov 1–19, 2026 | MXN 15,000 | Image and alt text saved; stable public distribution without expiry; reachable without authentication (checked 2026-11-10) |
+| Viaje y hospedaje en la Ciudad de México | `a1bVC000008jeERYAY` | Active; Nov 1–19, 2026 | MXN 30,000 | Same checks passed (2026-11-10) |
+| Fondo general SF Vibe Lab | `a1bVC000008jeEPYAY` | Active; no end date | MXN 20,000 | Same checks passed (2026-11-10) |
+| Kits de bienvenida | `a1bVC000008jeESYAY` | Paused; Nov 1–19, 2026 | MXN 5,000 | Same checks passed (2026-11-10) |
+| Transporte local durante el evento | `a1bVC000008jeETYAY` | Draft; starts Nov 10, 2026 | MXN 8,000 | Same checks passed (2026-11-10); Draft stays hidden |
 
-The four additional image files have been uploaded to Salesforce Files. Do not consider them complete until each file is matched to the correct campaign, receives a public distribution without an expiration date, is accessible without authentication, fits the 255-character `Image_URL__c` limit, and is saved to the corresponding `Image_URL__c` and `Image_Alt_Text__c` fields. The Transportation campaign remains Draft and must not appear in the public catalog even after its image is assigned.
+The four additional image files were uploaded to Salesforce Files and, as checked on 2026-11-10, each one is matched to its campaign, has a public distribution without an expiration date, is reachable without authentication, and is saved in `Image_URL__c` and `Image_Alt_Text__c`. The older expiring distribution of the Mexico Dreamin image was left in place and is no longer the URL in use. The Transportation campaign remains Draft and does not appear in the public catalog.
 
 ### Mexico Dreamin image
 
@@ -247,7 +249,7 @@ As verified after these changes, the public catalog showed exactly four cards: M
 
 ### Donation and donor-recognition data
 
-All campaign and donation records in this Sandbox are demonstration/test data. Totals below are the values reported after the cleanup; they are not real fundraising proceeds.
+All campaign and donation records in this Sandbox are demonstration/test data. Totals below are the values reported after the cleanup of 2026-11-10; they are not real fundraising proceeds, and later test donations created through the portal change them (the Sandbox held 15 donations by the end of 2026-11-10; see the audit in section 7).
 
 | Campaign | Confirmed donation count | Total shown | Progress |
 |---|---:|---:|---:|
@@ -296,6 +298,16 @@ The checks below combine the earlier November 10 functional review with the late
 | Thank-you page URL tampering | Query-string status/payment values are not trusted as proof | Passed: fake `payment_id` with `status=approved` did not confirm a payment |
 | Guest privacy | Guest cannot query or read Donation or Payment Attempt records directly | REST/Aura/Apex checks reported 404/401 and no email/RFC/fiscal data in public responses |
 
+### Audit of portal donations (read-only, 2026-11-10)
+
+An audit with no changes to code, metadata or data checked whether donations paid through the portal are saved as `Donation__c`:
+
+- **How donations are created.** Only the return flow creates them: `/portal/gracias` → `getPaymentResult` → `Payment_Return_Process` → `Donation_Register`, which creates the donation and marks the attempt Confirmed if the payment is approved, the attempt exists, no donation with the same provider payment id exists and the amount matches. No other automation creates donations.
+- **Counts at the time.** 14 confirmed donations: 6 loaded by an administrator as demo data and 8 judged with high confidence to come from the portal (a later test added one more). 47 payment attempts: 8 linked to a donation and 39 not linked.
+- **What was not verified.** The audit user cannot read the status of attempts (field-level security), and the payments were not looked up in Mercado Pago. The 39 unlinked attempts must **not** be described as lost, approved or rejected: they can be abandoned checkouts, rejected or pending payments, or payments whose donor did not return. Confirming any of them needs the attempt status and a lookup in Mercado Pago.
+- **Risks.** If the donor pays and does not return to the portal, no donation is registered until Delivery 2 adds the webhook (PAY-06, DON-24). Unconfirmed attempts are deleted after 7 days (`Payment_Attempt_Delete_Stale`), which removes the link needed to reconcile a late payment. A failure other than a missing attempt or an amount mismatch returns a generic error without leaving a notice (`Rejected_Notice__c`).
+- **Clean-up not done.** Two public attempts created before the DON-11 name cleaning were neither verified nor deleted (accepted residual risk).
+
 ### Previously reported automated checks
 
 - **Apex deployment:** deployment `0AfVC00000PBhkn0AD` reported `Succeeded`, 31/31 components and 137/137 Apex tests. The check-only validation `0AfVC00000PBhZV0A1` also succeeded.
@@ -306,14 +318,17 @@ These are previously reported results, not a claim that the entire suite was rer
 
 ### Remaining end-to-end and evidence work
 
-- [ ] Complete a manual Checkout Pro test using the project's Mercado Pago **test buyer** account and test card; verify approved, rejected and pending/unknown return behavior as applicable. Do not use production credentials or real cards.
-- [ ] Confirm the four newly uploaded Salesforce Files are matched, distributed publicly without expiration, saved to the four campaign records and visible as Guest. Mexico Dreamin's stable image is already verified.
+- [x] Complete a manual Checkout Pro test with the project's Mercado Pago **test buyer** account for an approved payment (portal-created donations exist in the Sandbox).
+- [ ] Document the rejected and pending/unknown return behavior with test accounts. Do not use production credentials or real cards.
+- [x] The four newly uploaded Salesforce Files are matched, distributed publicly without expiration, saved to the four campaign records and visible as Guest (checked 2026-11-10).
+- [ ] Commit the evidence folders `docs/evidence/DON-04`, `DON-08`, `DON-10`, `DON-11` and `DON-12` and the reorganized files of DON-01 to DON-03 (they are local only), cropping the personal email address in `DON-11/AC1.png` first. The status of every story is in `docs/story-tracking-board.md`.
+- [ ] Commit the Apex source of the DON-11 public-name cleaning (`PublicNameSanitizer` and the related changes), which is already deployed to the Sandbox.
 - [ ] Complete keyboard testing for donation amount controls and form buttons.
 - [ ] Complete a screen-reader check.
 - [ ] Run the full empty-catalog scenario in the live portal if required for evidence; automated tests already cover the empty-state message.
 - [ ] Run a live progress-over-100% scenario only if suitable non-sensitive test data is authorized; automated tests already cover the calculation.
 - [ ] Complete the SEG-01 repeatability check with a second team member and record evidence in `docs/security.md`.
-- [ ] Create a new authorized test donation with Public recognition if live evidence for DON-04 AC1 / DON-11 AC2 is needed. Do not reverse the existing Anonymous donations; the org validation rule prevents that transition.
+- [x] Public-recognition test donations created through the portal now exist in the Sandbox, so live evidence for DON-04 AC1 / DON-11 AC2 can be taken. Do not reverse the existing Anonymous donations; the org validation rule prevents that transition.
 
 ## 8. Security rules and operational cautions
 
