@@ -1,0 +1,18 @@
+[
+  {
+    "sobject": "Fundraising_Campaign__c",
+    "saveRefs": true,
+    "resolveRefs": false,
+    "files": [
+      "Fundraising_Campaign__c.json"
+    ]
+  },
+  {
+    "sobject": "Donation__c",
+    "saveRefs": false,
+    "resolveRefs": true,
+    "files": [
+      "Donation__c.json"
+    ]
+  }
+]

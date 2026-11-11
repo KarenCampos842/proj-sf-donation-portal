@@ -178,3 +178,24 @@ Our six business questions were sent on **2026-11-03**. The answers came on **20
 **Answer received:** Slack: he asked us back what the minimum information is to send an invoice; a ticket in the email is the minimum. Session: there is no checklist; our list (campaign, amount, date, donation type, donor name, reference number) is fine, and we should check what online receipts usually include. For the invoice, ask for what is needed to issue one. One receipt is enough, and if the payment gateway already sends it we do not have to send another. The language is Spanish. He also said the project will not ask for electronic signature or stamping (no timbrado).
 
 **What we did next:** Resolved. Receipt: campaign, amount, date and operation reference, in Spanish, sent once by the portal (the Mercado Pago receipt goes to a fictitious test buyer email), with a note that it is a test operation without fiscal value; no name if the donation is anonymous (DON-23). Invoice: name or business name, RFC, fiscal postal code and fiscal regime; the system only captures the data and does not issue or stamp invoices (DON-12, WON-03). Logo, folio or other legend (B10) is our decision.
+
+---
+
+### Q-07 - No access to the team sandbox
+
+- **Author:** Alan Pérez
+- **Date:** 2026-11-08
+- **Answered:** 2026-11-09 (Slack)
+- **Type:** Platform blocker
+- **Where asked:** Slack (direct message)
+- **Related story:** TEC-01 (org setup); blocked all workstream C stories
+
+1. **What we were trying to achieve:** log in to the team sandbox (`uady--class2026b`) to build the workstream C data model, permissions and list views for Delivery 1.
+2. **What we did:** opened the "Verify account" link from the welcome email (received 2026-11-01, not used in time). Then tried "Forgot your password?" on the sandbox login page with the assigned username.
+3. **What we expected:** a new email to set a password.
+4. **What happened:** the verification link had expired, and the password reset page showed: "Su cuenta aún no está configurada. Su administrador de Salesforce puede ayudarle."
+5. **What we consulted:** Claude, which explained that an account that was never verified can only be reset by an administrator (Setup → Users → Reset Password). Asked the client/advisor for a reset with the username and the exact error.
+
+**Answer received:** the advisor sent the password reset on 2026-11-09. He also announced on Slack that teammates with administrator access in the sandbox can help when someone cannot log in.
+
+**What we did next:** logged in on 2026-11-09, connected the sandbox to the Salesforce CLI and deployed the workstream C configuration (permission sets, list views, tabs, donation validation rules and the RFC flow). Resolved. Lesson: verify new Salesforce accounts the day the email arrives, and ask a teammate with admin access before waiting for the advisor.

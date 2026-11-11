@@ -1,0 +1,99 @@
+{
+  "records": [
+    {
+      "attributes": {
+        "type": "Donation__c",
+        "referenceId": "Don1"
+      },
+      "Campaign__c": "@CampTickets",
+      "Amount__c": 500,
+      "Payment_Status__c": "Confirmed",
+      "Confirmed_At__c": "2026-11-05T16:00:00.000Z",
+      "Provider_Payment_Id__c": "DEMO-PAY-0001",
+      "Email__c": "donante1@example.com",
+      "Visibility__c": "Public",
+      "Public_Name__c": "Ana López (demo)",
+      "Invoice_Requested__c": false
+    },
+    {
+      "attributes": {
+        "type": "Donation__c",
+        "referenceId": "Don2"
+      },
+      "Campaign__c": "@CampTickets",
+      "Amount__c": 1000,
+      "Payment_Status__c": "Confirmed",
+      "Confirmed_At__c": "2026-11-06T17:30:00.000Z",
+      "Provider_Payment_Id__c": "DEMO-PAY-0002",
+      "Email__c": "donante2@example.com",
+      "Visibility__c": "Anonymous",
+      "Invoice_Requested__c": false
+    },
+    {
+      "attributes": {
+        "type": "Donation__c",
+        "referenceId": "Don3"
+      },
+      "Campaign__c": "@CampTravel",
+      "Amount__c": 5000,
+      "Payment_Status__c": "Confirmed",
+      "Confirmed_At__c": "2026-11-06T19:00:00.000Z",
+      "Provider_Payment_Id__c": "DEMO-PAY-0003",
+      "Email__c": "donante3@example.com",
+      "Visibility__c": "Public",
+      "Public_Name__c": "Empresa de prueba del SAT (demo)",
+      "Invoice_Requested__c": true,
+      "Legal_Name__c": "ESCUELA KEMPER URGATE",
+      "RFC__c": "EKU9003173C9",
+      "Tax_Postal_Code__c": "97000",
+      "Tax_Regime__c": "601"
+    },
+    {
+      "attributes": {
+        "type": "Donation__c",
+        "referenceId": "Don4"
+      },
+      "Campaign__c": "@CampTravel",
+      "Amount__c": 1500,
+      "Payment_Status__c": "Confirmed",
+      "Confirmed_At__c": "2026-11-07T15:15:00.000Z",
+      "Provider_Payment_Id__c": "DEMO-PAY-0004",
+      "Email__c": "donante4@example.com",
+      "Visibility__c": "Anonymous",
+      "Invoice_Requested__c": true,
+      "Legal_Name__c": "PUBLICO EN GENERAL",
+      "RFC__c": "XAXX010101000",
+      "Tax_Postal_Code__c": "97100",
+      "Tax_Regime__c": "616"
+    },
+    {
+      "attributes": {
+        "type": "Donation__c",
+        "referenceId": "Don5"
+      },
+      "Campaign__c": "@CampGeneral",
+      "Amount__c": 300,
+      "Payment_Status__c": "Confirmed",
+      "Confirmed_At__c": "2026-11-07T20:45:00.000Z",
+      "Provider_Payment_Id__c": "DEMO-PAY-0005",
+      "Email__c": "donante5@example.com",
+      "Visibility__c": "Public",
+      "Public_Name__c": "Familia Gómez (demo)",
+      "Invoice_Requested__c": false
+    },
+    {
+      "attributes": {
+        "type": "Donation__c",
+        "referenceId": "Don6"
+      },
+      "Campaign__c": "@CampGeneral",
+      "Amount__c": 250,
+      "Payment_Status__c": "Confirmed",
+      "Confirmed_At__c": "2026-11-08T14:10:00.000Z",
+      "Provider_Payment_Id__c": "DEMO-PAY-0006",
+      "Email__c": "donante6@example.com",
+      "Visibility__c": "Anonymous",
+      "Invoice_Requested__c": false
+    }
+  ]
+}
