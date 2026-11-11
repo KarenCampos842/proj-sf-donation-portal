@@ -1,0 +1,69 @@
+{
+  "records": [
+    {
+      "attributes": {
+        "type": "Fundraising_Campaign__c",
+        "referenceId": "CampGeneral"
+      },
+      "Name": "Fondo general SF Vibe Lab (demo)",
+      "Description__c": "Donación general para apoyar a los alumnos del programa. Campaña ficticia para pruebas.",
+      "Goal__c": 20000,
+      "Start_Date__c": "2026-11-01",
+      "Status__c": "Active",
+      "Is_General__c": true,
+      "Image_Alt_Text__c": "Alumnos del programa trabajando en equipo"
+    },
+    {
+      "attributes": {
+        "type": "Fundraising_Campaign__c",
+        "referenceId": "CampTickets"
+      },
+      "Name": "Boletos para Mexico Dreamin 2026 (demo)",
+      "Description__c": "Cubre el boleto de entrada al evento del 20 de noviembre. Campaña ficticia para pruebas.",
+      "Goal__c": 15000,
+      "Start_Date__c": "2026-11-01",
+      "End_Date__c": "2026-11-19",
+      "Status__c": "Active",
+      "Is_General__c": false,
+      "Image_Alt_Text__c": "Boletos de un evento de tecnología"
+    },
+    {
+      "attributes": {
+        "type": "Fundraising_Campaign__c",
+        "referenceId": "CampTravel"
+      },
+      "Name": "Viaje y hospedaje en CDMX (demo)",
+      "Description__c": "Cubre transporte y hospedaje en la Ciudad de México. Campaña ficticia para pruebas.",
+      "Goal__c": 30000,
+      "Start_Date__c": "2026-11-01",
+      "End_Date__c": "2026-11-19",
+      "Status__c": "Active",
+      "Is_General__c": false,
+      "Image_Alt_Text__c": "Vista de la Ciudad de México"
+    },
+    {
+      "attributes": {
+        "type": "Fundraising_Campaign__c",
+        "referenceId": "CampPaused"
+      },
+      "Name": "Kits de bienvenida (demo pausada)",
+      "Description__c": "Campaña pausada para probar que no acepta donaciones. Ficticia.",
+      "Goal__c": 5000,
+      "Start_Date__c": "2026-11-01",
+      "End_Date__c": "2026-11-19",
+      "Status__c": "Paused",
+      "Is_General__c": false
+    },
+    {
+      "attributes": {
+        "type": "Fundraising_Campaign__c",
+        "referenceId": "CampDraft"
+      },
+      "Name": "Transporte local (demo borrador)",
+      "Goal__c": 8000,
+      "Start_Date__c": "2026-11-10",
+      "Status__c": "Draft",
+      "Is_General__c": false
+    }
+  ]
+}
