@@ -1,0 +1,128 @@
+@import 'c/portalTheme';
+
+.catalog {
+    min-width: 0;
+}
+
+.catalog__header {
+    margin-bottom: 1.5rem;
+}
+
+.catalog__title {
+    margin: 0 0 0.25rem;
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.catalog__subtitle {
+    margin: 0;
+    color: var(--portal-text-muted);
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
+    gap: 1.25rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.grid__item {
+    display: flex;
+    min-width: 0;
+}
+
+.card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--portal-border);
+    border-radius: var(--portal-radius);
+    background: var(--portal-surface);
+    box-shadow: var(--portal-shadow);
+}
+
+.card:hover {
+    border-color: var(--portal-accent);
+}
+
+.card:focus-within {
+    outline: 2px solid var(--portal-focus);
+    outline-offset: 2px;
+}
+
+.card_paused .media__image {
+    filter: grayscale(0.6);
+}
+
+.card__body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1rem;
+}
+
+.card__tags {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.card__tag {
+    font-size: 0.8125rem;
+    color: var(--portal-text-muted);
+}
+
+.card__title {
+    margin: 0;
+    font-size: 1.125rem;
+    line-height: 1.3;
+}
+
+.card__link {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--portal-text);
+    font: inherit;
+    font-weight: 700;
+    text-align: start;
+    cursor: pointer;
+    overflow-wrap: anywhere;
+}
+
+.card__link::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+}
+
+.card__link:focus {
+    outline: none;
+}
+
+.card__note {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--portal-paused-text);
+}
+
+.card__date {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--portal-text-muted);
+}
+
+.card__cta {
+    margin: auto 0 0;
+    padding-top: 0.25rem;
+    font-weight: 600;
+    color: var(--portal-accent);
+}

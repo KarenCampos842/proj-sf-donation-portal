@@ -1,0 +1,33 @@
+<template>
+    <div class={rootClass}>
+        <div class="amounts">
+            <p class="raised">
+                <span class="raised__value" aria-hidden="true">{displayedRaisedText}</span>
+                <span class="visually-hidden">{raisedText}</span>
+            </p>
+            <p class="goal">{goalText}</p>
+        </div>
+
+        <div
+            class="track"
+            role="progressbar"
+            aria-label={messages.label}
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow={barValue}
+            aria-valuetext={ariaValueText}
+        >
+            <div class="fill" style={fillStyle}></div>
+        </div>
+
+        <p class="meta">
+            <span class="meta__percent">{percentText}</span>
+            <template lwc:if={isGoalReached}>
+                <span class="meta__reached">{messages.goalReached}</span>
+            </template>
+            <template lwc:if={showDonationCount}>
+                <span class="meta__count">{donationCountText}</span>
+            </template>
+        </p>
+    </div>
+</template>

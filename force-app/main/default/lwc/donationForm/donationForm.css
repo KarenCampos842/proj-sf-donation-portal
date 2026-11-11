@@ -1,0 +1,155 @@
+@import 'c/portalTheme';
+
+.donation {
+    max-width: 44rem;
+    min-width: 0;
+    margin-inline: auto;
+}
+
+.donation__back {
+    margin-bottom: 1rem;
+}
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    min-width: 0;
+    padding: 1.25rem;
+    border: 1px solid var(--portal-border);
+    border-radius: var(--portal-radius);
+    background: var(--portal-surface);
+    box-shadow: var(--portal-shadow);
+}
+
+.form__title {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.form__campaign {
+    margin: 0.25rem 0 0;
+    color: var(--portal-text-muted);
+    overflow-wrap: anywhere;
+}
+
+.block {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.block__title {
+    padding: 0;
+    margin-bottom: 0.5rem;
+    font-size: 1.0625rem;
+    font-weight: 700;
+}
+
+.pill {
+    display: block;
+    position: relative;
+    cursor: pointer;
+}
+
+.pill__input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    opacity: 0;
+}
+
+.pill__label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 3rem;
+    padding: 0.5rem 0.75rem;
+    border: 2px solid var(--portal-border);
+    border-radius: 999px;
+    background: var(--portal-surface);
+    color: var(--portal-text);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.pill:hover .pill__label {
+    border-color: var(--portal-accent);
+}
+
+.pill__input:focus-visible + .pill__label {
+    outline: 3px solid var(--portal-focus);
+    outline-offset: 2px;
+}
+
+.pill__input:checked + .pill__label {
+    border-color: var(--portal-accent);
+    background: var(--portal-accent);
+    color: var(--portal-on-accent);
+}
+
+.pill__input:checked + .pill__label::before {
+    content: '\2713';
+    margin-inline-end: 0.375rem;
+}
+
+.field-error {
+    margin: 0.5rem 0 0;
+    padding-inline: 0.75rem;
+    color: #8a1c1c;
+    font-weight: 600;
+}
+
+.hint {
+    margin: 0.25rem 0 0;
+    font-size: 0.875rem;
+    color: var(--portal-text-muted);
+}
+
+.invoice {
+    margin-top: 1rem;
+    padding: 1rem 0 0.5rem;
+    border-top: 1px solid var(--portal-border);
+}
+
+.alert {
+    padding: 0.75rem 1rem;
+    border: 1px solid #8a1c1c;
+    border-inline-start-width: 6px;
+    border-radius: var(--portal-radius);
+    background: #fdecec;
+    color: #5c1010;
+}
+
+.alert__title {
+    margin: 0;
+    font-weight: 700;
+}
+
+.alert__message {
+    margin: 0.25rem 0 0;
+    overflow-wrap: anywhere;
+}
+
+.actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+
+.actions__submit {
+    max-width: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pill__label {
+        transition: none;
+    }
+}

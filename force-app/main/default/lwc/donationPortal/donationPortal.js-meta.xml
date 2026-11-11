@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <isExposed>true</isExposed>
+    <masterLabel>Portal de donaciones</masterLabel>
+    <description>Portal público de donaciones de Mexico Dreamin´: catálogo de campañas, detalle, avance, reconocimiento de donantes y formulario de donación.</description>
+    <targets>
+        <target>lightningCommunity__Page</target>
+        <target>lightningCommunity__Default</target>
+    </targets>
+    <targetConfigs>
+        <targetConfig targets="lightningCommunity__Default">
+            <property
+                name="pageName"
+                type="String"
+                default="Home"
+                label="Nombre API de la página"
+                description="Nombre API de la página del sitio donde está este componente. Se usa para cambiar de vista sin recargar. Por omisión: Home."
+            />
+        </targetConfig>
+    </targetConfigs>
+</LightningComponentBundle>

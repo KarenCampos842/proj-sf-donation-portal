@@ -1,0 +1,33 @@
+<template>
+    <section class="result" aria-labelledby="result-title">
+        <h1 id="result-title" class="result__title">{messages.title}</h1>
+
+        <template lwc:if={isLoading}>
+            <div class="result__body" role="status">
+                <lightning-spinner size="medium" alternative-text={messages.loading}></lightning-spinner>
+            </div>
+        </template>
+        <template lwc:else>
+            <div class="result__body" role="status">
+                <p class="result__message">{stateText}</p>
+                <div class="result__actions">
+                    <template lwc:if={canCheckAgain}>
+                        <lightning-button label={messages.checkAgain} onclick={handleCheckAgain}></lightning-button>
+                    </template>
+                    <template lwc:if={canTryAgain}>
+                        <lightning-button
+                            variant="brand"
+                            label={messages.tryAgain}
+                            onclick={handleBackToPortal}
+                        ></lightning-button>
+                    </template>
+                    <lightning-button
+                        variant="base"
+                        label={messages.backToPortal}
+                        onclick={handleBackToPortal}
+                    ></lightning-button>
+                </div>
+            </div>
+        </template>
+    </section>
+</template>
