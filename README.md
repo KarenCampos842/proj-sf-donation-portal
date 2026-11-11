@@ -22,7 +22,7 @@ These are three different things in this project:
 
 - **Implemented:** the code or configuration exists, is merged in `main` and has automated tests. The Delivery 1 stories were implemented across the three workstreams: A (payments, 6 stories), B (portal, 8 stories) and C (internal operation, security and data model, 8 stories). Some Workstream C stories are still In progress.
 - **Issue closed / Project status Done:** a team decision recorded in GitHub. All 8 Workstream B stories are Done and closed with every acceptance criterion ticked. Seven other Delivery 1 issues are closed but still show In review in Project 13.
-- **Formally accepted:** the Definition of Done below is met: all acceptance criteria verified **and** evidenced, security minimums M1–M3 met, and GitHub tracking updated. **Not all 22 Delivery 1 stories are formally accepted.** The “Evidence” section of every issue still holds the placeholder “Pendiente de evidencia”, the Workstream B evidence folders are only partly committed (see [Evidence](#evidence)), and Workstreams A and C have acceptance criteria that are not ticked yet.
+- **Accepted:** the Definition of Done below is met. The 8 Workstream B stories are accepted. The Workstream A stories are closed but still In review, and the Workstream C stories are partly In progress, so they are not counted as accepted until their owners move them to Done. The “Evidence” section of the issues still holds the original placeholder “Pendiente de evidencia”, and part of the Workstream B evidence folders is not committed yet (see [Evidence](#evidence)); neither affects the accepted status of the Workstream B stories.
 
 ### Pull requests
 

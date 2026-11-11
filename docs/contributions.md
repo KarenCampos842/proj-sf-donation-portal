@@ -9,7 +9,7 @@ Workstreams (from the backlog split):
 
 Stories link to their GitHub issue in [`story-tracking-board.md`](story-tracking-board.md), which also holds the current Project 13 status, the open/closed state of each issue and the evidence per story.
 
-**Reading this log:** a story listed here is implemented by that member, not necessarily formally accepted. Acceptance needs all acceptance criteria evidenced and security minimums M1–M3 met (Definition of Done in the [README](../README.md)).
+**Reading this log:** a story listed here is implemented by that member. The eight Workstream B Delivery 1 stories are accepted; stories of the other workstreams follow their Project 13 status (Definition of Done in the [README](../README.md)).
 
 ## Delivery 1
 
