@@ -497,7 +497,7 @@ describe('c-donation-form', () => {
         });
 
         it('shows the Spanish message of startDonation and keeps what the donor typed', async () => {
-            startDonation.mockRejectedValue({ body: { message: 'Esta campaña ya no acepta donaciones.' } });
+            startDonation.mockRejectedValue({ body: { message: '|Esta campaña ya no acepta donaciones.' } });
             const element = createComponent();
             await fillAnonymousDonation(element);
             await submit(element);
@@ -511,7 +511,7 @@ describe('c-donation-form', () => {
         });
 
         it('shows the Spanish message of openPayment and does not redirect', async () => {
-            openPayment.mockRejectedValue({ body: { message: 'No pudimos abrir el pago, intenta de nuevo' } });
+            openPayment.mockRejectedValue({ body: { message: '|No pudimos abrir el pago, intenta de nuevo' } });
             const element = createComponent();
             await fillAnonymousDonation(element);
             await submit(element);
@@ -522,7 +522,7 @@ describe('c-donation-form', () => {
         });
 
         it('lets the donor try again after an error', async () => {
-            startDonation.mockRejectedValueOnce({ body: { message: 'Escribe un correo válido.' } });
+            startDonation.mockRejectedValueOnce({ body: { message: 'email|Escribe un correo válido.' } });
             const element = createComponent();
             await fillAnonymousDonation(element);
             await submit(element);
@@ -545,7 +545,7 @@ describe('c-donation-form', () => {
         });
 
         it('shows the server message as text and never as HTML', async () => {
-            startDonation.mockRejectedValue({ body: { message: '<img src=x onerror=alert(1)>' } });
+            startDonation.mockRejectedValue({ body: { message: '|<img src=x onerror=alert(1)>' } });
             const element = createComponent();
             await fillAnonymousDonation(element);
             await submit(element);
@@ -576,6 +576,544 @@ describe('c-donation-form', () => {
             await Promise.resolve();
 
             expect(submitButton(element).disabled).toBe(false);
+        });
+    });
+
+    describe('invalid data: fields marked and nothing lost (DON-17)', () => {
+        async function fillCompleteDonation(element) {
+            await fillAnonymousDonation(element);
+            await setToggle(element, 'anonymous', false);
+            await typeInto(element, 'publicName', 'Familia Pérez');
+            await fillInvoice(element, PERSON_RFC, '612');
+        }
+
+        const FIELDS = ['email', 'publicName', 'legalName', 'rfc', 'taxPostalCode', 'taxRegime'];
+
+        function spyOnFields(element) {
+            const spies = {};
+            FIELDS.forEach((name) => {
+                spies[name] = jest.spyOn(field(element, name), 'setCustomValidity');
+            });
+            return spies;
+        }
+
+        it('marks every empty required field with its own message before calling the server', async () => {
+            const element = createComponent();
+            await selectAmount(element, 500);
+            await setToggle(element, 'anonymous', false);
+            await setToggle(element, 'invoice', true);
+            const spies = spyOnFields(element);
+
+            await submit(element);
+
+            expect(spies.email).toHaveBeenLastCalledWith('Escribe tu correo.');
+            expect(spies.publicName).toHaveBeenLastCalledWith('Escribe el nombre con el que quieres aparecer.');
+            expect(spies.legalName).toHaveBeenLastCalledWith('Escribe tu nombre o razón social.');
+            expect(spies.rfc).toHaveBeenLastCalledWith('Escribe tu RFC.');
+            expect(spies.taxPostalCode).toHaveBeenLastCalledWith('Escribe tu código postal fiscal.');
+            expect(spies.taxRegime).toHaveBeenLastCalledWith('Selecciona tu régimen fiscal.');
+            expect(startDonation).not.toHaveBeenCalled();
+            expect(errorBanner(element).textContent).toContain('Revisa los campos marcados');
+        });
+
+        it('marks every field with an invalid format and says what to correct', async () => {
+            const element = createComponent();
+            await selectAmount(element, 500);
+            await typeInto(element, 'email', 'sin-arroba');
+            await setToggle(element, 'anonymous', false);
+            await typeInto(element, 'publicName', 'a'.repeat(81));
+            await fillInvoice(element, 'GODE561331GR8', '601');
+            await typeInto(element, 'legalName', 'a'.repeat(255));
+            await typeInto(element, 'taxPostalCode', '1234');
+            const spies = spyOnFields(element);
+
+            await submit(element);
+
+            expect(spies.email).toHaveBeenLastCalledWith('Escribe un correo válido.');
+            expect(spies.publicName).toHaveBeenLastCalledWith('El nombre público no puede tener más de 80 caracteres.');
+            expect(spies.legalName).toHaveBeenLastCalledWith(
+                'El nombre o razón social no puede tener más de 254 caracteres.'
+            );
+            expect(spies.rfc).toHaveBeenLastCalledWith('El RFC no tiene un formato válido.');
+            expect(spies.taxPostalCode).toHaveBeenLastCalledWith('El código postal debe tener 5 dígitos.');
+            expect(startDonation).not.toHaveBeenCalled();
+        });
+
+        it.each([
+            ['email', 'Escribe un correo válido.'],
+            ['publicName', 'Escribe el nombre con el que quieres aparecer.'],
+            ['legalName', 'El nombre o razón social no puede tener más de 254 caracteres.'],
+            ['rfc', 'El RFC no tiene un formato válido.'],
+            ['taxPostalCode', 'El código postal debe tener 5 dígitos.'],
+            ['taxRegime', 'El régimen fiscal no corresponde al tipo de persona.']
+        ])('marks the %s field with the message that the server returns for it', async (name, message) => {
+            startDonation.mockRejectedValue({ body: { message: name + '|' + message } });
+            const element = createComponent();
+            await fillCompleteDonation(element);
+            const input = field(element, name);
+            const markValidity = jest.spyOn(input, 'setCustomValidity');
+            const reportValidity = jest.spyOn(input, 'reportValidity');
+
+            await submit(element);
+
+            expect(markValidity).toHaveBeenLastCalledWith(message);
+            expect(reportValidity).toHaveBeenCalled();
+            expect(errorBanner(element).textContent).toContain('Revisa los campos marcados');
+            expect(errorBanner(element).textContent).not.toContain('|');
+            expect(openPayment).not.toHaveBeenCalled();
+            expect(submitButton(element).disabled).toBe(false);
+        });
+
+        it('shows the amount message that the server returns next to the amount options', async () => {
+            startDonation.mockRejectedValue({ body: { message: 'amount|El monto elegido no es válido.' } });
+            const element = createComponent();
+            await fillAnonymousDonation(element);
+
+            await submit(element);
+
+            expect(element.shadowRoot.querySelector('.field-error').textContent).toBe('El monto elegido no es válido.');
+            expect(radios(element).find((radio) => radio.checked).value).toBe('500');
+            expect(errorBanner(element).textContent).toContain('Revisa los campos marcados');
+        });
+
+        it('keeps an error that belongs to no field in the general notice and marks no field', async () => {
+            startDonation.mockRejectedValue({ body: { message: '|Esta campaña ya no acepta donaciones.' } });
+            const element = createComponent();
+            await fillAnonymousDonation(element);
+            const markValidity = jest.spyOn(field(element, 'email'), 'setCustomValidity');
+
+            await submit(element);
+
+            expect(errorBanner(element).textContent).toContain('Esta campaña ya no acepta donaciones.');
+            expect(markValidity).not.toHaveBeenCalledWith('Esta campaña ya no acepta donaciones.');
+            expect(markValidity).toHaveBeenLastCalledWith('');
+        });
+
+        it('shows the message in the general notice when its field is not on the screen', async () => {
+            startDonation.mockRejectedValue({ body: { message: 'rfc|El RFC no tiene un formato válido.' } });
+            const element = createComponent();
+            await fillAnonymousDonation(element);
+
+            await submit(element);
+
+            expect(errorBanner(element).textContent).toContain('El RFC no tiene un formato válido.');
+        });
+
+        it('keeps everything the donor typed after the server marks one field', async () => {
+            startDonation.mockRejectedValue({ body: { message: 'rfc|El RFC no tiene un formato válido.' } });
+            const element = createComponent();
+            await fillCompleteDonation(element);
+
+            await submit(element);
+
+            expect(radios(element).find((radio) => radio.checked).value).toBe('500');
+            expect(field(element, 'email').value).toBe('donante@example.com');
+            expect(toggle(element, 'anonymous').checked).toBe(false);
+            expect(field(element, 'publicName').value).toBe('Familia Pérez');
+            expect(toggle(element, 'invoice').checked).toBe(true);
+            expect(field(element, 'legalName').value).toBe('Familia Pérez S.A. de C.V.');
+            expect(field(element, 'rfc').value).toBe(PERSON_RFC);
+            expect(field(element, 'taxPostalCode').value).toBe('97000');
+            expect(field(element, 'taxRegime').value).toBe('612');
+            expect(submitButton(element).disabled).toBe(false);
+        });
+
+        it('lets the donor correct only the marked field and then pay with the same data', async () => {
+            startDonation.mockRejectedValueOnce({
+                body: { message: 'taxPostalCode|El código postal debe tener 5 dígitos.' }
+            });
+            const element = createComponent();
+            await fillCompleteDonation(element);
+            await submit(element);
+            expect(errorBanner(element)).not.toBeNull();
+
+            const markValidity = jest.spyOn(field(element, 'taxPostalCode'), 'setCustomValidity');
+            await typeInto(element, 'taxPostalCode', '97010');
+            expect(markValidity).toHaveBeenLastCalledWith('');
+
+            await submit(element);
+
+            expect(startDonation).toHaveBeenCalledTimes(2);
+            expect(startDonation.mock.calls[1][0].request).toEqual({
+                campaignId: CAMPAIGN_ID,
+                amount: 500,
+                email: 'donante@example.com',
+                visibility: 'Public',
+                publicName: 'Familia Pérez',
+                invoiceRequested: true,
+                legalName: 'Familia Pérez S.A. de C.V.',
+                rfc: PERSON_RFC,
+                taxPostalCode: '97010',
+                taxRegime: '612'
+            });
+            expect(window.location.assign).toHaveBeenCalledWith(CHECKOUT_URL);
+            expect(errorBanner(element)).toBeNull();
+        });
+
+        it.each([
+            [
+                'an Apex exception',
+                'System.NullPointerException: Attempt to de-reference a null object (Class.DonationIntakeService.startDonation: line 12)'
+            ],
+            ['an access error of the platform', 'You do not have access to the Apex class named DonationIntakeService.'],
+            ['a message that carries the donor email', 'FIELD_CUSTOM_VALIDATION_EXCEPTION|donante@example.com'],
+            ['a Spanish text without the shape of the server', 'Esta campaña ya no acepta donaciones.'],
+            ['a field name that the form does not have', 'password|Escribe un correo válido.']
+        ])('shows only a friendly text for %s and keeps the data', async (scenario, technicalMessage) => {
+            startDonation.mockRejectedValue({ body: { message: technicalMessage } });
+            const element = createComponent();
+            await fillAnonymousDonation(element);
+            const markValidity = jest.spyOn(field(element, 'email'), 'setCustomValidity');
+
+            await submit(element);
+
+            const text = errorBanner(element).querySelector('.alert__message').textContent;
+            expect(text).toBe('No pudimos abrir el pago, intenta de nuevo');
+            expect(element.shadowRoot.textContent).not.toContain(technicalMessage);
+            expect(element.shadowRoot.textContent).not.toContain('Exception');
+            expect(element.shadowRoot.textContent).not.toContain('Class.');
+            expect(markValidity).toHaveBeenLastCalledWith('');
+            expect(field(element, 'email').value).toBe('donante@example.com');
+            expect(radios(element).find((radio) => radio.checked).value).toBe('500');
+            expect(window.location.assign).not.toHaveBeenCalled();
+        });
+
+        it('shows only a friendly text when openPayment fails with a technical error', async () => {
+            openPayment.mockRejectedValue({ body: { message: 'Callout exception: endpoint https://api.mercadopago.com' } });
+            const element = createComponent();
+            await fillAnonymousDonation(element);
+
+            await submit(element);
+
+            expect(errorBanner(element).querySelector('.alert__message').textContent).toBe(
+                'No pudimos abrir el pago, intenta de nuevo'
+            );
+            expect(element.shadowRoot.textContent).not.toContain('mercadopago.com');
+            expect(window.location.assign).not.toHaveBeenCalled();
+            expect(submitButton(element).disabled).toBe(false);
+        });
+    });
+
+    describe('errors update while the donor edits (DON-17)', () => {
+        const FIX_NOTICE = 'Revisa los campos marcados';
+
+        const validity = (element, name) => jest.spyOn(field(element, name), 'setCustomValidity');
+        const report = (element, name) => jest.spyOn(field(element, name), 'reportValidity');
+        const noticeText = (element) => (errorBanner(element) ? errorBanner(element).textContent : '');
+
+        it('shows the general notice after trying to continue with invalid fields', async () => {
+            const element = createComponent();
+            await selectAmount(element, 500);
+
+            await submit(element);
+
+            expect(noticeText(element)).toContain(FIX_NOTICE);
+            expect(startDonation).not.toHaveBeenCalled();
+        });
+
+        it('clears the error of a field as soon as its value is corrected, without a blur', async () => {
+            const element = createComponent();
+            await selectAmount(element, 500);
+            await submit(element);
+            const markValidity = validity(element, 'email');
+            const showValidity = report(element, 'email');
+
+            await typeInto(element, 'email', 'donante@example.com');
+
+            expect(markValidity).toHaveBeenLastCalledWith('');
+            expect(showValidity).toHaveBeenCalled();
+        });
+
+        it('keeps the error of a field while its value is still invalid', async () => {
+            const element = createComponent();
+            await selectAmount(element, 500);
+            await submit(element);
+            const markValidity = validity(element, 'email');
+            const showValidity = report(element, 'email');
+
+            await typeInto(element, 'email', 'sin-arroba');
+
+            expect(markValidity).toHaveBeenLastCalledWith('Escribe un correo válido.');
+            expect(showValidity).toHaveBeenCalled();
+            expect(noticeText(element)).toContain(FIX_NOTICE);
+        });
+
+        it('does not show an error for a field that was never validated', async () => {
+            const element = createComponent();
+            await selectAmount(element, 500);
+            await setToggle(element, 'anonymous', false);
+            await setToggle(element, 'invoice', true);
+            const showEmail = report(element, 'email');
+            const showName = report(element, 'publicName');
+            const showRfc = report(element, 'rfc');
+            const markRfc = validity(element, 'rfc');
+
+            await typeInto(element, 'email', 'sin-arroba');
+            await typeInto(element, 'publicName', '   ');
+            await typeInto(element, 'rfc', 'GODE5612');
+
+            expect(showEmail).not.toHaveBeenCalled();
+            expect(showName).not.toHaveBeenCalled();
+            expect(showRfc).not.toHaveBeenCalled();
+            expect(markRfc).toHaveBeenLastCalledWith('El RFC no tiene un formato válido.');
+            expect(errorBanner(element)).toBeNull();
+        });
+
+        it('keeps the general notice while another field or the amount is still invalid', async () => {
+            const element = createComponent();
+            await setToggle(element, 'anonymous', false);
+            await submit(element);
+            expect(noticeText(element)).toContain(FIX_NOTICE);
+
+            await typeInto(element, 'email', 'donante@example.com');
+            expect(noticeText(element)).toContain(FIX_NOTICE);
+
+            await typeInto(element, 'publicName', 'Familia Pérez');
+            expect(noticeText(element)).toContain(FIX_NOTICE);
+
+            await selectAmount(element, 500);
+            expect(errorBanner(element)).toBeNull();
+        });
+
+        it('removes the general notice when every active field and the amount are valid', async () => {
+            const element = createComponent();
+            await setToggle(element, 'invoice', true);
+            await submit(element);
+            expect(noticeText(element)).toContain(FIX_NOTICE);
+
+            await selectAmount(element, 500);
+            await typeInto(element, 'email', 'donante@example.com');
+            await typeInto(element, 'legalName', 'Familia Pérez S.A. de C.V.');
+            await typeInto(element, 'taxPostalCode', '97000');
+            await typeInto(element, 'rfc', PERSON_RFC);
+            expect(noticeText(element)).toContain(FIX_NOTICE);
+
+            await chooseRegime(element, '612');
+
+            expect(errorBanner(element)).toBeNull();
+            expect(startDonation).not.toHaveBeenCalled();
+        });
+
+        it('removes the notice when the donor turns off the option whose fields were invalid', async () => {
+            const element = createComponent();
+            await fillAnonymousDonation(element);
+            await setToggle(element, 'invoice', true);
+            await submit(element);
+            expect(noticeText(element)).toContain(FIX_NOTICE);
+
+            await setToggle(element, 'invoice', false);
+
+            expect(errorBanner(element)).toBeNull();
+        });
+
+        it('clears the error that Apex returned for a field when the donor corrects that field', async () => {
+            startDonation.mockRejectedValueOnce({ body: { message: 'taxPostalCode|El código postal debe tener 5 dígitos.' } });
+            const element = createComponent();
+            await fillAnonymousDonation(element);
+            await fillInvoice(element, PERSON_RFC, '612');
+            await submit(element);
+            expect(noticeText(element)).toContain(FIX_NOTICE);
+            const markValidity = validity(element, 'taxPostalCode');
+            const showValidity = report(element, 'taxPostalCode');
+
+            await typeInto(element, 'taxPostalCode', '97010');
+
+            expect(markValidity).toHaveBeenLastCalledWith('');
+            expect(showValidity).toHaveBeenCalled();
+            expect(errorBanner(element)).toBeNull();
+            expect(startDonation).toHaveBeenCalledTimes(1);
+        });
+
+        it('keeps the notice while the field that Apex marked has not been edited', async () => {
+            startDonation.mockRejectedValueOnce({ body: { message: 'email|Escribe un correo válido.' } });
+            const element = createComponent();
+            await fillAnonymousDonation(element);
+            await submit(element);
+            expect(noticeText(element)).toContain(FIX_NOTICE);
+
+            await selectAmount(element, 1000);
+            expect(noticeText(element)).toContain(FIX_NOTICE);
+
+            await typeInto(element, 'email', 'otro@example.com');
+            expect(errorBanner(element)).toBeNull();
+        });
+
+        it('does not remove an error of the server that belongs to no field when a field is edited', async () => {
+            startDonation.mockRejectedValueOnce({ body: { message: '|Esta campaña ya no acepta donaciones.' } });
+            const element = createComponent();
+            await fillAnonymousDonation(element);
+            await submit(element);
+
+            await typeInto(element, 'email', 'otro@example.com');
+            await selectAmount(element, 1000);
+            await setToggle(element, 'anonymous', false);
+            await setToggle(element, 'anonymous', true);
+
+            expect(noticeText(element)).toContain('Esta campaña ya no acepta donaciones.');
+        });
+
+        it('does not remove a failure to open the payment when a field is edited', async () => {
+            openPayment.mockRejectedValueOnce({ body: { message: '|No pudimos abrir el pago, intenta de nuevo' } });
+            const element = createComponent();
+            await fillAnonymousDonation(element);
+            await submit(element);
+
+            await typeInto(element, 'email', 'otro@example.com');
+
+            expect(noticeText(element)).toContain('No pudimos abrir el pago, intenta de nuevo');
+        });
+
+        describe('regime after the RFC changes', () => {
+            const REGIME_REQUIRED = 'Selecciona tu régimen fiscal.';
+
+            // A company RFC with its regime already validated, as after an earlier attempt or blur.
+            async function withValidatedCompanyRegime() {
+                const element = createComponent();
+                await fillAnonymousDonation(element);
+                await fillInvoice(element, COMPANY_RFC, '601');
+                field(element, 'taxRegime').dispatchEvent(new CustomEvent('blur'));
+                await Promise.resolve();
+                return element;
+            }
+
+            it('drops the regime that no longer fits and wipes its error state by creating the field again', async () => {
+                const element = await withValidatedCompanyRegime();
+                const before = field(element, 'taxRegime');
+                const showBefore = jest.spyOn(before, 'reportValidity');
+                expect(before.value).toBe('601');
+
+                await typeInto(element, 'rfc', PERSON_RFC);
+
+                const after = field(element, 'taxRegime');
+                expect(after.value).toBe('');
+                expect(after).not.toBe(before);
+                expect(showBefore).not.toHaveBeenCalled();
+            });
+
+            it('does not show a regime error while the donor keeps typing the RFC', async () => {
+                const element = await withValidatedCompanyRegime();
+                await typeInto(element, 'rfc', PERSON_RFC);
+                const regime = field(element, 'taxRegime');
+                const markRegime = jest.spyOn(regime, 'setCustomValidity');
+                const showRegime = jest.spyOn(regime, 'reportValidity');
+
+                await typeInto(element, 'rfc', 'GODE56123');
+                await typeInto(element, 'rfc', 'GODE561231GR9');
+                await flushPromises();
+
+                expect(markRegime).not.toHaveBeenCalledWith(REGIME_REQUIRED);
+                expect(showRegime).not.toHaveBeenCalled();
+                expect(errorBanner(element)).toBeNull();
+            });
+
+            it('shows the regime error when the donor leaves the empty regime field', async () => {
+                const element = await withValidatedCompanyRegime();
+                await typeInto(element, 'rfc', PERSON_RFC);
+                const regime = field(element, 'taxRegime');
+                const markRegime = jest.spyOn(regime, 'setCustomValidity');
+                const showRegime = jest.spyOn(regime, 'reportValidity');
+
+                regime.dispatchEvent(new CustomEvent('blur'));
+                await Promise.resolve();
+
+                expect(markRegime).toHaveBeenLastCalledWith(REGIME_REQUIRED);
+                expect(showRegime).toHaveBeenCalled();
+            });
+
+            it('flags the empty regime when the donor tries to continue, without calling Apex', async () => {
+                const element = await withValidatedCompanyRegime();
+                await typeInto(element, 'rfc', PERSON_RFC);
+                const markRegime = jest.spyOn(field(element, 'taxRegime'), 'setCustomValidity');
+
+                await submit(element);
+
+                expect(markRegime).toHaveBeenLastCalledWith(REGIME_REQUIRED);
+                expect(noticeText(element)).toContain(FIX_NOTICE);
+                expect(startDonation).not.toHaveBeenCalled();
+            });
+
+            it('removes the regime error and the notice when a valid regime is chosen for the new RFC', async () => {
+                const element = await withValidatedCompanyRegime();
+                await typeInto(element, 'rfc', PERSON_RFC);
+                await submit(element);
+                expect(noticeText(element)).toContain(FIX_NOTICE);
+                const markRegime = jest.spyOn(field(element, 'taxRegime'), 'setCustomValidity');
+
+                await chooseRegime(element, '612');
+
+                expect(markRegime).toHaveBeenLastCalledWith('');
+                expect(field(element, 'taxRegime').value).toBe('612');
+                expect(errorBanner(element)).toBeNull();
+            });
+
+            it('keeps the general notice while the dropped regime or another field is still pending', async () => {
+                startDonation.mockRejectedValueOnce({
+                    body: { message: 'taxPostalCode|El código postal debe tener 5 dígitos.' }
+                });
+                const element = createComponent();
+                await fillAnonymousDonation(element);
+                await fillInvoice(element, COMPANY_RFC, '601');
+                await submit(element);
+                expect(noticeText(element)).toContain(FIX_NOTICE);
+
+                await typeInto(element, 'rfc', PERSON_RFC);
+                expect(noticeText(element)).toContain(FIX_NOTICE);
+
+                await typeInto(element, 'taxPostalCode', '97010');
+                expect(noticeText(element)).toContain(FIX_NOTICE);
+
+                await chooseRegime(element, '612');
+                expect(errorBanner(element)).toBeNull();
+            });
+
+            it('makes no Apex call while the donor changes the RFC or the regime', async () => {
+                const element = await withValidatedCompanyRegime();
+
+                await typeInto(element, 'rfc', PERSON_RFC);
+                await chooseRegime(element, '612');
+                await typeInto(element, 'rfc', COMPANY_RFC);
+                await flushPromises();
+
+                expect(startDonation).not.toHaveBeenCalled();
+                expect(openPayment).not.toHaveBeenCalled();
+            });
+        });
+
+        it('makes no Apex call while the donor types, corrects or changes options', async () => {
+            const element = createComponent();
+            await selectAmount(element, 500);
+            await submit(element);
+
+            await typeInto(element, 'email', 'sin-arroba');
+            await typeInto(element, 'email', 'donante@example.com');
+            await setToggle(element, 'anonymous', false);
+            await typeInto(element, 'publicName', 'Familia Pérez');
+            await setToggle(element, 'invoice', true);
+            await typeInto(element, 'legalName', 'Familia Pérez S.A. de C.V.');
+            await typeInto(element, 'rfc', PERSON_RFC);
+            await typeInto(element, 'taxPostalCode', '97000');
+            await chooseRegime(element, '612');
+            await selectAmount(element, 1000);
+            await flushPromises();
+
+            expect(startDonation).not.toHaveBeenCalled();
+            expect(openPayment).not.toHaveBeenCalled();
+        });
+
+        it('keeps the payment flow: after the corrections, one startDonation and then one openPayment', async () => {
+            const element = createComponent();
+            await selectAmount(element, 500);
+            await submit(element);
+            await typeInto(element, 'email', 'donante@example.com');
+            expect(errorBanner(element)).toBeNull();
+
+            await submit(element);
+
+            expect(startDonation).toHaveBeenCalledTimes(1);
+            expect(openPayment).toHaveBeenCalledTimes(1);
+            expect(openPayment).toHaveBeenCalledWith({ attemptId: ATTEMPT_ID });
+            expect(startDonation.mock.invocationCallOrder[0]).toBeLessThan(openPayment.mock.invocationCallOrder[0]);
+            expect(window.location.assign).toHaveBeenCalledWith(CHECKOUT_URL);
         });
     });
 

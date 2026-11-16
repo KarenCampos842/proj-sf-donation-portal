@@ -14,6 +14,7 @@ import {
     getRegimeOptions,
     getTaxpayerType,
     normalizeText,
+    parseServerError,
     sanitizeRfc,
     validateEmail,
     validateLegalName,
@@ -35,6 +36,16 @@ export default class DonationForm extends LightningElement {
     amountError = '';
     errorMessage = '';
     isSubmitting = false;
+
+    // DON-17. True only while errorMessage is the "check the marked fields" notice, so it can go away
+    // when the fields are fixed. A general error of the server never sets it.
+    validationNoticeActive = false;
+    // Fields already validated once. Only these show their error while the donor is still typing.
+    validatedFields = new Set();
+    // Fields marked by an error of the server that the donor has not edited since.
+    serverMarkedFields = new Set();
+    // One-item list used as the key of the regime combobox. A new id creates the combobox again.
+    regimeFieldKeys = [{ id: 0 }];
 
     @track form = {
         email: '',
@@ -124,42 +135,55 @@ export default class DonationForm extends LightningElement {
     handleAmountChange(event) {
         this.selectedAmount = Number(event.target.value);
         this.amountError = '';
+        this.clearValidationNoticeIfFormIsValid();
     }
 
     handleAnonymousToggle(event) {
         this.isAnonymous = event.target.checked;
+        this.forgetFields(['publicName']);
     }
 
     handleInvoiceToggle(event) {
         this.invoiceRequested = event.target.checked;
+        this.forgetFields(['legalName', 'rfc', 'taxPostalCode', 'taxRegime']);
     }
 
     handleFieldChange(event) {
         const field = event.target.dataset.field;
         if (field === 'rfc') {
             this.handleRfcChange(event);
-            return;
+        } else {
+            this.form[field] = event.target.value;
         }
-        this.form[field] = event.target.value;
-        event.target.setCustomValidity('');
+        this.refreshFieldAfterEdit(field, event.target);
     }
 
     handleRfcChange(event) {
         const rfc = sanitizeRfc(event.target.value);
         this.form.rfc = rfc;
         event.target.value = rfc;
-        event.target.setCustomValidity(validateRfc(rfc));
         const regimeIsStillAllowed = getRegimeOptions(getTaxpayerType(rfc)).some(
             (option) => option.value === this.form.taxRegime
         );
-        if (!regimeIsStillAllowed) {
-            this.form.taxRegime = '';
+        if (this.form.taxRegime && !regimeIsStillAllowed) {
+            this.dropIncompatibleRegime();
         }
+    }
+
+    // The chosen regime no longer fits the taxpayer type of the RFC. It is cleared without showing a
+    // new error while the donor is still typing the RFC; the field is validated again when the donor
+    // leaves it or tries to continue. The combobox is created again so that it loses any error it
+    // was showing, because setCustomValidity alone does not repaint it.
+    dropIncompatibleRegime() {
+        this.form.taxRegime = '';
+        this.validatedFields.delete('taxRegime');
+        this.serverMarkedFields.delete('taxRegime');
+        this.regimeFieldKeys = [{ id: this.regimeFieldKeys[0].id + 1 }];
     }
 
     handleRegimeChange(event) {
         this.form.taxRegime = event.detail.value;
-        event.target.setCustomValidity('');
+        this.refreshFieldAfterEdit('taxRegime', event.target);
     }
 
     handleFieldBlur(event) {
@@ -171,8 +195,11 @@ export default class DonationForm extends LightningElement {
             return;
         }
         this.errorMessage = '';
+        this.validationNoticeActive = false;
+        this.serverMarkedFields.clear();
         if (!this.validateAll()) {
             this.errorMessage = FORM_MESSAGES.submit.fixFields;
+            this.validationNoticeActive = true;
             return;
         }
 
@@ -186,8 +213,8 @@ export default class DonationForm extends LightningElement {
             }
             window.location.assign(checkoutUrl);
         } catch (error) {
-            this.errorMessage = this.readErrorMessage(error);
             this.isSubmitting = false;
+            this.showServerError(error);
         }
     }
 
@@ -222,10 +249,51 @@ export default class DonationForm extends LightningElement {
     }
 
     reportField(field, element) {
+        this.validatedFields.add(field);
         const message = this.fieldMessage(field);
         element.setCustomValidity(message);
         element.reportValidity();
         return message === '';
+    }
+
+    // DON-17. Runs after the donor edits a field, with the same local rules and without any Apex call.
+    // A field that was already validated updates its error at once, so it does not wait for the blur.
+    // A field that was never validated shows nothing yet.
+    refreshFieldAfterEdit(field, element) {
+        this.serverMarkedFields.delete(field);
+        if (this.validatedFields.has(field)) {
+            this.reportField(field, element);
+        } else {
+            element.setCustomValidity(field === 'rfc' ? validateRfc(this.form.rfc) : '');
+        }
+        this.clearValidationNoticeIfFormIsValid();
+    }
+
+    // Fields that leave the screen start again as never validated.
+    forgetFields(fields) {
+        fields.forEach((field) => {
+            this.validatedFields.delete(field);
+            this.serverMarkedFields.delete(field);
+        });
+        this.clearValidationNoticeIfFormIsValid();
+    }
+
+    isFormValid() {
+        return (
+            Boolean(this.selectedAmount) &&
+            !this.amountError &&
+            this.serverMarkedFields.size === 0 &&
+            this.activeFields().every((field) => this.fieldMessage(field) === '')
+        );
+    }
+
+    // Only the "check the marked fields" notice goes away by itself. An error of the server that
+    // belongs to no field stays until the donor tries again.
+    clearValidationNoticeIfFormIsValid() {
+        if (this.validationNoticeActive && this.isFormValid()) {
+            this.errorMessage = '';
+            this.validationNoticeActive = false;
+        }
     }
 
     validateAll() {
@@ -265,9 +333,36 @@ export default class DonationForm extends LightningElement {
         };
     }
 
-    // The server messages are already in Spanish and safe to show; anything else gets a friendly text.
-    readErrorMessage(error) {
-        const message = error?.body?.message;
-        return typeof message === 'string' && message.trim() ? message : FORM_MESSAGES.submit.genericError;
+    // DON-17. Only messages from DonationIntakeService (Spanish and safe to show) are displayed; an
+    // error that belongs to a field is marked on that field, the others go to the general notice.
+    // Whatever else fails gets a friendly text, never the technical message.
+    showServerError(error) {
+        const serverError = parseServerError(error);
+        if (!serverError) {
+            this.errorMessage = FORM_MESSAGES.submit.genericError;
+            return;
+        }
+        const marked = this.markServerField(serverError);
+        this.errorMessage = marked ? FORM_MESSAGES.submit.fixFields : serverError.message;
+        this.validationNoticeActive = marked;
+    }
+
+    // Returns false when the field is not on the screen, so its message is not lost.
+    markServerField({ field, message }) {
+        if (field === 'amount') {
+            this.amountError = message;
+            this.template.querySelector('input[name="amount"]')?.focus();
+            return true;
+        }
+        const element = field ? this.template.querySelector(`[data-field="${field}"]`) : null;
+        if (!element) {
+            return false;
+        }
+        this.validatedFields.add(field);
+        this.serverMarkedFields.add(field);
+        element.setCustomValidity(message);
+        element.reportValidity();
+        element.focus();
+        return true;
     }
 }

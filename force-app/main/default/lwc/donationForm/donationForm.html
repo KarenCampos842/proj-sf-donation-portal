@@ -149,17 +149,20 @@
                                     ></lightning-input>
                                 </lightning-layout-item>
                                 <lightning-layout-item size="12" padding="horizontal-small">
-                                    <lightning-combobox
-                                        data-field="taxRegime"
-                                        label={messages.invoice.regime}
-                                        placeholder={messages.invoice.regimePlaceholder}
-                                        options={regimeOptions}
-                                        value={form.taxRegime}
-                                        required
-                                        field-level-help={messages.invoice.regimeHelp}
-                                        onchange={handleRegimeChange}
-                                        onblur={handleFieldBlur}
-                                    ></lightning-combobox>
+                                    <template for:each={regimeFieldKeys} for:item="regimeKey">
+                                        <lightning-combobox
+                                            key={regimeKey.id}
+                                            data-field="taxRegime"
+                                            label={messages.invoice.regime}
+                                            placeholder={messages.invoice.regimePlaceholder}
+                                            options={regimeOptions}
+                                            value={form.taxRegime}
+                                            required
+                                            field-level-help={messages.invoice.regimeHelp}
+                                            onchange={handleRegimeChange}
+                                            onblur={handleFieldBlur}
+                                        ></lightning-combobox>
+                                    </template>
                                 </lightning-layout-item>
                             </lightning-layout>
                         </div>

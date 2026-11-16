@@ -22,6 +22,28 @@ public with sharing class DonationIntakeService {
     public static final String VISIBILITY_ANONYMOUS = 'Anonymous';
     public static final String VISIBILITY_PUBLIC = 'Public';
 
+    // DON-17. Every error thrown by this class has the form "<field>|<message>". The field is the
+    // data-field name used by the form (empty for errors that belong to no field). The form shows
+    // only messages with this shape, so a platform or unexpected error never reaches the donor.
+    @TestVisible
+    private static final String ERROR_SEPARATOR = '|';
+    @TestVisible
+    private static final String FIELD_AMOUNT = 'amount';
+    @TestVisible
+    private static final String FIELD_EMAIL = 'email';
+    @TestVisible
+    private static final String FIELD_PUBLIC_NAME = 'publicName';
+    @TestVisible
+    private static final String FIELD_LEGAL_NAME = 'legalName';
+    @TestVisible
+    private static final String FIELD_RFC = 'rfc';
+    @TestVisible
+    private static final String FIELD_POSTAL_CODE = 'taxPostalCode';
+    @TestVisible
+    private static final String FIELD_REGIME = 'taxRegime';
+    // What Salesforce puts in an AuraHandledException that was created without a message.
+    private static final String PLATFORM_DEFAULT_MESSAGE = 'Script-thrown exception';
+
     @TestVisible
     private static final String MSG_MISSING_DATA = 'Faltan datos obligatorios de tu donación.';
     @TestVisible
@@ -152,9 +174,9 @@ public with sharing class DonationIntakeService {
         try {
             return gateway.createAttempt(cleanRequest);
         } catch (AuraHandledException e) {
-            throw e;
+            throw donorError(null, donorSafeMessage(e.getMessage(), MSG_START_FAILED));
         } catch (Exception e) {
-            throw CampaignPortalController.userFacingError(MSG_START_FAILED);
+            throw donorError(null, MSG_START_FAILED);
         }
     }
 
@@ -173,25 +195,25 @@ public with sharing class DonationIntakeService {
     public static String openPayment(String attemptId) {
         Id parsedId = toAttemptId(attemptId);
         if (parsedId == null) {
-            throw CampaignPortalController.userFacingError(MSG_PAYMENT_FAILED);
+            throw donorError(null, MSG_PAYMENT_FAILED);
         }
         String checkoutUrl;
         try {
             checkoutUrl = gateway.createCheckout(parsedId);
         } catch (AuraHandledException e) {
-            throw e;
+            throw donorError(null, donorSafeMessage(e.getMessage(), MSG_PAYMENT_FAILED));
         } catch (Exception e) {
-            throw CampaignPortalController.userFacingError(MSG_PAYMENT_FAILED);
+            throw donorError(null, MSG_PAYMENT_FAILED);
         }
         if (String.isBlank(checkoutUrl) || !checkoutUrl.startsWithIgnoreCase('https://')) {
-            throw CampaignPortalController.userFacingError(MSG_PAYMENT_FAILED);
+            throw donorError(null, MSG_PAYMENT_FAILED);
         }
         return checkoutUrl;
     }
 
     private static DonationFormInputDTO validateAndClean(DonationFormInputDTO request) {
         if (request == null) {
-            throw CampaignPortalController.userFacingError(MSG_MISSING_DATA);
+            throw donorError(null, MSG_MISSING_DATA);
         }
         DonationFormInputDTO clean = new DonationFormInputDTO();
         clean.campaignId = validateCampaign(request.campaignId);
@@ -211,13 +233,13 @@ public with sharing class DonationIntakeService {
     private static String validateCampaign(String rawCampaignId) {
         Id campaignId = CampaignPortalController.toCampaignId(rawCampaignId);
         if (campaignId == null) {
-            throw CampaignPortalController.userFacingError(MSG_CAMPAIGN_CLOSED);
+            throw donorError(null, MSG_CAMPAIGN_CLOSED);
         }
         Fundraising_Campaign__c campaign;
         try {
             campaign = CampaignPortalController.findConsultableCampaign(campaignId);
         } catch (QueryException e) {
-            throw CampaignPortalController.userFacingError(MSG_START_FAILED);
+            throw donorError(null, MSG_START_FAILED);
         }
         Boolean acceptsDonations =
             campaign != null &&
@@ -225,27 +247,27 @@ public with sharing class DonationIntakeService {
             campaign.Accepts_Donations__c == true &&
             (campaign.End_Date__c == null || campaign.End_Date__c >= Date.today());
         if (!acceptsDonations) {
-            throw CampaignPortalController.userFacingError(MSG_CAMPAIGN_CLOSED);
+            throw donorError(null, MSG_CAMPAIGN_CLOSED);
         }
         return String.valueOf(campaignId);
     }
 
     private static Decimal validateAmount(Decimal amount) {
         if (amount == null) {
-            throw CampaignPortalController.userFacingError(MSG_AMOUNT_REQUIRED);
+            throw donorError(FIELD_AMOUNT, MSG_AMOUNT_REQUIRED);
         }
         for (Integer suggested : SUGGESTED_AMOUNTS) {
             if (amount == suggested) {
                 return amount;
             }
         }
-        throw CampaignPortalController.userFacingError(MSG_AMOUNT_INVALID);
+        throw donorError(FIELD_AMOUNT, MSG_AMOUNT_INVALID);
     }
 
     private static String validateEmail(String rawEmail) {
         String email = rawEmail?.trim();
         if (String.isBlank(email) || email.length() > MAX_EMAIL_LENGTH || !EMAIL_PATTERN.matcher(email).matches()) {
-            throw CampaignPortalController.userFacingError(MSG_EMAIL_INVALID);
+            throw donorError(FIELD_EMAIL, MSG_EMAIL_INVALID);
         }
         return email;
     }
@@ -253,18 +275,18 @@ public with sharing class DonationIntakeService {
     // equals is case sensitive; == and != on Strings ignore case and would accept "PUBLIC".
     private static String validateVisibility(String visibility) {
         if (visibility == null || !(visibility.equals(VISIBILITY_ANONYMOUS) || visibility.equals(VISIBILITY_PUBLIC))) {
-            throw CampaignPortalController.userFacingError(MSG_VISIBILITY_INVALID);
+            throw donorError(null, MSG_VISIBILITY_INVALID);
         }
         return visibility;
     }
 
     private static String validatePublicName(String rawName) {
         if (PublicNameSanitizer.isTooLong(rawName)) {
-            throw CampaignPortalController.userFacingError(MSG_PUBLIC_NAME_TOO_LONG);
+            throw donorError(FIELD_PUBLIC_NAME, MSG_PUBLIC_NAME_TOO_LONG);
         }
         String name = PublicNameSanitizer.sanitize(rawName);
         if (String.isBlank(name)) {
-            throw CampaignPortalController.userFacingError(MSG_PUBLIC_NAME_REQUIRED);
+            throw donorError(FIELD_PUBLIC_NAME, MSG_PUBLIC_NAME_REQUIRED);
         }
         return name;
     }
@@ -283,33 +305,47 @@ public with sharing class DonationIntakeService {
         clean.taxRegime = regime;
     }
 
+    // The message is the one of Payment_Attempt__c; the field is the first fiscal field that is empty.
     private static void assertInvoiceFieldsPresent(String legalName, String rfc, String postalCode, String regime) {
-        if (String.isBlank(legalName) || String.isBlank(rfc) || String.isBlank(postalCode) || String.isBlank(regime)) {
-            throw CampaignPortalController.userFacingError(MSG_INVOICE_DATA_MISSING);
+        String missingField = String.isBlank(legalName)
+            ? FIELD_LEGAL_NAME
+            : String.isBlank(rfc) ? FIELD_RFC : String.isBlank(postalCode) ? FIELD_POSTAL_CODE : String.isBlank(regime) ? FIELD_REGIME : null;
+        if (missingField != null) {
+            throw donorError(missingField, MSG_INVOICE_DATA_MISSING);
         }
     }
 
     private static void assertInvoiceFormats(String legalName, String rfc, String postalCode) {
         if (legalName.length() > MAX_LEGAL_NAME_LENGTH) {
-            throw CampaignPortalController.userFacingError(MSG_LEGAL_NAME_TOO_LONG);
+            throw donorError(FIELD_LEGAL_NAME, MSG_LEGAL_NAME_TOO_LONG);
         }
         if (!RFC_PATTERN.matcher(rfc).matches()) {
-            throw CampaignPortalController.userFacingError(MSG_RFC_INVALID);
+            throw donorError(FIELD_RFC, MSG_RFC_INVALID);
         }
         if (!POSTAL_CODE_PATTERN.matcher(postalCode).matches()) {
-            throw CampaignPortalController.userFacingError(MSG_POSTAL_CODE_INVALID);
+            throw donorError(FIELD_POSTAL_CODE, MSG_POSTAL_CODE_INVALID);
         }
     }
 
     // The taxpayer type comes from the RFC length, like the Taxpayer_Type__c formula.
     private static void assertRegimeMatches(String regime, String rfc) {
         if (!PERSON_REGIMES.contains(regime) && !COMPANY_REGIMES.contains(regime)) {
-            throw CampaignPortalController.userFacingError(MSG_REGIME_INVALID);
+            throw donorError(FIELD_REGIME, MSG_REGIME_INVALID);
         }
         Set<String> allowedRegimes = rfc.length() == RFC_LENGTH_COMPANY ? COMPANY_REGIMES : PERSON_REGIMES;
         if (!allowedRegimes.contains(regime)) {
-            throw CampaignPortalController.userFacingError(MSG_REGIME_MISMATCH);
+            throw donorError(FIELD_REGIME, MSG_REGIME_MISMATCH);
         }
+    }
+
+    private static AuraHandledException donorError(String field, String message) {
+        return CampaignPortalController.userFacingError((field == null ? '' : field) + ERROR_SEPARATOR + message);
+    }
+
+    // Workstream A throws AuraHandledExceptions with Spanish messages made for the donor. A blank
+    // message, or the default one of the platform, is replaced by a safe text.
+    private static String donorSafeMessage(String message, String fallback) {
+        return String.isBlank(message) || message.equals(PLATFORM_DEFAULT_MESSAGE) ? fallback : message;
     }
 
     // Removes control characters and collapses spaces.

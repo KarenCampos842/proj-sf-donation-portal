@@ -338,7 +338,7 @@ private class DonationIntakeServiceTest {
                 DonationIntakeService.startDonation(request);
                 Assert.fail('Expected a rejection');
             } catch (AuraHandledException e) {
-                Assert.areEqual(DonationIntakeService.MSG_START_FAILED, e.getMessage(), 'No technical detail reaches the donor');
+                Assert.areEqual(DonationIntakeService.MSG_START_FAILED, textOf(e), 'No technical detail reaches the donor');
             }
         }
         Test.stopTest();
@@ -623,6 +623,92 @@ private class DonationIntakeServiceTest {
         Test.stopTest();
     }
 
+    // DON-17: errors tied to a field and safe messages
+
+    @IsTest
+    static void shouldAssociateEachError_WithTheFieldThatMustBeCorrected() {
+        CapturingGateway gateway = useCapturingGateway();
+
+        Test.startTest();
+        // Called straight on Apex, as when the browser validation is skipped.
+        for (FieldCase item : fieldCases()) {
+            assertStartRejected(item.request, item.field, item.message, item.scenario);
+        }
+        Test.stopTest();
+
+        Assert.areEqual(0, gateway.attemptCalls, 'Invalid data never reaches the payment code');
+    }
+
+    @IsTest
+    static void shouldNotAssociateAnyField_WhenTheErrorIsGeneral() {
+        useCapturingGateway();
+        DonationIntakeService.DonationFormInputDTO closedCampaign = validAnonymousRequest();
+        closedCampaign.campaignId = idOf(PAUSED_CAMPAIGN);
+        DonationIntakeService.DonationFormInputDTO badVisibility = validAnonymousRequest();
+        badVisibility.visibility = 'Private';
+
+        Test.startTest();
+        assertStartRejected(null, '', DonationIntakeService.MSG_MISSING_DATA, 'null request');
+        assertStartRejected(closedCampaign, '', DonationIntakeService.MSG_CAMPAIGN_CLOSED, 'campaign that does not accept donations');
+        assertStartRejected(badVisibility, '', DonationIntakeService.MSG_VISIBILITY_INVALID, 'visibility');
+        Test.stopTest();
+    }
+
+    @IsTest
+    static void shouldKeepFriendlyMessageOfWorkstreamAWithoutField_WhenGatewayThrowsFriendlyError() {
+        CapturingGateway gateway = useCapturingGateway();
+        gateway.errorToThrow = CampaignPortalController.userFacingError('Esta campaña ya no acepta donaciones.');
+
+        Test.startTest();
+        assertStartRejected(validAnonymousRequest(), '', 'Esta campaña ya no acepta donaciones.', 'friendly error from A');
+        Test.stopTest();
+    }
+
+    @IsTest
+    static void shouldReplaceMessage_WhenWorkstreamAThrowsBlankOrDefaultPlatformMessage() {
+        CapturingGateway gateway = useCapturingGateway();
+
+        Test.startTest();
+        for (AuraHandledException unsafe : new List<AuraHandledException>{
+            CampaignPortalController.userFacingError(''),
+            new AuraHandledException('detalle interno')
+        }) {
+            gateway.errorToThrow = unsafe;
+            assertStartRejected(validAnonymousRequest(), '', DonationIntakeService.MSG_START_FAILED, 'unsafe message at startDonation');
+            System.runAs(PortalTestDataFactory.getUser(PortalTestDataFactory.GUEST_LAST_NAME)) {
+                assertPaymentRejected(validAttemptId(), DonationIntakeService.MSG_PAYMENT_FAILED, 'unsafe message at openPayment');
+            }
+        }
+        Test.stopTest();
+    }
+
+    @IsTest
+    static void shouldNotLeakDonorDataOrTechnicalDetail_WhenGatewayThrowsUnexpectedError() {
+        CapturingGateway gateway = useCapturingGateway();
+        gateway.errorToThrow = new DmlException(
+            'FIELD_CUSTOM_VALIDATION_EXCEPTION at Class.DonationPaymentController: donante@example.com Familia Pérez ' + PERSON_RFC
+        );
+        DonationIntakeService.DonationFormInputDTO request = validPublicInvoiceRequest();
+        request.email = 'donante@example.com';
+        request.rfc = PERSON_RFC;
+        request.taxRegime = '612';
+
+        Test.startTest();
+        assertStartRejected(request, '', DonationIntakeService.MSG_START_FAILED, 'unexpected error at startDonation');
+        System.runAs(PortalTestDataFactory.getUser(PortalTestDataFactory.GUEST_LAST_NAME)) {
+            try {
+                DonationIntakeService.openPayment(validAttemptId());
+                Assert.fail('Expected a friendly error');
+            } catch (AuraHandledException e) {
+                Assert.areEqual(DonationIntakeService.MSG_PAYMENT_FAILED, textOf(e), 'Safe text at openPayment');
+                Assert.isFalse(e.getMessage().containsIgnoreCase('example.com'), 'No email in the message');
+                Assert.isFalse(e.getMessage().contains(PERSON_RFC), 'No RFC in the message');
+                Assert.isFalse(e.getMessage().containsIgnoreCase('Class.'), 'No internal class name in the message');
+            }
+        }
+        Test.stopTest();
+    }
+
     // openPayment
 
     @IsTest
@@ -862,7 +948,7 @@ private class DonationIntakeServiceTest {
             DonationIntakeService.openPayment(attemptId);
             Assert.fail('Expected a friendly error');
         } catch (AuraHandledException e) {
-            Assert.areEqual(DonationIntakeService.MSG_PAYMENT_FAILED, e.getMessage(), 'Message from Workstream A');
+            Assert.areEqual(DonationIntakeService.MSG_PAYMENT_FAILED, textOf(e), 'Message from Workstream A');
         }
         Test.stopTest();
 
@@ -967,9 +1053,111 @@ private class DonationIntakeServiceTest {
                 DonationIntakeService.startDonation(request);
                 Assert.fail('Expected a rejection for: ' + scenario);
             } catch (AuraHandledException e) {
-                Assert.areEqual(expectedMessage, e.getMessage(), 'Message for: ' + scenario);
+                Assert.areEqual(expectedMessage, textOf(e), 'Message for: ' + scenario);
             }
         }
+    }
+
+    private static void assertStartRejected(
+        DonationIntakeService.DonationFormInputDTO request,
+        String expectedField,
+        String expectedMessage,
+        String scenario
+    ) {
+        System.runAs(PortalTestDataFactory.getUser(PortalTestDataFactory.GUEST_LAST_NAME)) {
+            try {
+                DonationIntakeService.startDonation(request);
+                Assert.fail('Expected a rejection for: ' + scenario);
+            } catch (AuraHandledException e) {
+                Assert.areEqual(expectedField, fieldOf(e), 'Field for: ' + scenario);
+                Assert.areEqual(expectedMessage, textOf(e), 'Message for: ' + scenario);
+            }
+        }
+    }
+
+    // Every error of the service has the form "<field>|<message>" (DON-17).
+    private static String fieldOf(AuraHandledException e) {
+        Integer separatorIndex = e.getMessage().indexOf(DonationIntakeService.ERROR_SEPARATOR);
+        Assert.isTrue(separatorIndex >= 0, 'Every error has the form field|message');
+        return e.getMessage().substring(0, separatorIndex);
+    }
+
+    private static String textOf(AuraHandledException e) {
+        Integer separatorIndex = e.getMessage().indexOf(DonationIntakeService.ERROR_SEPARATOR);
+        Assert.isTrue(separatorIndex >= 0, 'Every error has the form field|message');
+        return e.getMessage().substring(separatorIndex + 1);
+    }
+
+    private class FieldCase {
+        public String scenario;
+        public DonationIntakeService.DonationFormInputDTO request;
+        public String field;
+        public String message;
+
+        public FieldCase(
+            String scenario,
+            DonationIntakeService.DonationFormInputDTO request,
+            String field,
+            String message
+        ) {
+            this.scenario = scenario;
+            this.request = request;
+            this.field = field;
+            this.message = message;
+        }
+    }
+
+    private static List<FieldCase> fieldCases() {
+        List<FieldCase> cases = new List<FieldCase>();
+
+        DonationIntakeService.DonationFormInputDTO noAmount = validAnonymousRequest();
+        noAmount.amount = null;
+        cases.add(new FieldCase('amount missing', noAmount, 'amount', DonationIntakeService.MSG_AMOUNT_REQUIRED));
+
+        DonationIntakeService.DonationFormInputDTO badEmail = validAnonymousRequest();
+        badEmail.email = 'sin-arroba';
+        cases.add(new FieldCase('email invalid', badEmail, 'email', DonationIntakeService.MSG_EMAIL_INVALID));
+
+        DonationIntakeService.DonationFormInputDTO noName = validPublicRequest();
+        noName.publicName = '   ';
+        cases.add(new FieldCase('public name empty', noName, 'publicName', DonationIntakeService.MSG_PUBLIC_NAME_REQUIRED));
+
+        DonationIntakeService.DonationFormInputDTO markupName = validPublicRequest();
+        markupName.publicName = '<b></b>';
+        cases.add(new FieldCase('public name only markup', markupName, 'publicName', DonationIntakeService.MSG_PUBLIC_NAME_REQUIRED));
+
+        DonationIntakeService.DonationFormInputDTO longName = validPublicRequest();
+        longName.publicName = 'a'.repeat(81);
+        cases.add(new FieldCase('public name too long', longName, 'publicName', DonationIntakeService.MSG_PUBLIC_NAME_TOO_LONG));
+
+        for (String missing : new List<String>{ 'legalName', 'rfc', 'taxPostalCode', 'taxRegime' }) {
+            DonationIntakeService.DonationFormInputDTO incomplete = validPublicInvoiceRequest();
+            clearField(incomplete, missing);
+            cases.add(new FieldCase('invoice without ' + missing, incomplete, missing, DonationIntakeService.MSG_INVOICE_DATA_MISSING));
+        }
+
+        DonationIntakeService.DonationFormInputDTO longLegalName = validPublicInvoiceRequest();
+        longLegalName.legalName = 'a'.repeat(255);
+        cases.add(new FieldCase('legal name too long', longLegalName, 'legalName', DonationIntakeService.MSG_LEGAL_NAME_TOO_LONG));
+
+        DonationIntakeService.DonationFormInputDTO badRfc = validPublicInvoiceRequest();
+        badRfc.rfc = 'GODE561331GR8';
+        badRfc.taxRegime = '612';
+        cases.add(new FieldCase('rfc month 13', badRfc, 'rfc', DonationIntakeService.MSG_RFC_INVALID));
+
+        DonationIntakeService.DonationFormInputDTO badPostalCode = validPublicInvoiceRequest();
+        badPostalCode.taxPostalCode = '9700';
+        cases.add(new FieldCase('postal code 4 digits', badPostalCode, 'taxPostalCode', DonationIntakeService.MSG_POSTAL_CODE_INVALID));
+
+        DonationIntakeService.DonationFormInputDTO unknownRegime = validPublicInvoiceRequest();
+        unknownRegime.taxRegime = '999';
+        cases.add(new FieldCase('regime not in catalog', unknownRegime, 'taxRegime', DonationIntakeService.MSG_REGIME_INVALID));
+
+        DonationIntakeService.DonationFormInputDTO wrongRegime = validPublicInvoiceRequest();
+        wrongRegime.taxRegime = '605';
+        cases.add(new FieldCase('regime for the other taxpayer type', wrongRegime, 'taxRegime', DonationIntakeService.MSG_REGIME_MISMATCH));
+
+        return cases;
     }
 
     private static void assertPaymentRejected(String attemptId, String expectedMessage, String scenario) {
@@ -977,7 +1165,7 @@ private class DonationIntakeServiceTest {
             DonationIntakeService.openPayment(attemptId);
             Assert.fail('Expected a rejection for: ' + scenario);
         } catch (AuraHandledException e) {
-            Assert.areEqual(expectedMessage, e.getMessage(), 'Message for: ' + scenario);
+            Assert.areEqual(expectedMessage, textOf(e), 'Message for: ' + scenario);
         }
     }
 }
