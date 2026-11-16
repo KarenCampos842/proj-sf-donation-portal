@@ -53,6 +53,8 @@ Owner of the records created by the guest: to be confirmed (TEC-01).
 
 No permission set other than the integration one `Mercado_Pago_Callout` and the team set `Portal_Developer` gives read access to the fields of `Payment_Attempt__c`. The source of `Portal_Developer` is only in the unmerged PR #48 although the set exists in the Sandbox.
 
+Internal read access to payment attempts: permission set `Payment_Attempt_Viewer` (read-only, view all, no create/edit/delete) lets the payments owner audit attempts and take evidence. `Donation_Admin` still has no access to attempts. Never assign `Payment_Attempt_Viewer` to the site guest user. Assigned to the payments developer on 2026-11-10.
+
 ## 3. Where the Mercado Pago credentials live
 
 - Storage mechanism: access token in a **Named Credential / External Credential**; webhook secret key in a **protected setting** (D2). Nothing in code, site or repo (TEC-05).
@@ -74,6 +76,7 @@ No permission set other than the integration one `Mercado_Pago_Callout` and the 
   - [ ] Repeat the `git log -p --all` search after the commit that removes `docs/payment-test-data.local` from tracking (the search above was run on 2026-11-09, before that file was committed)
 - If a key leaks: rotate it the same day and tell the professor.
 - **Exposed test-account data (2026-11-10):** `docs/payment-test-data.local` was committed in `dba1654` (PR #50) to this **public** repository. It holds sign-in data and test-card data for Mercado Pago **test** accounts (the values are not reproduced here); it contains no `APP_USR-` or `TEST-` access token. The file is now untracked and listed in `.gitignore`, but deleting it does **not** remove it from the Git history. Treat those test-account credentials as exposed: reset their passwords or recreate the test users, and keep the data only in untracked local files. The history was not rewritten.
+  - 2026-11-11: Rodrigo Colli (payments) changed the passwords of the Mercado Pago test accounts; the values in the Git history no longer work.
 
 ## 4. Personal data classification
 
