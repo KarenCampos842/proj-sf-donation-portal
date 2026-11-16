@@ -13,6 +13,10 @@
  *
  * Every rule that the form checks in the browser is repeated here, because the browser can
  * never be trusted. Messages are in Spanish and safe to show to the donor.
+ *
+ * The public name is cleaned by PublicNameSanitizer before the payment code of Workstream A saves
+ * it (DON-11). DonationPaymentController applies the same cleaning, because the guest user can call
+ * it directly. The interface also shows names as text, never as HTML.
  */
 public with sharing class DonationIntakeService {
     public static final String VISIBILITY_ANONYMOUS = 'Anonymous';
@@ -63,7 +67,6 @@ public with sharing class DonationIntakeService {
         20000
     };
     private static final Integer MAX_EMAIL_LENGTH = 80;
-    private static final Integer MAX_PUBLIC_NAME_LENGTH = 80;
     private static final Integer MAX_LEGAL_NAME_LENGTH = 254;
     private static final Integer RFC_LENGTH_COMPANY = 12;
 
@@ -256,12 +259,12 @@ public with sharing class DonationIntakeService {
     }
 
     private static String validatePublicName(String rawName) {
-        String name = normalizeText(rawName);
+        if (PublicNameSanitizer.isTooLong(rawName)) {
+            throw CampaignPortalController.userFacingError(MSG_PUBLIC_NAME_TOO_LONG);
+        }
+        String name = PublicNameSanitizer.sanitize(rawName);
         if (String.isBlank(name)) {
             throw CampaignPortalController.userFacingError(MSG_PUBLIC_NAME_REQUIRED);
-        }
-        if (name.length() > MAX_PUBLIC_NAME_LENGTH) {
-            throw CampaignPortalController.userFacingError(MSG_PUBLIC_NAME_TOO_LONG);
         }
         return name;
     }
@@ -309,8 +312,7 @@ public with sharing class DonationIntakeService {
         }
     }
 
-    // Removes control characters and collapses spaces. Angle brackets are kept as plain text:
-    // the interface always shows names as text, never as HTML (DON-11 AC4).
+    // Removes control characters and collapses spaces.
     private static String normalizeText(String value) {
         return value?.replaceAll('\\p{Cntrl}', ' ')?.normalizeSpace();
     }

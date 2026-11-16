@@ -153,7 +153,7 @@ private class DonationIntakeServiceTest {
     }
 
     @IsTest
-    static void shouldKeepHtmlAsPlainText_WhenPublicNameContainsTags() {
+    static void shouldRemoveScriptTags_WhenPublicNameContainsMarkup() {
         CapturingGateway gateway = useCapturingGateway();
         DonationIntakeService.DonationFormInputDTO request = validPublicRequest();
         request.publicName = '<script>alert(1)</script>';
@@ -162,7 +162,59 @@ private class DonationIntakeServiceTest {
         runAsGuestStart(request);
         Test.stopTest();
 
-        Assert.areEqual('<script>alert(1)</script>', gateway.capturedRequest.publicName, 'The text is kept; the interface shows it as text');
+        Assert.areEqual('alert(1)', gateway.capturedRequest.publicName, 'Tags are removed and the text between them is kept');
+    }
+
+    @IsTest
+    static void shouldKeepWordsApart_WhenTagsSeparateThem() {
+        CapturingGateway gateway = useCapturingGateway();
+        DonationIntakeService.DonationFormInputDTO request = validPublicRequest();
+        request.publicName = 'Ana<b>López</b> Ruiz';
+
+        Test.startTest();
+        runAsGuestStart(request);
+        Test.stopTest();
+
+        Assert.areEqual('Ana López Ruiz', gateway.capturedRequest.publicName, 'A removed tag leaves a space between words');
+    }
+
+    @IsTest
+    static void shouldRemoveAngleBrackets_WhenTagIsNeverClosed() {
+        CapturingGateway gateway = useCapturingGateway();
+        DonationIntakeService.DonationFormInputDTO request = validPublicRequest();
+        request.publicName = '<img src=x onerror=alert(1)';
+
+        Test.startTest();
+        runAsGuestStart(request);
+        Test.stopTest();
+
+        Assert.areEqual('img src=x onerror=alert(1)', gateway.capturedRequest.publicName, 'No angle bracket survives');
+    }
+
+    @IsTest
+    static void shouldRemoveAngleBracket_WhenItDoesNotOpenATag() {
+        CapturingGateway gateway = useCapturingGateway();
+        DonationIntakeService.DonationFormInputDTO request = validPublicRequest();
+        request.publicName = 'Ana <3 López';
+
+        Test.startTest();
+        runAsGuestStart(request);
+        Test.stopTest();
+
+        Assert.areEqual('Ana 3 López', gateway.capturedRequest.publicName, 'Only the bracket is dropped');
+    }
+
+    @IsTest
+    static void shouldAcceptPublicName_WhenMarkupIsRemovedAndTheResultFitsTheLimit() {
+        CapturingGateway gateway = useCapturingGateway();
+        DonationIntakeService.DonationFormInputDTO request = validPublicRequest();
+        request.publicName = '<b>' + 'a'.repeat(80) + '</b>';
+
+        Test.startTest();
+        runAsGuestStart(request);
+        Test.stopTest();
+
+        Assert.areEqual('a'.repeat(80), gateway.capturedRequest.publicName, 'The limit applies to the cleaned text');
     }
 
     @IsTest
@@ -409,6 +461,41 @@ private class DonationIntakeServiceTest {
 
         Test.startTest();
         assertStartRejected(request, DonationIntakeService.MSG_PUBLIC_NAME_TOO_LONG, 'publicName 81');
+        Test.stopTest();
+    }
+
+    @IsTest
+    static void shouldRejectPublicName_WhenItIsOnlyMarkup() {
+        useCapturingGateway();
+
+        Test.startTest();
+        for (String name : new List<String>{ '<b></b>', '<script></script>', '<br/>', '<<>>' }) {
+            DonationIntakeService.DonationFormInputDTO request = validPublicRequest();
+            request.publicName = name;
+            assertStartRejected(request, DonationIntakeService.MSG_PUBLIC_NAME_REQUIRED, 'publicName ' + name);
+        }
+        Test.stopTest();
+    }
+
+    @IsTest
+    static void shouldRejectPublicName_WhenCleanedTextHasMoreThanEightyCharacters() {
+        useCapturingGateway();
+        DonationIntakeService.DonationFormInputDTO request = validPublicRequest();
+        request.publicName = '<b>' + 'a'.repeat(81) + '</b>';
+
+        Test.startTest();
+        assertStartRejected(request, DonationIntakeService.MSG_PUBLIC_NAME_TOO_LONG, 'cleaned publicName 81');
+        Test.stopTest();
+    }
+
+    @IsTest
+    static void shouldRejectPublicName_WhenRawTextHasMoreThanThreeHundredTwentyCharacters() {
+        useCapturingGateway();
+        DonationIntakeService.DonationFormInputDTO request = validPublicRequest();
+        request.publicName = 'a'.repeat(321);
+
+        Test.startTest();
+        assertStartRejected(request, DonationIntakeService.MSG_PUBLIC_NAME_TOO_LONG, 'raw publicName 321');
         Test.stopTest();
     }
 
@@ -703,6 +790,32 @@ private class DonationIntakeServiceTest {
         Assert.areEqual('Moral', attempt.Taxpayer_Type__c, 'Taxpayer type comes from the RFC length');
         Assert.areEqual('97000', attempt.Tax_Postal_Code__c, 'Postal code');
         Assert.areEqual('601', attempt.Tax_Regime__c, 'Regime');
+    }
+
+    @IsTest
+    static void shouldSaveCleanPublicName_WhenFormSendsMarkupThroughWorkstreamA() {
+        DonationIntakeService.DonationFormInputDTO request = validPublicRequest();
+        request.publicName = '<b>Familia</b> <3 Pérez';
+
+        Test.startTest();
+        String attemptId = startWithRealGateway(request);
+        Test.stopTest();
+
+        Payment_Attempt__c attempt = attemptOf(attemptId);
+        Assert.areEqual('Public', attempt.Visibility__c, 'Visibility');
+        Assert.areEqual('Familia 3 Pérez', attempt.Public_Name__c, 'The saved name has no markup');
+    }
+
+    @IsTest
+    static void shouldSaveNoAttempt_WhenFormSendsOnlyMarkupAsPublicName() {
+        DonationIntakeService.DonationFormInputDTO request = validPublicRequest();
+        request.publicName = '<b></b>';
+
+        Test.startTest();
+        assertStartRejected(request, DonationIntakeService.MSG_PUBLIC_NAME_REQUIRED, 'markup-only publicName');
+        Test.stopTest();
+
+        Assert.areEqual(0, [SELECT COUNT() FROM Payment_Attempt__c WITH SYSTEM_MODE], 'No attempt is saved');
     }
 
     @IsTest
