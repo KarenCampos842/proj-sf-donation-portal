@@ -34,6 +34,11 @@
                 <default>false</default>
                 <label>Tipo de aviso no soportado</label>
             </value>
+            <value>
+                <fullName>Refund_Ignored</fullName>
+                <default>false</default>
+                <label>Reembolso o contracargo (ignorado)</label>
+            </value>
         </valueSetDefinition>
     </valueSet>
 </CustomField>

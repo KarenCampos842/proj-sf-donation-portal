@@ -124,6 +124,16 @@ private class DonationPaymentControllerTest {
     }
 
     @IsTest
+    static void paymentResultWithoutPaymentIdIsUnknown() {
+        Test.startTest();
+        String blank = DonationPaymentController.getPaymentResult('');
+        String missing = DonationPaymentController.getPaymentResult(null);
+        Test.stopTest();
+        Assert.areEqual('Unknown', blank);
+        Assert.areEqual('Unknown', missing);
+    }
+
+    @IsTest
     static void paymentResultConfirmsApprovedPayment() {
         Payment_Attempt__c a = startedAttempt();
         String body = JSON.serialize(new Map<String, Object>{

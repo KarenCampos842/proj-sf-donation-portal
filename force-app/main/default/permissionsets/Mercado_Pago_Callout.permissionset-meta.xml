@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
-    <description>Callout del invitado a Mercado Pago con la credencial MercadoPago. Lectura de User External Credential, que Salesforce exige para usarla. Sin acceso a Donation__c ni a Payment_Attempt__c.</description>
+    <classAccesses>
+        <apexClass>MercadoPagoWebhookResource</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <description>Invitado: callout a Mercado Pago (credencial MercadoPago) y entrada REST del aviso de pago (PAY-06), que valida la firma antes de todo. Lee User External Credential, requerido por Salesforce. Sin acceso a Donation__c ni Payment_Attempt__c.</description>
     <externalCredentialPrincipalAccesses>
         <enabled>true</enabled>
         <externalCredentialPrincipal>MercadoPago-MercadoPagoTest</externalCredentialPrincipal>

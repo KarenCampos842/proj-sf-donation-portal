@@ -229,8 +229,20 @@ private class MercadoPagoPaymentLookupActionTest {
         ProviderMock mock = new ProviderMock(200, payment('approved', 'x', 1));
         Test.setMock(HttpCalloutMock.class, mock);
         Test.startTest();
-        Assert.areEqual('NoPayment', runFlow(null));
-        Assert.areEqual('NoPayment', runFlow('null'));
+        Assert.areEqual('NoPayment', runFlow('null'), '"Volver al sitio" sends payment_id=null');
+        Test.stopTest();
+        Assert.areEqual(0, mock.calls, 'Nothing to ask the provider');
+    }
+
+    @IsTest
+    static void missingPaymentIdIsUnknown() {
+        // DON-20 AC4 (#54): without payment_id the result is not known, so it must
+        // not say the payment was not completed.
+        ProviderMock mock = new ProviderMock(200, payment('approved', 'x', 1));
+        Test.setMock(HttpCalloutMock.class, mock);
+        Test.startTest();
+        Assert.areEqual('Unknown', runFlow(null));
+        Assert.areEqual('Unknown', runFlow(''));
         Test.stopTest();
         Assert.areEqual(0, mock.calls, 'Nothing to ask the provider');
     }

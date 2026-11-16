@@ -108,9 +108,24 @@
         <locationX>0</locationX>
         <locationY>0</locationY>
         <defaultConnector>
-            <targetReference>Set_No_Payment</targetReference>
+            <targetReference>Set_Unknown</targetReference>
         </defaultConnector>
-        <defaultConnectorLabel>No</defaultConnectorLabel>
+        <defaultConnectorLabel>No Id</defaultConnectorLabel>
+        <rules>
+            <name>Returned_Without_Paying</name>
+            <conditionLogic>and</conditionLogic>
+            <conditions>
+                <leftValueReference>paymentId</leftValueReference>
+                <operator>EqualTo</operator>
+                <rightValue>
+                    <stringValue>null</stringValue>
+                </rightValue>
+            </conditions>
+            <connector>
+                <targetReference>Set_No_Payment</targetReference>
+            </connector>
+            <label>Returned Without Paying</label>
+        </rules>
         <rules>
             <name>Payment_Id_Given</name>
             <conditionLogic>and</conditionLogic>
@@ -119,13 +134,6 @@
                 <operator>IsNull</operator>
                 <rightValue>
                     <booleanValue>false</booleanValue>
-                </rightValue>
-            </conditions>
-            <conditions>
-                <leftValueReference>paymentId</leftValueReference>
-                <operator>NotEqualTo</operator>
-                <rightValue>
-                    <stringValue>null</stringValue>
                 </rightValue>
             </conditions>
             <connector>
@@ -265,7 +273,7 @@
             <label>Cancelled</label>
         </rules>
     </decisions>
-    <description>DON-21 / DON-20. Lo llama la página de agradecimiento con el payment_id que Mercado Pago puso en la URL. Consulta el pago real (acción Apex MercadoPagoPaymentLookupAction, GET /v1/payments/{id}); nunca usa status, external_reference ni otros parámetros de la URL como prueba de pago. Si el pago existe, llama a Donation_Register, que registra la donación solo si está approved y el monto coincide. Devuelve resultState para la página: Confirmed, Pending, Rejected, Cancelled, NoPayment (el donante volvió sin pagar: payment_id vacío o &quot;null&quot;) o Unknown (no se pudo confirmar: proveedor caído, pago o intento inexistente, monto distinto). No devuelve datos del donante ni del pago, para que un payment_id ajeno no exponga información de otra persona.</description>
+    <description>DON-21 / DON-20. Lo llama la página de agradecimiento con el payment_id que Mercado Pago puso en la URL. Consulta el pago real (acción Apex MercadoPagoPaymentLookupAction, GET /v1/payments/{id}); nunca usa status, external_reference ni otros parámetros de la URL como prueba de pago. Si el pago existe, llama a Donation_Register, que registra la donación solo si está approved y el monto coincide. Devuelve resultState para la página: Confirmed, Pending, Rejected, Cancelled, NoPayment (el donante volvió sin pagar con el botón de Mercado Pago: payment_id = &quot;null&quot;) o Unknown (sin payment_id no se sabe el resultado, DON-20 AC4 / #54; o no se pudo confirmar: proveedor caído, pago o intento inexistente, monto distinto). No devuelve datos del donante ni del pago, para que un payment_id ajeno no exponga información de otra persona.</description>
     <interviewLabel>Payment Return Process {!$Flow.CurrentDateTime}</interviewLabel>
     <label>Payment Return Process</label>
     <processMetadataValues>
