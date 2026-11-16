@@ -6,23 +6,28 @@ A public, login-free donation portal built on **Salesforce Developer Edition** w
 
 ## Project status
 
-Figures verified on 2026-11-10 (the Delivery 1 due date) against GitHub Issues and [Project 13](https://github.com/users/KarenCampos842/projects/13).
+Figures verified on 2026-11-11 against GitHub Issues and [Project 13](https://github.com/users/KarenCampos842/projects/13).
 
 | Milestone | Due date | Tag | Stories | Issues closed | Project 13 status |
 |---|---|---|---:|---:|---|
-| Delivery 1 | 2026-11-10 | `entrega-1` | 22 | 15 | 8 Done · 7 In review · 6 In progress · 1 Ready |
-| Delivery 2 | 2026-11-17 | `entrega-2` | 21 | 0 | 21 Backlog |
+| Delivery 1 | 2026-11-10 | `entrega-1` | 22 | 15 | 11 Done · 4 In review · 6 In progress · 1 Ready |
+| Delivery 2 | 2026-11-17 | `entrega-2` | 21 | 0 | 21 Backlog (+ bug [#54](https://github.com/KarenCampos842/proj-sf-donation-portal/issues/54)) |
 | Unscheduled | TBD | — | 1 (DON-26) | 0 | Backlog |
 
-The backlog contains **44 user stories**: 22 for Delivery 1, 21 for Delivery 2 and 1 without a milestone (DON-26). In total 15 issues are closed and 29 are open. The full per-story table is in [`docs/story-tracking-board.md`](docs/story-tracking-board.md).
+The backlog contains **44 user stories**: 22 for Delivery 1, 21 for Delivery 2 and 1 without a milestone (DON-26). In total 15 story issues are closed and 29 are open. Issue #54 is a bug found while collecting the Delivery 1 evidence; it is not a story. The full per-story table is in [`docs/story-tracking-board.md`](docs/story-tracking-board.md).
 
 ### Implementation, issue closure and formal acceptance
 
 These are three different things in this project:
 
 - **Implemented:** the code or configuration exists, is merged in `main` and has automated tests. The Delivery 1 stories were implemented across the three workstreams: A (payments, 6 stories), B (portal, 8 stories) and C (internal operation, security and data model, 8 stories). Some Workstream C stories are still In progress.
-- **Issue closed / Project status Done:** a team decision recorded in GitHub. All 8 Workstream B stories are Done and closed with every acceptance criterion ticked. Seven other Delivery 1 issues are closed but still show In review in Project 13.
-- **Accepted:** the Definition of Done below is met. The 8 Workstream B stories are accepted. The Workstream A stories are closed but still In review, and the Workstream C stories are partly In progress, so they are not counted as accepted until their owners move them to Done. The “Evidence” section of the issues still holds the original placeholder “Pendiente de evidencia”, and part of the Workstream B evidence folders is not committed yet (see [Evidence](#evidence)); neither affects the accepted status of the Workstream B stories.
+- **Issue closed / Project status Done:** a team decision recorded in GitHub. All 8 Workstream B stories and 3 Workstream A stories (PAY-07, PAY-02, ADM-07) are Done and closed with every acceptance criterion ticked. Four other Delivery 1 issues are closed but still show In review in Project 13: DON-19, DON-20 and DON-21 (A) and one Workstream C story.
+- **Accepted:** the Definition of Done below is met. Accepted so far: the 8 Workstream B stories and PAY-07, PAY-02 and ADM-07 (A). DON-19, DON-20 and DON-21 have evidence for most of their ACs, but the following are still open, so they stay In review:
+  - DON-19 AC3 (closed campaign) needs a screenshot.
+  - DON-21 AC4 (anonymous donation) needs a screenshot.
+  - DON-20 AC4 is only partly met; the fix is planned for Delivery 2 in #54.
+
+  The Workstream C stories are partly In progress and are not counted as accepted until their owner moves them to Done. The Workstream A issues list their evidence per AC in their "Evidence" section; the other issues still hold the placeholder "Pendiente de evidencia".
 
 ### Pull requests
 
@@ -33,7 +38,10 @@ These are three different things in this project:
 | [#47](https://github.com/KarenCampos842/proj-sf-donation-portal/pull/47) | Merged | Workstream A: Mercado Pago payment flows and `DonationPaymentController` |
 | [#49](https://github.com/KarenCampos842/proj-sf-donation-portal/pull/49) | Merged | Workstream B: portal, LWR site, Guest profile, sharing rule |
 | [#50](https://github.com/KarenCampos842/proj-sf-donation-portal/pull/50) | Merged | Field configurations, documentation and first evidence images |
-| [#48](https://github.com/KarenCampos842/proj-sf-donation-portal/pull/48) | **Open, not merged** (conflicts with `main` in `docs/ai-log.md` and `docs/contributions.md`) | Demo data under `data/demo/`, `Portal_Developer` permission set and logs. The demo records and the permission set already exist in the Sandbox, but their source is not in `main` |
+| [#48](https://github.com/KarenCampos842/proj-sf-donation-portal/pull/48) | Merged | Demo data under `data/demo/`, `Portal_Developer` permission set and logs |
+| [#51](https://github.com/KarenCampos842/proj-sf-donation-portal/pull/51), [#53](https://github.com/KarenCampos842/proj-sf-donation-portal/pull/53) | Merged | Workstream B documentation, project tracking and evidence |
+| [#55](https://github.com/KarenCampos842/proj-sf-donation-portal/pull/55) | Open | Workstream A: Delivery 1 payment evidence, `Payment_Attempt_Viewer` permission set and attempt list view |
+| [#56](https://github.com/KarenCampos842/proj-sf-donation-portal/pull/56) | Open | Workstream C evidence and campaign layout |
 
 ## Definition of Done (DoD)
 
@@ -206,16 +214,20 @@ Each class has its test class (`*Test`), and `PortalTestDataFactory` provides sh
 **Permission sets** (`force-app/main/default/permissionsets/`)
 - `Campaign_Manager`, `Donation_Admin`, `Moderator` — internal roles.
 - `Mercado_Pago_Callout` — callout access to Mercado Pago (assigned to the Guest user and one administrator in the Sandbox).
-- `Portal_Developer` exists in the Sandbox but its source is only in the unmerged PR #48.
+- `Payment_Attempt_Viewer` — read-only access to payment attempts for the payments owner (audit and evidence). Never assigned to the Guest user.
+- `Portal_Developer` — developer access (PR #48).
 
 The Experience Cloud site is built with the **Build Your Own (LWR)** template and uses the `portal` URL prefix.
 
 ### Evidence
 
-Acceptance evidence lives in `docs/evidence/`, in one folder per story (`DON-01`, `DON-02`, …). There is no `Evidence/` folder. File names such as `AC1.png` or `AC3_AC4.md` indicate the acceptance criteria they cover.
+Acceptance evidence lives in `docs/evidence/`, in one folder per story. There is no `Evidence/` folder.
 
-- **Committed to Git today:** `DON-01/`, `DON-02/` and `DON-03/`, with the earlier numbered screenshots (`1.png`, …).
-- **Local only, not yet committed or pushed:** the reorganized AC files of `DON-01` to `DON-03`, and the whole `DON-04`, `DON-08`, `DON-10`, `DON-11` and `DON-12` folders. They are not available on GitHub until the owner commits them. One DON-11 screenshot shows a personal email address and must be cropped first.
+- **Workstream B:** `DON-01` … `DON-12`. File names such as `AC1.png` or `AC3_AC4.md` indicate the acceptance criteria they cover. `DON-11/AC1.png` shows a personal email address and should be cropped by its owner.
+- **Workstream A:** `15-don-19`, `16-don-20`, `17-don-21`, `37-adm-07`, `41-pay-02` and `44-pay-07`, named `<issue>-<story>`. File names start with the AC number (for example `16-1-rechazado.png` covers DON-20 AC1–AC2). Each issue's "Evidence" section links every AC to its screenshot.
+  - All payments in these screenshots were made in Mercado Pago test mode, with test cards and the test payer email.
+  - Every image was checked: none shows tokens or real personal data.
+  - They are added by PR #55.
 - The [story tracking board](docs/story-tracking-board.md) lists the evidence of every story and marks which folders are tracked.
 
 ## Getting started
@@ -304,7 +316,7 @@ If a credential is exposed, rotate it immediately and notify the project supervi
 
 ## Important development notes
 
-- The demo campaign and donation records are **already loaded** in the Sandbox and have been adjusted by hand since (names, descriptions, states, images). Do not run `sf data import tree` or `data/demo/plan.json` (the plan is only in the unmerged PR #48) again: the import uses inserts and would create duplicates, and the plan files no longer match the current records.
+- The demo campaign and donation records are **already loaded** in the Sandbox and have been adjusted by hand since (names, descriptions, states, images). Do not run `sf data import tree` or `data/demo/plan.json` (added by PR #48) again: the import uses inserts and would create duplicates, and the plan files no longer match the current records.
 - Demo campaign and donation records are stored in the Salesforce Sandbox, not generated by deploying metadata.
 - Local test-account data for Mercado Pago must stay in untracked files such as `docs/payment-test-data.local`, which is listed in `.gitignore`. Never commit it.
 - Keep fictitious records clearly identified internally and never present test-mode amounts as real funds raised.
