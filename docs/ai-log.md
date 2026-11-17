@@ -484,7 +484,7 @@ I paid the first one but I am not sure if I closed in time, check it.
 - **Tool / model:** Claude Code, VS Code
 - **Related stories:** DON-13 (#12)
 - **Result type:** Best prompt
-- **Verification:** Jest (all suites) and a check-only deployment against `donations-dev` of the four fields, the two flows, the Apex classes and the form (115/115 Apex tests in the selected classes, nothing saved). No real deployment, commit or push.
+- **Verification:** Jest (227/227) and check-only deployments against `donations-dev` before merging. After PR #63 was merged (merge `2e1337f`), a check-only (`0AfVC00000PIC7Z0AX`) and the real deployment (`0AfVC00000PICFd0AP`) of the four fields, the two flows, the Apex classes, the form and the two permission sets: 15/15 components and 222/222 Apex tests in the selected payment and portal test classes. The site was published (job `08PVC00000gD7QB2A0`) and the guest checks ran against the published site.
 - **Estimated speed-up:** Not measured.
 
 **Prompt / decision summary**
@@ -503,4 +503,5 @@ Validate on the server, set the date and time on the server, copy both to the do
 **What we verified and corrected**
 
 - The first check-only run failed: nine existing portal tests built invoice requests without the acceptance, which is now rejected by design. They were adapted and four tests were added. The first run also selected too few test classes, so the coverage warnings were an artifact of the selection.
-- The owner of the payment flows (Workstream A) still has to review the changes to `Payment_Attempt_Create`, `Donation_Register` and `DonationPaymentController`. The permission sets do not give anyone read access to the four new fields yet.
+- Rodrigo (Workstream A) reviewed the changes to `Payment_Attempt_Create`, `Donation_Register` and `DonationPaymentController` and approved the PR.
+- After deployment we found that the System Administrator profile has no access to the four new fields, so the consent evidence is only readable through `Donation_Admin` and `Payment_Attempt_Viewer`. Karen's user was then assigned `Donation_Admin` and `Payment_Attempt_Viewer` temporarily and real records were read: the two attempts created for the check store acceptance `true` with a server date, and the attempt without invoice stores false and no date; the seven donations with invoice that existed before DON-13 stay false with no date, and five of their attempts were confirmed without being blocked. The copy to a donation is **not yet verified on a real paid donation**: no test buyer account was available to the AI, so the checkout of an existing attempt was prepared for a manual sandbox payment. Issue #66 tracks the missing content of the privacy notice.
