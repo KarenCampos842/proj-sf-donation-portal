@@ -49,6 +49,28 @@ private class DonationPaymentControllerTest {
         return e.getMessage();
     }
 
+    private static DonationPaymentController.DonationRequest publicRequest(String publicName) {
+        DonationPaymentController.DonationRequest r = request(campaign().Id);
+        r.visibility = 'Public';
+        r.publicName = publicName;
+        return r;
+    }
+
+    private static Payment_Attempt__c savedAttempt(DonationPaymentController.DonationRequest r) {
+        String attemptId = DonationPaymentController.startDonation(r);
+        return [SELECT Visibility__c, Public_Name__c FROM Payment_Attempt__c WHERE Id = :attemptId WITH SYSTEM_MODE];
+    }
+
+    private static String startRejectionOf(DonationPaymentController.DonationRequest r) {
+        String message;
+        try {
+            DonationPaymentController.startDonation(r);
+        } catch (AuraHandledException e) {
+            message = errorOf(e);
+        }
+        return message;
+    }
+
     @IsTest
     static void startDonationReturnsAttemptId() {
         Fundraising_Campaign__c c = campaign();
@@ -76,6 +98,124 @@ private class DonationPaymentControllerTest {
         Test.stopTest();
         Assert.areEqual('El monto mínimo es de $50 MXN.', message);
         Assert.areEqual(0, [SELECT COUNT() FROM Payment_Attempt__c WITH SYSTEM_MODE]);
+    }
+
+    @IsTest
+    static void startDonationSavesCleanPublicName_WhenNameHasScriptTag() {
+        Test.startTest();
+        Payment_Attempt__c attempt = savedAttempt(publicRequest('<script>alert(1)</script>'));
+        Test.stopTest();
+        Assert.areEqual('Public', attempt.Visibility__c, 'Visibility');
+        Assert.areEqual('alert(1)', attempt.Public_Name__c, 'Tags are removed before the attempt is saved');
+    }
+
+    @IsTest
+    static void startDonationKeepsWordsApart_WhenTagsSeparateThem() {
+        Test.startTest();
+        Payment_Attempt__c attempt = savedAttempt(publicRequest('Ana<b>López</b> Ruiz'));
+        Test.stopTest();
+        Assert.areEqual('Ana López Ruiz', attempt.Public_Name__c, 'A removed tag leaves a space between words');
+    }
+
+    @IsTest
+    static void startDonationRemovesStandaloneAngleBrackets_WhenNameHasThem() {
+        Test.startTest();
+        Payment_Attempt__c attempt = savedAttempt(publicRequest('Ana <3 López > Ruiz'));
+        Test.stopTest();
+        Assert.areEqual('Ana 3 López Ruiz', attempt.Public_Name__c, 'No angle bracket is saved');
+    }
+
+    @IsTest
+    static void startDonationRemovesAngleBrackets_WhenTagIsNeverClosed() {
+        Test.startTest();
+        Payment_Attempt__c attempt = savedAttempt(publicRequest('<img src=x onerror=alert(1)'));
+        Test.stopTest();
+        Assert.areEqual('img src=x onerror=alert(1)', attempt.Public_Name__c, 'No angle bracket is saved');
+    }
+
+    @IsTest
+    static void startDonationKeepsPlainName_WhenItHasNoMarkup() {
+        Test.startTest();
+        Payment_Attempt__c attempt = savedAttempt(publicRequest('Familia Pérez'));
+        Test.stopTest();
+        Assert.areEqual('Familia Pérez', attempt.Public_Name__c, 'A plain name is saved as typed');
+    }
+
+    @IsTest
+    static void startDonationRejectsName_WhenItIsEmptyAfterCleaning() {
+        DonationPaymentController.DonationRequest r = publicRequest('<b></b>');
+        Test.startTest();
+        String message = startRejectionOf(r);
+        Test.stopTest();
+        Assert.areEqual(DonationPaymentController.PUBLIC_NAME_REQUIRED, message, 'Only markup leaves no name');
+        Assert.areEqual(0, [SELECT COUNT() FROM Payment_Attempt__c WITH SYSTEM_MODE], 'No attempt is saved');
+    }
+
+    @IsTest
+    static void startDonationRejectsName_WhenItIsOnlyAngleBrackets() {
+        DonationPaymentController.DonationRequest r = publicRequest('<<>>');
+        Test.startTest();
+        String message = startRejectionOf(r);
+        Test.stopTest();
+        Assert.areEqual(DonationPaymentController.PUBLIC_NAME_REQUIRED, message, 'Brackets alone leave no name');
+        Assert.areEqual(0, [SELECT COUNT() FROM Payment_Attempt__c WITH SYSTEM_MODE], 'No attempt is saved');
+    }
+
+    @IsTest
+    static void startDonationRejectsName_WhenPublicDonationHasNoName() {
+        DonationPaymentController.DonationRequest r = publicRequest(null);
+        Test.startTest();
+        String message = startRejectionOf(r);
+        Test.stopTest();
+        Assert.areEqual(DonationPaymentController.PUBLIC_NAME_REQUIRED, message, 'A public donation needs a name');
+        Assert.areEqual(0, [SELECT COUNT() FROM Payment_Attempt__c WITH SYSTEM_MODE], 'No attempt is saved');
+    }
+
+    @IsTest
+    static void startDonationAcceptsEightyCharacters_WhenNameHasExactlyThatMany() {
+        Test.startTest();
+        Payment_Attempt__c attempt = savedAttempt(publicRequest('a'.repeat(80)));
+        Test.stopTest();
+        Assert.areEqual('a'.repeat(80), attempt.Public_Name__c, 'The limit is inclusive');
+    }
+
+    @IsTest
+    static void startDonationAcceptsEightyCharacters_WhenMarkupIsRemoved() {
+        Test.startTest();
+        Payment_Attempt__c attempt = savedAttempt(publicRequest('<b>' + 'a'.repeat(80) + '</b>'));
+        Test.stopTest();
+        Assert.areEqual('a'.repeat(80), attempt.Public_Name__c, 'The limit applies to the cleaned text');
+    }
+
+    @IsTest
+    static void startDonationRejectsName_WhenItHasEightyOneCharacters() {
+        DonationPaymentController.DonationRequest r = publicRequest('a'.repeat(81));
+        Test.startTest();
+        String message = startRejectionOf(r);
+        Test.stopTest();
+        Assert.areEqual(DonationPaymentController.PUBLIC_NAME_TOO_LONG, message, 'One character over the limit');
+        Assert.areEqual(0, [SELECT COUNT() FROM Payment_Attempt__c WITH SYSTEM_MODE], 'No attempt is saved');
+    }
+
+    @IsTest
+    static void startDonationRejectsName_WhenCleanedTextHasEightyOneCharacters() {
+        DonationPaymentController.DonationRequest r = publicRequest('<b>' + 'a'.repeat(81) + '</b>');
+        Test.startTest();
+        String message = startRejectionOf(r);
+        Test.stopTest();
+        Assert.areEqual(DonationPaymentController.PUBLIC_NAME_TOO_LONG, message, 'The cleaned text is over the limit');
+        Assert.areEqual(0, [SELECT COUNT() FROM Payment_Attempt__c WITH SYSTEM_MODE], 'No attempt is saved');
+    }
+
+    @IsTest
+    static void startDonationSavesNoName_WhenDonationIsAnonymous() {
+        DonationPaymentController.DonationRequest r = request(campaign().Id);
+        r.publicName = '<script>' + 'a'.repeat(500) + '</script>';
+        Test.startTest();
+        Payment_Attempt__c attempt = savedAttempt(r);
+        Test.stopTest();
+        Assert.areEqual('Anonymous', attempt.Visibility__c, 'Visibility stays Anonymous');
+        Assert.isNull(attempt.Public_Name__c, 'An anonymous donation never saves a name and is not rejected for it');
     }
 
     @IsTest

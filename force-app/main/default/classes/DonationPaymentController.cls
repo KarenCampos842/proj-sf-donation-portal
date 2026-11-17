@@ -15,6 +15,10 @@ public with sharing class DonationPaymentController {
     private static final String GENERIC_ERROR = 'No pudimos abrir el pago, intenta de nuevo';
     @TestVisible
     private static final String RESULT_UNKNOWN = 'Unknown';
+    @TestVisible
+    private static final String PUBLIC_NAME_REQUIRED = 'Escribe el nombre con el que quieres aparecer.';
+    @TestVisible
+    private static final String PUBLIC_NAME_TOO_LONG = 'El nombre público no puede tener más de 80 caracteres.';
 
     /**
      * What the donation form sends (data-model.md, section 11).
@@ -43,7 +47,8 @@ public with sharing class DonationPaymentController {
     }
 
     /**
-     * Step 1. Validates the form data on the server and saves the payment attempt.
+     * Step 1. Validates the form data on the server and saves the payment attempt. The public
+     * name of a public donation is cleaned of HTML markup first (DON-11), whoever calls this method.
      * @param request form data
      * @return attempt Id, to pass to openPayment
      * @throws AuraHandledException with a Spanish message ready to show to the donor
@@ -58,7 +63,7 @@ public with sharing class DonationPaymentController {
             'amount' => request.amount,
             'email' => request.email,
             'visibility' => request.visibility,
-            'publicName' => request.publicName,
+            'publicName' => cleanPublicName(request),
             'invoiceRequested' => request.invoiceRequested == true,
             'legalName' => request.legalName,
             'rfc' => request.rfc,
@@ -108,6 +113,22 @@ public with sharing class DonationPaymentController {
         } catch (AuraHandledException e) {
             return RESULT_UNKNOWN;
         }
+    }
+
+    // The guest user can call startDonation directly, so the name is cleaned here as well as in
+    // DonationIntakeService. Only public donations keep a name; the flow drops it for anonymous ones.
+    private static String cleanPublicName(DonationRequest request) {
+        if (!'Public'.equalsIgnoreCase(request.visibility)) {
+            return null;
+        }
+        if (PublicNameSanitizer.isTooLong(request.publicName)) {
+            throw userError(PUBLIC_NAME_TOO_LONG);
+        }
+        String name = PublicNameSanitizer.sanitize(request.publicName);
+        if (String.isBlank(name)) {
+            throw userError(PUBLIC_NAME_REQUIRED);
+        }
+        return name;
     }
 
     private static Flow.Interview run(String flowName, Map<String, Object> inputs) {
