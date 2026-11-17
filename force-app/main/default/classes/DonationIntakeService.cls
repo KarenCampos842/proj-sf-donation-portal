@@ -41,6 +41,8 @@ public with sharing class DonationIntakeService {
     private static final String FIELD_POSTAL_CODE = 'taxPostalCode';
     @TestVisible
     private static final String FIELD_REGIME = 'taxRegime';
+    @TestVisible
+    private static final String FIELD_PRIVACY_NOTICE = 'privacyNoticeAccepted';
     // What Salesforce puts in an AuraHandledException that was created without a message.
     private static final String PLATFORM_DEFAULT_MESSAGE = 'Script-thrown exception';
 
@@ -72,6 +74,8 @@ public with sharing class DonationIntakeService {
     private static final String MSG_REGIME_INVALID = 'El régimen fiscal no es válido.';
     @TestVisible
     private static final String MSG_REGIME_MISMATCH = 'El régimen fiscal no corresponde al tipo de persona.';
+    @TestVisible
+    private static final String MSG_PRIVACY_NOTICE_REQUIRED = 'Acepta el aviso de privacidad para solicitar factura.';
     @TestVisible
     private static final String MSG_START_FAILED = 'No pudimos registrar tus datos, intenta de nuevo.';
     @TestVisible
@@ -155,6 +159,9 @@ public with sharing class DonationIntakeService {
         public String taxPostalCode { get; set; }
         @AuraEnabled
         public String taxRegime { get; set; }
+        // DON-13. Only the acceptance comes from the browser; its date and time are set on the server.
+        @AuraEnabled
+        public Boolean privacyNoticeAccepted { get; set; }
     }
 
     /**
@@ -224,6 +231,7 @@ public with sharing class DonationIntakeService {
             clean.publicName = validatePublicName(request.publicName);
         }
         clean.invoiceRequested = request.invoiceRequested == true;
+        clean.privacyNoticeAccepted = false;
         if (clean.invoiceRequested) {
             applyInvoiceData(request, clean);
         }
@@ -299,6 +307,8 @@ public with sharing class DonationIntakeService {
         assertInvoiceFieldsPresent(legalName, rfc, postalCode, regime);
         assertInvoiceFormats(legalName, rfc, postalCode);
         assertRegimeMatches(regime, rfc);
+        assertPrivacyNoticeAccepted(request.privacyNoticeAccepted);
+        clean.privacyNoticeAccepted = true;
         clean.legalName = legalName;
         clean.rfc = rfc;
         clean.taxPostalCode = postalCode;
@@ -312,6 +322,13 @@ public with sharing class DonationIntakeService {
             : String.isBlank(rfc) ? FIELD_RFC : String.isBlank(postalCode) ? FIELD_POSTAL_CODE : String.isBlank(regime) ? FIELD_REGIME : null;
         if (missingField != null) {
             throw donorError(missingField, MSG_INVOICE_DATA_MISSING);
+        }
+    }
+
+    // DON-13. An invoice request without the acceptance never reaches the payment code.
+    private static void assertPrivacyNoticeAccepted(Boolean accepted) {
+        if (accepted != true) {
+            throw donorError(FIELD_PRIVACY_NOTICE, MSG_PRIVACY_NOTICE_REQUIRED);
         }
     }
 
@@ -384,6 +401,7 @@ public with sharing class DonationIntakeService {
             paymentRequest.rfc = request.rfc;
             paymentRequest.taxPostalCode = request.taxPostalCode;
             paymentRequest.taxRegime = request.taxRegime;
+            paymentRequest.privacyNoticeAccepted = request.privacyNoticeAccepted;
             return DonationPaymentController.startDonation(paymentRequest);
         }
 

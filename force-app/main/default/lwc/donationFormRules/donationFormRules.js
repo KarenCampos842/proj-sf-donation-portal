@@ -21,7 +21,7 @@ const CONTROL_CHARACTERS = /\p{Cc}/gu;
 // DON-17. DonationIntakeService throws every donor message as "<field>|<message>", where the field
 // is one of the data-field names of the form, or empty when the error belongs to no field.
 // Anything that does not have this shape (platform or unexpected errors) is never shown.
-const SERVER_ERROR_PATTERN = /^(amount|email|publicName|legalName|rfc|taxPostalCode|taxRegime)?\|([\s\S]+)$/;
+const SERVER_ERROR_PATTERN = /^(amount|email|publicName|legalName|rfc|taxPostalCode|taxRegime|privacyNoticeAccepted)?\|([\s\S]+)$/;
 
 // SAT c_RegimenFiscal catalog (docs/data-model.md, appendix). The guest user cannot read the
 // Payment_Attempt__c picklist, so the list is local. Pending verification against Annex 20 (V-05).
@@ -174,6 +174,15 @@ export function validatePostalCode(value) {
         return FORM_MESSAGES.invoice.postalCodeRequired;
     }
     return POSTAL_CODE_PATTERN.test(postalCode) ? '' : FORM_MESSAGES.invoice.postalCodeInvalid;
+}
+
+/**
+ * DON-13. The notice must be accepted to ask for an invoice. The server checks it again.
+ * @param {boolean} accepted state of the "Acepto el aviso de privacidad" checkbox
+ * @returns {string} the message to show, or an empty string when it is accepted
+ */
+export function validatePrivacyNotice(accepted) {
+    return accepted === true ? '' : FORM_MESSAGES.invoice.privacyNoticeRequired;
 }
 
 export function validateRegime(value, taxpayerType) {

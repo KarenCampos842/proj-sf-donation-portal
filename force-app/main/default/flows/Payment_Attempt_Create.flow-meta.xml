@@ -41,6 +41,19 @@
         </assignmentItems>
     </assignments>
     <assignments>
+        <name>Set_Privacy_Notice_Error</name>
+        <label>Set Privacy Notice Error</label>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <assignmentItems>
+            <assignToReference>errorMessage</assignToReference>
+            <operator>Assign</operator>
+            <value>
+                <stringValue>Acepta el aviso de privacidad para solicitar factura.</stringValue>
+            </value>
+        </assignmentItems>
+    </assignments>
+    <assignments>
         <name>Set_Tax_Regime_Error</name>
         <label>Set Tax Regime Error</label>
         <locationX>0</locationX>
@@ -99,6 +112,31 @@
         </rules>
     </decisions>
     <decisions>
+        <name>Privacy_Notice_Is_Valid</name>
+        <label>Privacy Notice Is Valid?</label>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <defaultConnector>
+            <targetReference>Set_Privacy_Notice_Error</targetReference>
+        </defaultConnector>
+        <defaultConnectorLabel>No</defaultConnectorLabel>
+        <rules>
+            <name>Privacy_Notice_Accepted_Or_Not_Needed</name>
+            <conditionLogic>and</conditionLogic>
+            <conditions>
+                <leftValueReference>fxPrivacyNoticeIsValid</leftValueReference>
+                <operator>EqualTo</operator>
+                <rightValue>
+                    <booleanValue>true</booleanValue>
+                </rightValue>
+            </conditions>
+            <connector>
+                <targetReference>Create_Attempt</targetReference>
+            </connector>
+            <label>Yes</label>
+        </rules>
+    </decisions>
+    <decisions>
         <name>Tax_Regime_Is_Valid</name>
         <label>Tax Regime Is Valid?</label>
         <locationX>0</locationX>
@@ -118,7 +156,7 @@
                 </rightValue>
             </conditions>
             <connector>
-                <targetReference>Create_Attempt</targetReference>
+                <targetReference>Privacy_Notice_Is_Valid</targetReference>
             </connector>
             <label>Yes</label>
         </rules>
@@ -155,7 +193,7 @@
             <label>Yes</label>
         </rules>
     </decisions>
-    <description>PAY-07. Revalida en el servidor la campaña y los datos del formulario y crea el intento de pago. Corre en modo sistema: el invitado no tiene permisos sobre Payment_Attempt__c. Devuelve attemptId o un errorMessage apto para mostrarse al donante.</description>
+    <description>PAY-07. Revalida en el servidor la campaña y los datos del formulario y crea el intento de pago. Corre en modo sistema: el invitado no tiene permisos sobre Payment_Attempt__c. DON-13: si se pide factura exige privacyNoticeAccepted; guarda la aceptación y su fecha y hora (generada aquí, en el servidor) en el intento. Sin factura la aceptación queda en falso y sin fecha. Devuelve attemptId o un errorMessage apto para mostrarse al donante.</description>
     <formulas>
         <name>fxFriendlyError</name>
         <dataType>String</dataType>
@@ -172,6 +210,21 @@ IF(CONTAINS({!$Flow.FaultMessage}, &quot;REQUIRED_FIELD_MISSING&quot;), &quot;Fa
         <name>fxLegalName</name>
         <dataType>String</dataType>
         <expression>IF({!invoiceRequested}, {!legalName}, &quot;&quot;)</expression>
+    </formulas>
+    <formulas>
+        <name>fxPrivacyNoticeAccepted</name>
+        <dataType>Boolean</dataType>
+        <expression>AND({!invoiceRequested}, {!privacyNoticeAccepted} = TRUE)</expression>
+    </formulas>
+    <formulas>
+        <name>fxPrivacyNoticeAcceptedAt</name>
+        <dataType>DateTime</dataType>
+        <expression>IF({!fxPrivacyNoticeAccepted}, {!$Flow.CurrentDateTime}, NULL)</expression>
+    </formulas>
+    <formulas>
+        <name>fxPrivacyNoticeIsValid</name>
+        <dataType>Boolean</dataType>
+        <expression>OR(NOT({!invoiceRequested}), {!privacyNoticeAccepted} = TRUE)</expression>
     </formulas>
     <formulas>
         <name>fxPublicName</name>
@@ -250,6 +303,18 @@ IF(CONTAINS({!$Flow.FaultMessage}, &quot;REQUIRED_FIELD_MISSING&quot;), &quot;Fa
             <field>Legal_Name__c</field>
             <value>
                 <elementReference>fxLegalName</elementReference>
+            </value>
+        </inputAssignments>
+        <inputAssignments>
+            <field>Privacy_Notice_Accepted__c</field>
+            <value>
+                <elementReference>fxPrivacyNoticeAccepted</elementReference>
+            </value>
+        </inputAssignments>
+        <inputAssignments>
+            <field>Privacy_Notice_Accepted_At__c</field>
+            <value>
+                <elementReference>fxPrivacyNoticeAcceptedAt</elementReference>
             </value>
         </inputAssignments>
         <inputAssignments>
@@ -377,6 +442,16 @@ IF(CONTAINS({!$Flow.FaultMessage}, &quot;REQUIRED_FIELD_MISSING&quot;), &quot;Fa
         <isCollection>false</isCollection>
         <isInput>true</isInput>
         <isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <name>privacyNoticeAccepted</name>
+        <dataType>Boolean</dataType>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+        <value>
+            <booleanValue>false</booleanValue>
+        </value>
     </variables>
     <variables>
         <name>publicName</name>

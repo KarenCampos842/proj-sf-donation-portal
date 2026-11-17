@@ -64,12 +64,23 @@ async function fillAnonymousDonation(element) {
     await typeInto(element, 'email', 'donante@example.com');
 }
 
-async function fillInvoice(element, rfc = COMPANY_RFC, regime = '601') {
+async function setPrivacyNotice(element, checked) {
+    const input = field(element, 'privacyNoticeAccepted');
+    input.checked = checked;
+    input.dispatchEvent(new CustomEvent('change'));
+    await Promise.resolve();
+}
+
+// DON-13: a complete invoice request includes accepting the privacy notice, unless a test says otherwise.
+async function fillInvoice(element, rfc = COMPANY_RFC, regime = '601', acceptNotice = true) {
     await setToggle(element, 'invoice', true);
     await typeInto(element, 'legalName', 'Familia Pérez S.A. de C.V.');
     await typeInto(element, 'rfc', rfc);
     await typeInto(element, 'taxPostalCode', '97000');
     await chooseRegime(element, regime);
+    if (acceptNotice) {
+        await setPrivacyNotice(element, true);
+    }
 }
 
 async function submit(element) {
@@ -197,7 +208,8 @@ describe('c-donation-form', () => {
                 legalName: null,
                 rfc: null,
                 taxPostalCode: null,
-                taxRegime: null
+                taxRegime: null,
+                privacyNoticeAccepted: false
             });
         });
 
@@ -424,7 +436,8 @@ describe('c-donation-form', () => {
                 legalName: 'Familia Pérez S.A. de C.V.',
                 rfc: COMPANY_RFC,
                 taxPostalCode: '97000',
-                taxRegime: '601'
+                taxRegime: '601',
+                privacyNoticeAccepted: true
             });
         });
 
@@ -744,7 +757,8 @@ describe('c-donation-form', () => {
                 legalName: 'Familia Pérez S.A. de C.V.',
                 rfc: PERSON_RFC,
                 taxPostalCode: '97010',
-                taxRegime: '612'
+                taxRegime: '612',
+                privacyNoticeAccepted: true
             });
             expect(window.location.assign).toHaveBeenCalledWith(CHECKOUT_URL);
             expect(errorBanner(element)).toBeNull();
@@ -889,6 +903,9 @@ describe('c-donation-form', () => {
             expect(noticeText(element)).toContain(FIX_NOTICE);
 
             await chooseRegime(element, '612');
+            expect(noticeText(element)).toContain(FIX_NOTICE);
+
+            await setPrivacyNotice(element, true);
 
             expect(errorBanner(element)).toBeNull();
             expect(startDonation).not.toHaveBeenCalled();
@@ -1114,6 +1131,155 @@ describe('c-donation-form', () => {
             expect(openPayment).toHaveBeenCalledWith({ attemptId: ATTEMPT_ID });
             expect(startDonation.mock.invocationCallOrder[0]).toBeLessThan(openPayment.mock.invocationCallOrder[0]);
             expect(window.location.assign).toHaveBeenCalledWith(CHECKOUT_URL);
+        });
+    });
+
+    describe('privacy notice when an invoice is requested (DON-13)', () => {
+        const NOTICE_REQUIRED = 'Acepta el aviso de privacidad para solicitar factura.';
+
+        it('shows the checkbox "Acepto el aviso de privacidad" only when the invoice is requested, unchecked and with no extra text or link', async () => {
+            const element = createComponent();
+            expect(field(element, 'privacyNoticeAccepted')).toBeNull();
+
+            await setToggle(element, 'invoice', true);
+
+            const checkbox = field(element, 'privacyNoticeAccepted');
+            expect(checkbox).not.toBeNull();
+            expect(checkbox.type).toBe('checkbox');
+            expect(checkbox.label).toBe('Acepto el aviso de privacidad');
+            expect(checkbox.checked).toBe(false);
+            expect(checkbox.required).toBe(true);
+            expect(element.shadowRoot.querySelector('.invoice a')).toBeNull();
+            expect(normalize(element.shadowRoot.querySelector('.invoice').textContent)).not.toMatch(/privacidad/i);
+        });
+
+        it('hides the checkbox again, and asks for nothing, when the invoice is turned off', async () => {
+            const element = createComponent();
+            await fillAnonymousDonation(element);
+            await setToggle(element, 'invoice', true);
+            await setToggle(element, 'invoice', false);
+
+            expect(field(element, 'privacyNoticeAccepted')).toBeNull();
+            await submit(element);
+
+            expect(startDonation).toHaveBeenCalledTimes(1);
+            expect(startDonation.mock.calls[0][0].request.privacyNoticeAccepted).toBe(false);
+        });
+
+        it('does not require the acceptance and sends it as false when there is no invoice', async () => {
+            const element = createComponent();
+            await fillAnonymousDonation(element);
+
+            await submit(element);
+
+            const request = startDonation.mock.calls[0][0].request;
+            expect(request.invoiceRequested).toBe(false);
+            expect(request.privacyNoticeAccepted).toBe(false);
+            expect(window.location.assign).toHaveBeenCalledWith(CHECKOUT_URL);
+        });
+
+        it('blocks the payment and marks the checkbox when the invoice data is complete but the notice is not accepted', async () => {
+            const element = createComponent();
+            await fillAnonymousDonation(element);
+            await fillInvoice(element, PERSON_RFC, '612', false);
+            const spy = jest.spyOn(field(element, 'privacyNoticeAccepted'), 'setCustomValidity');
+
+            await submit(element);
+
+            expect(spy).toHaveBeenLastCalledWith(NOTICE_REQUIRED);
+            expect(startDonation).not.toHaveBeenCalled();
+            expect(openPayment).not.toHaveBeenCalled();
+            expect(errorBanner(element).textContent).toContain('Revisa los campos marcados');
+        });
+
+        it('clears the checkbox error and lets the donor continue once the notice is accepted, keeping the other data', async () => {
+            const element = createComponent();
+            await fillAnonymousDonation(element);
+            await fillInvoice(element, PERSON_RFC, '612', false);
+            await submit(element);
+            const spy = jest.spyOn(field(element, 'privacyNoticeAccepted'), 'setCustomValidity');
+
+            await setPrivacyNotice(element, true);
+
+            expect(spy).toHaveBeenLastCalledWith('');
+            expect(errorBanner(element)).toBeNull();
+            expect(field(element, 'legalName').value).toBe('Familia Pérez S.A. de C.V.');
+            await submit(element);
+            expect(startDonation).toHaveBeenCalledTimes(1);
+            expect(startDonation.mock.calls[0][0].request).toMatchObject({
+                invoiceRequested: true,
+                rfc: PERSON_RFC,
+                privacyNoticeAccepted: true
+            });
+        });
+
+        it('marks the checkbox again if the donor unchecks it', async () => {
+            const element = createComponent();
+            await fillAnonymousDonation(element);
+            await fillInvoice(element, PERSON_RFC, '612');
+            await setPrivacyNotice(element, false);
+            const spy = jest.spyOn(field(element, 'privacyNoticeAccepted'), 'setCustomValidity');
+
+            await submit(element);
+
+            expect(spy).toHaveBeenLastCalledWith(NOTICE_REQUIRED);
+            expect(startDonation).not.toHaveBeenCalled();
+        });
+
+        it('sends only the acceptance: no date or time ever comes from the browser', async () => {
+            const element = createComponent();
+            await fillAnonymousDonation(element);
+            await fillInvoice(element, PERSON_RFC, '612');
+
+            await submit(element);
+
+            const request = startDonation.mock.calls[0][0].request;
+            expect(request.privacyNoticeAccepted).toBe(true);
+            expect(Object.keys(request).filter((key) => /accepted.*at|timestamp|date/i.test(key))).toEqual([]);
+            expect(JSON.stringify(request)).not.toMatch(/privacyNoticeAcceptedAt/);
+        });
+
+        it('sends false when the notice was accepted but the invoice was later turned off', async () => {
+            const element = createComponent();
+            await fillAnonymousDonation(element);
+            await fillInvoice(element, PERSON_RFC, '612');
+            await setToggle(element, 'invoice', false);
+
+            await submit(element);
+
+            const request = startDonation.mock.calls[0][0].request;
+            expect(request.invoiceRequested).toBe(false);
+            expect(request.privacyNoticeAccepted).toBe(false);
+            expect(request.rfc).toBeNull();
+        });
+
+        it('marks the checkbox with the message the server returns for it and shows no technical text', async () => {
+            startDonation.mockRejectedValue({ body: { message: `privacyNoticeAccepted|${NOTICE_REQUIRED}` } });
+            const element = createComponent();
+            await fillAnonymousDonation(element);
+            await fillInvoice(element, PERSON_RFC, '612');
+            const spy = jest.spyOn(field(element, 'privacyNoticeAccepted'), 'setCustomValidity');
+
+            await submit(element);
+
+            expect(spy).toHaveBeenLastCalledWith(NOTICE_REQUIRED);
+            expect(errorBanner(element).textContent).toContain('Revisa los campos marcados');
+            expect(openPayment).not.toHaveBeenCalled();
+        });
+
+        it('keeps the accepted notice while the donor corrects another field', async () => {
+            const element = createComponent();
+            await fillAnonymousDonation(element);
+            await fillInvoice(element, PERSON_RFC, '612');
+            await typeInto(element, 'taxPostalCode', '1234');
+            await submit(element);
+            expect(startDonation).not.toHaveBeenCalled();
+
+            await typeInto(element, 'taxPostalCode', '97010');
+            await submit(element);
+
+            expect(field(element, 'privacyNoticeAccepted').checked).toBe(true);
+            expect(startDonation.mock.calls[0][0].request.privacyNoticeAccepted).toBe(true);
         });
     });
 

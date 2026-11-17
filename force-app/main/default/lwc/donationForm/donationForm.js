@@ -19,6 +19,7 @@ import {
     validateEmail,
     validateLegalName,
     validatePostalCode,
+    validatePrivacyNotice,
     validatePublicName,
     validateRegime,
     validateRfc
@@ -53,7 +54,8 @@ export default class DonationForm extends LightningElement {
         legalName: '',
         rfc: '',
         taxPostalCode: '',
-        taxRegime: ''
+        taxRegime: '',
+        privacyNoticeAccepted: false
     };
 
     pageShowHandler = (event) => {
@@ -145,13 +147,15 @@ export default class DonationForm extends LightningElement {
 
     handleInvoiceToggle(event) {
         this.invoiceRequested = event.target.checked;
-        this.forgetFields(['legalName', 'rfc', 'taxPostalCode', 'taxRegime']);
+        this.forgetFields(['legalName', 'rfc', 'taxPostalCode', 'taxRegime', 'privacyNoticeAccepted']);
     }
 
     handleFieldChange(event) {
         const field = event.target.dataset.field;
         if (field === 'rfc') {
             this.handleRfcChange(event);
+        } else if (field === 'privacyNoticeAccepted') {
+            this.form.privacyNoticeAccepted = event.target.checked === true;
         } else {
             this.form[field] = event.target.value;
         }
@@ -224,7 +228,7 @@ export default class DonationForm extends LightningElement {
             fields.push('publicName');
         }
         if (this.invoiceRequested) {
-            fields.push('legalName', 'rfc', 'taxPostalCode', 'taxRegime');
+            fields.push('legalName', 'rfc', 'taxPostalCode', 'taxRegime', 'privacyNoticeAccepted');
         }
         return fields;
     }
@@ -243,6 +247,8 @@ export default class DonationForm extends LightningElement {
                 return validatePostalCode(this.form.taxPostalCode);
             case 'taxRegime':
                 return validateRegime(this.form.taxRegime, this.taxpayerType);
+            case 'privacyNoticeAccepted':
+                return validatePrivacyNotice(this.form.privacyNoticeAccepted);
             default:
                 return '';
         }
@@ -329,7 +335,9 @@ export default class DonationForm extends LightningElement {
             legalName: withInvoice ? normalizeText(this.form.legalName) : null,
             rfc: withInvoice ? sanitizeRfc(this.form.rfc) : null,
             taxPostalCode: withInvoice ? this.form.taxPostalCode.trim() : null,
-            taxRegime: withInvoice ? this.form.taxRegime : null
+            taxRegime: withInvoice ? this.form.taxRegime : null,
+            // Only the acceptance travels; the server sets its date and time.
+            privacyNoticeAccepted: withInvoice ? this.form.privacyNoticeAccepted === true : false
         };
     }
 

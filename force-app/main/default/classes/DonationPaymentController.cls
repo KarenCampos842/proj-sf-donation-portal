@@ -19,6 +19,8 @@ public with sharing class DonationPaymentController {
     private static final String PUBLIC_NAME_REQUIRED = 'Escribe el nombre con el que quieres aparecer.';
     @TestVisible
     private static final String PUBLIC_NAME_TOO_LONG = 'El nombre público no puede tener más de 80 caracteres.';
+    @TestVisible
+    private static final String PRIVACY_NOTICE_REQUIRED = 'Acepta el aviso de privacidad para solicitar factura.';
 
     /**
      * What the donation form sends (data-model.md, section 11).
@@ -44,6 +46,9 @@ public with sharing class DonationPaymentController {
         public String taxPostalCode { get; set; }
         @AuraEnabled
         public String taxRegime { get; set; }
+        /** DON-13. Required to be true when invoiceRequested is true. The date and time are set by the server. */
+        @AuraEnabled
+        public Boolean privacyNoticeAccepted { get; set; }
     }
 
     /**
@@ -58,13 +63,20 @@ public with sharing class DonationPaymentController {
         if (request == null) {
             throw userError('Faltan datos obligatorios de tu donación.');
         }
+        // DON-13. The guest user can call this method directly, so the notice is checked here too;
+        // the flow checks it again and stores the acceptance with a server-side timestamp.
+        Boolean invoiceRequested = request.invoiceRequested == true;
+        if (invoiceRequested && request.privacyNoticeAccepted != true) {
+            throw userError(PRIVACY_NOTICE_REQUIRED);
+        }
         Map<String, Object> inputs = new Map<String, Object>{
             'campaignId' => request.campaignId,
             'amount' => request.amount,
             'email' => request.email,
             'visibility' => request.visibility,
             'publicName' => cleanPublicName(request),
-            'invoiceRequested' => request.invoiceRequested == true,
+            'invoiceRequested' => invoiceRequested,
+            'privacyNoticeAccepted' => invoiceRequested && request.privacyNoticeAccepted == true,
             'legalName' => request.legalName,
             'rfc' => request.rfc,
             'taxPostalCode' => request.taxPostalCode,
