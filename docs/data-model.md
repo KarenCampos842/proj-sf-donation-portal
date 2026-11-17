@@ -114,6 +114,9 @@ Created before the payment opens, from the form. It is not a donation: it does n
 | Fecha de aceptación | `Privacy_Notice_Accepted_At__c` | Date/Time | DON-13. Set by `Payment_Attempt_Create` with the server clock (`$Flow.CurrentDateTime`) at the moment of acceptance; never sent by the browser. Empty when the notice was not accepted | D2 |
 | Estado | `Status__c` | Picklist | `Started` (default), `Confirmed`, `Rejected`, `Cancelled`. Owned by workstream A | D1 |
 | Id de preferencia | `Preference_Id__c` | Text(64) | Returned by the provider when the payment is created. Owned by workstream A | D1 |
+| Hash del token de acceso del portal | `Portal_Access_Token_Hash__c` | Text(64), Unique, External ID | DON-18. SHA-256 hash of the access token that the browser receives once when the donation starts. The token authorizes the review, the confirmation, the edit and the payment of this one attempt; the token itself is never stored. Cleared when the donor edits the donation. No permission set and not the guest can read or edit it: only the server does, through `PaymentAttemptAccess` | D2 |
+| Fecha de confirmación del donante | `Donor_Confirmed_At__c` | Date/Time | DON-18. Server clock (`System.now()`) at the moment the donor confirmed the summary; never sent by the browser. The payment can be opened only when it has a value. It is not a status: `Status__c` keeps only `Started`, `Confirmed`, `Rejected` and `Cancelled` | D2 |
+| Fecha de reemplazo | `Superseded_At__c` | Date/Time | DON-18. Audit mark: the donor chose «Editar donación» and this attempt was replaced by another one. A replaced attempt has no token and cannot open a payment. PAY-07 deletes it with the other attempts that were not confirmed | D2 |
 
 **Validation rules** (they also run when records are inserted by automation, so they act as server-side validation)
 
@@ -316,7 +319,7 @@ Declarative tools first; Apex only where Flow cannot do the job. Every Apex clas
 |---|---|---|
 | Objects, fields, formulas, roll-ups, validation rules, permission sets, sharing, list views | Configuration | |
 | RFC to uppercase without spaces (`UPPER(SUBSTITUTE(RFC__c, " ", ""))`) | Before-save record-triggered flow | Runs before validation rules |
-| Privacy notice required with an invoice, and its server timestamp (DON-13) | Check in `Payment_Attempt_Create` (flow) and in `DonationPaymentController.startDonation` | The guest can call the controller directly. It is not a validation rule on purpose: a rule would also block updating the status of attempts created before DON-13 |
+| Privacy notice required with an invoice, and its server timestamp (DON-13) | Check in `Payment_Attempt_Create` (flow) and in `DonationPaymentController.startDonation` | Until DON-18 the guest could call the controller directly; since then only `DonationIntakeService` can, and the check stays in the controller and the flow as defense in depth. It is not a validation rule on purpose: a rule would also block updating the status of attempts created before DON-13 |
 | Close campaigns by date (GES-11, D2) | Scheduled-triggered flow | |
 | Delete attempts older than 7 days (PAY-07) | Scheduled-triggered flow | |
 | Receipt email when a donation is created (DON-23, D2) | Record-triggered flow with Send Email | `Receipt_Sent__c` prevents duplicates |
@@ -329,7 +332,7 @@ Declarative tools first; Apex only where Flow cannot do the job. Every Apex clas
 
 ## 11. Contract between workstreams
 
-**B → A:** the form sends the validated donation with `campaignId`, `amount`, `email`, `visibility` (`Anonymous`/`Public`), `publicName`, `invoiceRequested`, `legalName`, `rfc`, `taxPostalCode`, `taxRegime` and `privacyNoticeAccepted` (DON-13: required to be true when `invoiceRequested` is true; its date and time are not sent, the server sets them). These are the `Payment_Attempt__c` field names in camelCase without `__c`.
+**B → A:** the form sends the validated donation with `campaignId`, `amount` (since DON-09 the form service receives it as text and `DonationAmountValidator` checks it; workstream A still receives a `Decimal` with two decimals), `email`, `visibility` (`Anonymous`/`Public`), `publicName`, `invoiceRequested`, `legalName`, `rfc`, `taxPostalCode`, `taxRegime` and `privacyNoticeAccepted` (DON-13: required to be true when `invoiceRequested` is true; its date and time are not sent, the server sets them). These are the `Payment_Attempt__c` field names in camelCase without `__c`.
 
 **A → C:** A creates `Donation__c` with `Payment_Status__c = Confirmed`, copying the attempt. In D2, the receipt is triggered by that creation (DON-23).
 
