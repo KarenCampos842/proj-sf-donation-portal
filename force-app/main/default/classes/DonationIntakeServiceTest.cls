@@ -470,7 +470,7 @@ private class DonationIntakeServiceTest {
         Test.stopTest();
 
         Assert.isNotNull(attemptId, 'A configured amount starts the donation');
-        Assert.areEqual(new List<Decimal>{ 150, 2500 }, DonationIntakeService.getAmountSettings().suggestedAmounts);
+        Assert.areEqual(new List<Decimal>{ 150.00, 2500.00 }, DonationIntakeService.getAmountSettings().suggestedAmounts);
     }
 
     @IsTest
