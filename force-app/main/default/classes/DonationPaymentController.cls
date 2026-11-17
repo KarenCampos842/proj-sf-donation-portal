@@ -6,13 +6,20 @@
  * to this class (and the Mercado Pago Callout permission set for the callouts); it
  * never gets permissions on Payment_Attempt__c or Donation__c.
  *
- * The LWC must call startDonation and openPayment as two separate calls: Salesforce
- * does not allow a callout after saving data in the same transaction.
+ * startDonation and openPayment must run as two separate calls: Salesforce does not allow a
+ * callout after saving data in the same transaction.
+ *
+ * DON-18. startDonation and openPayment are no longer @AuraEnabled. The portal reaches them only
+ * through DonationIntakeService, which checks the access token of the attempt (an Id alone never
+ * authorizes a payment). This closes the direct call of the guest user. getPaymentResult stays
+ * @AuraEnabled because the thank-you page calls it.
  * Usage guide: docs/payments-api.md.
  */
 public with sharing class DonationPaymentController {
-    @TestVisible
-    private static final String GENERIC_ERROR = 'No pudimos abrir el pago, intenta de nuevo';
+    // The generic text returned when the payment cannot be opened. Payment_Preference_Create returns the same
+    // text (a flow cannot read an Apex constant); MercadoPagoPreferenceActionTest compares the flow with this
+    // constant, so the two cannot drift apart. DonationIntakeService recognizes it to show its own message.
+    public static final String GENERIC_ERROR = 'No pudimos abrir el pago, intenta de nuevo';
     @TestVisible
     private static final String RESULT_UNKNOWN = 'Unknown';
     @TestVisible
@@ -58,7 +65,6 @@ public with sharing class DonationPaymentController {
      * @return attempt Id, to pass to openPayment
      * @throws AuraHandledException with a Spanish message ready to show to the donor
      */
-    @AuraEnabled
     public static String startDonation(DonationRequest request) {
         if (request == null) {
             throw userError('Faltan datos obligatorios de tu donación.');
@@ -97,7 +103,6 @@ public with sharing class DonationPaymentController {
      * @return Mercado Pago checkout URL to redirect the donor to
      * @throws AuraHandledException with a Spanish message ready to show to the donor
      */
-    @AuraEnabled
     public static String openPayment(String attemptId) {
         Flow.Interview interview = run('Payment_Preference_Create',
             new Map<String, Object>{ 'attemptId' => attemptId });

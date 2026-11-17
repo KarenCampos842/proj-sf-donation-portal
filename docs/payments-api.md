@@ -11,28 +11,45 @@ Both paths use the same flow, `Donation_Register`, and the payment id is unique,
 
 **Repository note.** The public-name cleaning described in section 1 (`PublicNameSanitizer`, and the matching changes in `DonationIntakeService` and `DonationPaymentController`) was deployed to the Sandbox on 2026-11-10 and its Apex source is in the repository since PR #58. On 2026-11-16 `PublicNameSanitizer` was checked against the Sandbox and both versions match.
 
-The portal talks to one Apex class, `DonationPaymentController`, with three methods. Each method runs a flow in system mode, so the portal never touches `Payment_Attempt__c` or `Donation__c` directly and the guest user has no permission on them.
+The portal form talks to `DonationIntakeService` (workstream B), which validates, keeps the access token of the attempt and delegates to `DonationPaymentController` (workstream A). Each method of `DonationPaymentController` runs a flow in system mode, so the portal never touches `Payment_Attempt__c` or `Donation__c` directly and the guest user has no permission on them.
+
+**DON-18 change in `DonationPaymentController`.** `startDonation` and `openPayment` are no longer `@AuraEnabled`: they stay `public static` and only `DonationIntakeService` calls them. Before, the guest could call `openPayment(attemptId)` directly and an Id was the only thing that authorized a payment. `getPaymentResult` keeps `@AuraEnabled` because the thank-you page calls it. The flows, the callouts and the request class of workstream A did not change. No LWC or flow called the two methods directly (checked in the source). The guest profile was not modified: it already had access to both classes, and the new classes are only called from `DonationIntakeService`, so they are not in the profile.
 
 ```
-Form ──► startDonation(request) ──► attemptId
-     ──► openPayment(attemptId) ──► checkoutUrl ──► redirect to Mercado Pago
+Form ──► startDonation(request) ──► accessToken          (the server saves the attempt and keeps only the token hash)
+     ──► getDonationSummary(accessToken) ──► summary      (read from the saved attempt)
+         [the donor reviews: «Editar donación» or «Confirmar y continuar al pago»]
+     ──► invalidateDonation(accessToken)                  (edit: the old attempt can never open a payment)
+     ──► confirmDonation(accessToken)                     (the server records the confirmation and its date)
+     ──► openPayment(accessToken) ──► checkoutUrl ──► redirect to Mercado Pago
                                                         │
 Thank-you page ◄── Mercado Pago returns with ?payment_id=…
      ──► getPaymentResult(paymentId) ──► resultState ──► show message
 ```
 
+Every call is a separate Apex call. All of them are methods of `DonationIntakeService`.
+
 ## 1. Donation form
 
-### `startDonation(request)` → `String attemptId`
+### The access token (DON-18)
 
-Validates everything again on the server and saves the payment attempt. It does not create a donation and does not call Mercado Pago.
+The portal has no login, so the Id of a record never authorizes anything. `startDonation` creates a random 256-bit token (`Crypto.generateAesKey(256)`, 64 hexadecimal characters), returns it to the browser **once** and keeps only its SHA-256 hash in `Payment_Attempt__c.Portal_Access_Token_Hash__c` (unique, External ID). Every later call sends the token; the server hashes it and finds the attempt by the hash. A token authorizes one attempt only.
 
-`request` fields (names from `data-model.md`, section 11):
+- The browser keeps it in memory: not in the URL, not in the page, not stored. If the donor reloads the page the token is lost and the donor starts again from the form. This is expected.
+- It is valid for 60 minutes after the attempt was created (`DonationReview.TOKEN_LIFETIME_MINUTES`). It only has to cover the time to read the summary and confirm. It is far below the 7 days after which PAY-07 deletes an attempt that was not confirmed, so a token cannot outlive its attempt.
+- An attempt can be reviewed only while all of this is true: the hash matches, `Status__c` is `Started`, it was not replaced by an edit (`Superseded_At__c` empty), no payment was opened (`Preference_Id__c` empty) and the token has not expired. Any other case answers the same text, so nobody learns whether a token ever existed: "Tu donación ya no está disponible. Edítala para volver a capturar tus datos."
+- The hash, the confirmation date and the replacement date are not readable or editable by any permission set or by the guest. Only the server reads and writes them, through `PaymentAttemptAccess`.
+
+### `startDonation(request)` → `DonationStartDTO { accessToken }`
+
+Validates everything again on the server and asks workstream A to save the payment attempt, then creates the token. It does not create a donation and does not call Mercado Pago.
+
+`request` fields of the form service (`DonationIntakeService.DonationFormInputDTO`; names from `data-model.md`, section 11):
 
 | Field | Type | Required | Notes |
 |---|---|---|---|
 | `campaignId` | String | Yes | Campaign Id. The campaign must accept donations (`Accepts_Donations__c`). |
-| `amount` | Number | Yes | MXN, minimum 50. The amount charged is the one saved here, not one sent later. |
+| `amount` | String | Yes | DON-09. The amount as text, exactly as the donor chose or typed it (for example `"250"` or `"1234.50"`). The server checks it with `DonationAmountValidator`: plain decimal number, at most two decimals, at most 14 whole digits (capacity of `Amount__c`, `Currency(16, 2)`), greater than zero and not below the current minimum (ADM-13). It is converted with `Decimal.valueOf` only after that and sent to workstream A as a `Decimal` with two decimals. There is no list to choose from and no maximum of ours. |
 | `email` | String | Yes | Valid email. |
 | `visibility` | String | Yes | `Anonymous` or `Public` (API values, not the Spanish labels). |
 | `publicName` | String | If `Public` | Cleaned on the server before it is saved (DON-11): HTML tags, stray `<` and `>` and control characters are removed and spaces are collapsed, keeping the text between tags. Maximum 80 characters after cleaning; raw text over 320 characters is rejected before cleaning. Rejected if it is empty after cleaning or too long. Ignored and not stored when `Anonymous`. |
@@ -43,59 +60,82 @@ Validates everything again on the server and saves the payment attempt. It does 
 | `taxRegime` | String | If invoice | SAT code, e.g. `612` (picklist API value). |
 | `privacyNoticeAccepted` | Boolean | If invoice | DON-13. Must be `true` when `invoiceRequested` is `true`; otherwise the call is rejected and no attempt is created (also when the field is omitted). The server saves it with the date and time of its own clock in `Privacy_Notice_Accepted_At__c`: do not send a date. Without invoice it is ignored and saved as false. |
 
-Errors: throws an `AuraHandledException` whose message is already in Spanish and safe to show, for example "El monto es menor al mínimo permitido." (the minimum comes from the configuration, ADM-13), "El RFC no tiene un formato válido.", "Esta campaña ya no acepta donaciones.", "Escribe el nombre con el que quieres aparecer." (public name empty after cleaning), "El nombre público no puede tener más de 80 caracteres." and "Acepta el aviso de privacidad para solicitar factura." (invoice requested without accepting the privacy notice).
+`DonationPaymentController.DonationRequest` (workstream A) keeps `amount` as `Decimal`: the form service converts the validated text right before delegating. Nothing else of the contract of workstream A changed.
 
-The public name is cleaned by `PublicNameSanitizer`. `startDonation` applies it itself, so the cleaning also covers direct calls to this method, and `DonationIntakeService` (the portal form) applies it before delegating here. Attempts saved before this cleaning existed are not changed.
+Errors: throws an `AuraHandledException` whose message is already in Spanish and safe to show. Since DON-17 every message of `DonationIntakeService` has the form `<field>|<message>`, where the field is empty for a general error: `amount|El monto mínimo es de $50 MXN.`, `rfc|El RFC no tiene un formato válido.`, `|Esta campaña ya no acepta donaciones.`. The amount messages are: "Elige un monto para continuar.", "Escribe solo números, con punto decimal. Por ejemplo: 250 o 250.50.", "Usa como máximo dos decimales.", "El monto debe ser mayor a cero.", "Escribe un monto con menos dígitos." and "El monto mínimo es de $X MXN." (the minimum comes from the configuration, ADM-13). Other messages: "Escribe el nombre con el que quieres aparecer." (public name empty after cleaning), "El nombre público no puede tener más de 80 caracteres." and "Acepta el aviso de privacidad para solicitar factura." (invoice requested without accepting the privacy notice).
 
-**Privacy notice (DON-13).** `startDonation` checks `privacyNoticeAccepted` itself, so a direct call cannot skip it, and `Payment_Attempt_Create` checks it again and saves `Privacy_Notice_Accepted__c` and `Privacy_Notice_Accepted_At__c` (server clock). `Donation_Register` copies both to the donation. It is the flow that the thank-you page and the webhook (section 5) run, so both confirmation routes behave the same, and neither one is blocked when an attempt has no acceptance: attempts created before DON-13 are registered normally, with the acceptance false and no date. The portal form (`DonationIntakeService`) sends `privacyNoticeAccepted` and reports a missing acceptance on the checkbox field. Deploy the flows, the four fields and `DonationPaymentController` together: the controller passes the new flow input.
+The public name is cleaned by `PublicNameSanitizer`. `DonationPaymentController.startDonation` applies it itself, so the cleaning also covers direct calls to workstream A's method, and `DonationIntakeService` applies it before delegating. Attempts saved before this cleaning existed are not changed.
+
+**Privacy notice (DON-13).** `DonationPaymentController.startDonation` checks `privacyNoticeAccepted` itself, and `Payment_Attempt_Create` checks it again and saves `Privacy_Notice_Accepted__c` and `Privacy_Notice_Accepted_At__c` (server clock). `Donation_Register` copies both to the donation. It is the flow that the thank-you page and the webhook (section 5) run, so both confirmation routes behave the same, and neither one is blocked when an attempt has no acceptance: attempts created before DON-13 are registered normally, with the acceptance false and no date. The portal form (`DonationIntakeService`) sends `privacyNoticeAccepted` and reports a missing acceptance on the checkbox field. Deploy the flows, the four fields and `DonationPaymentController` together: the controller passes the new flow input.
 
 **Status (DON-13).** Deployed to `donations-dev` on 2026-11-17 together with the four fields, the two flows (`Payment_Attempt_Create` and `Donation_Register`, version 2 active), the Apex classes, the form and the two permission sets (deployment `0AfVC00000PICFd0AP`). The site was published afterwards (job `08PVC00000gD7QB2A0`). Checked as a guest: an invoice request with the acceptance omitted, `false` or `null` is rejected on both routes (the form service and a direct call to `DonationPaymentController.startDonation`), and no attempt is created. Real attempts created with invoice and acceptance store `true` and a server-generated date. A paid sandbox payment of 100 MXN (attempt `a1dVC00000GpiFVYAZ`, with invoice and acceptance) was registered as donation `a1cVC00000AID5tYAH` (`DON-000025`) by the new version of `Donation_Register`, with acceptance `true` and the same date and time copied from the attempt. The donation was created by the site guest user, which is the user both the return page and the webhook run as, so the record alone does not show which of the two registered it.
 
-### `openPayment(attemptId)` → `String checkoutUrl`
+### `getDonationSummary(accessToken)` → `DonationSummaryDTO`
 
-Creates the Mercado Pago Checkout Pro payment for the attempt and returns the URL to send the donor to. Each attempt can be opened only once.
+Returns what the donor reviews, built from the values saved in the attempt, never from values that come back from the browser: `campaignName`, `amount` (exact text with two decimals), `email`, `visibility`, `publicName` (only when the donation is `Public`) and `invoiceRequested`. It has no Id, no hash and no fiscal data. An anonymous donation can have `invoiceRequested = true`.
 
-Errors (Spanish, safe to show): "No pudimos abrir el pago, intenta de nuevo" (provider failed; the attempt is deleted, the donor can simply try again) or "Esta campaña ya no acepta donaciones.".
+### `confirmDonation(accessToken)`
 
-### Important: two separate calls
+Records that the donor confirmed the summary: it sets `Payment_Attempt__c.Donor_Confirmed_At__c` with the date and time of the server clock. The date never comes from the browser. Confirming twice keeps the first date. `Status__c` does not change: `Started`, `Confirmed`, `Rejected` and `Cancelled` are the only states and the webhook, `Donation_Register`, PAY-07 and PAY-08 depend on them.
 
-Call `openPayment` **after** `startDonation` has returned, as a second Apex call. Do not wrap both in one Apex method: Salesforce does not allow a callout after saving data in the same transaction.
+### `openPayment(accessToken)` → `String checkoutUrl`
+
+Finds the attempt by the token and requires that it is reviewable and that `Donor_Confirmed_At__c` has a value, for every amount, suggested or custom. Without a confirmation it answers "Confirma el resumen de tu donación antes de continuar al pago." and never calls Mercado Pago. Then workstream A creates the Checkout Pro payment (`Payment_Preference_Create`) with the amount and the campaign saved in the attempt, and the method returns the URL to send the donor to. Each attempt can be opened only once.
+
+It only reads before the callout, so the callout is not blocked by a pending save.
+
+Errors (Spanish, safe to show): "No pudimos abrir el pago. Puede que Mercado Pago no acepte esta cantidad: edita tu donación y elige otra cantidad." (DON-09, AC6: the provider failed; the attempt is deleted by the flow, so the form disables «Confirmar y continuar al pago» and leaves «Editar donación» as the only way forward; the donor then continues with a new attempt) or "Esta campaña ya no acepta donaciones.". Workstream A's flow does not keep the answer of Mercado Pago (it may echo request data), so the message cannot say which part was refused; it names the amount as a possible cause and offers to change it.
+
+**Two openings at the same time.** `openPayment` rejects an attempt that already has `Preference_Id__c`, and `Payment_Preference_Create` checks the same again. Both checks happen **before** the callout and the preference is saved **after** it, so two simultaneous requests for the same attempt can both pass the check and create two preferences. `FOR UPDATE` does not help: Salesforce releases those locks when a callout starts. Disabling the button of the form does not stop direct or parallel calls to the server. The Mercado Pago documentation that was reachable (the page of test purchases) does not mention an idempotency key for creating preferences, so none is used; this is **not verified** and the duplicate opening is **not completely prevented**. What limits the damage: the donor needs a valid, confirmed token (a single browser holds it), the second preference overwrites `Preference_Id__c`, and both payments point to the same attempt through `external_reference`. `Donation_Register` registers one donation per payment and the first one marks the attempt `Confirmed`; a second approved payment of the same attempt would be registered as another donation (the payment id is the only uniqueness), and PAY-08 would reconcile it in the same way. Whether to accept that risk or to ask workstream A for a guard is a decision for the team.
+
+### `invalidateDonation(accessToken)`
+
+Called when the donor chooses «Editar donación». The server clears `Portal_Access_Token_Hash__c` and sets `Superseded_At__c` (audit). The old attempt can no longer be reviewed, confirmed or opened, even if someone kept its token; `Status__c` does not change and PAY-07 deletes the attempt later. Continuing creates a new attempt, a new token and a new summary that must be confirmed again. An unknown or expired token, or the token of an attempt that is no longer reviewable (for example one that already opened a payment), does nothing and answers nothing.
+
+### Important: separate calls
+
+Each step is its own Apex call. `openPayment` must not share a transaction with a save: Salesforce does not allow a callout after saving data in the same transaction. `confirmDonation` saves and `openPayment` calls Mercado Pago, so they are two calls.
 
 ### Example (form LWC)
 
-```js
-import startDonation from '@salesforce/apex/DonationPaymentController.startDonation';
-import openPayment from '@salesforce/apex/DonationPaymentController.openPayment';
+The form of the portal (`donationForm`) does this; the summary is the component `donationSummary`.
 
-async handlePay() {
-    this.isLoading = true;
-    this.errorMessage = undefined;
-    try {
-        const attemptId = await startDonation({
-            request: {
-                campaignId: this.campaignId,
-                amount: this.amount,
-                email: this.email,
-                visibility: this.isAnonymous ? 'Anonymous' : 'Public',
-                publicName: this.isAnonymous ? null : this.publicName,
-                invoiceRequested: this.invoiceRequested,
-                legalName: this.legalName,
-                rfc: this.rfc,
-                taxPostalCode: this.taxPostalCode,
-                taxRegime: this.taxRegime,
-                privacyNoticeAccepted: this.invoiceRequested ? this.privacyNoticeAccepted : false
-            }
-        });
-        const checkoutUrl = await openPayment({ attemptId });
-        window.location.assign(checkoutUrl); // same tab, to Mercado Pago
-    } catch (error) {
-        this.errorMessage = error?.body?.message || 'No pudimos abrir el pago, intenta de nuevo';
-        this.isLoading = false;
+```js
+import startDonation from '@salesforce/apex/DonationIntakeService.startDonation';
+import getDonationSummary from '@salesforce/apex/DonationIntakeService.getDonationSummary';
+import confirmDonation from '@salesforce/apex/DonationIntakeService.confirmDonation';
+import invalidateDonation from '@salesforce/apex/DonationIntakeService.invalidateDonation';
+import openPayment from '@salesforce/apex/DonationIntakeService.openPayment';
+
+// 1. Capture: the server saves the attempt and returns the token.
+const { accessToken } = await startDonation({
+    request: {
+        campaignId: this.campaignId,
+        amount: this.amountText, // text, never a Number
+        email: this.email,
+        visibility: this.isAnonymous ? 'Anonymous' : 'Public',
+        publicName: this.isAnonymous ? null : this.publicName,
+        invoiceRequested: this.invoiceRequested,
+        legalName: this.legalName,
+        rfc: this.rfc,
+        taxPostalCode: this.taxPostalCode,
+        taxRegime: this.taxRegime,
+        privacyNoticeAccepted: this.invoiceRequested ? this.privacyNoticeAccepted : false
     }
-}
+});
+// 2. Review: show the summary that the server built from the saved attempt.
+const summary = await getDonationSummary({ accessToken });
+
+// 3a. «Editar donación»
+await invalidateDonation({ accessToken }); // then show the form again with the data the donor typed
+
+// 3b. «Confirmar y continuar al pago»
+await confirmDonation({ accessToken });
+const checkoutUrl = await openPayment({ accessToken });
+window.location.assign(checkoutUrl); // same tab, to Mercado Pago
 ```
 
-Disable the "Continuar al pago" button while `isLoading` is true, so the donor cannot start two attempts with a double click.
+Disable both buttons while a call is running, so the donor cannot start two attempts or open two payments with a double click. Show only messages with the form `<field>|<message>`; anything else gets a friendly text.
 
 ## 2. Thank-you page
 

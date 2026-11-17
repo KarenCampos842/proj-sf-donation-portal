@@ -121,14 +121,18 @@ private class DonationPrivacyNoticeTest {
     static void shouldSaveAcceptanceThroughThePortalService_WhenInvoiceIsRequestedAndAccepted() {
         DonationIntakeService.DonationFormInputDTO request = invoiceFormRequest();
         request.privacyNoticeAccepted = true;
-        String attemptId;
+        String token;
 
         Test.startTest();
         System.runAs(PortalTestDataFactory.getUser(PortalTestDataFactory.GUEST_LAST_NAME)) {
-            attemptId = DonationIntakeService.startDonation(request);
+            token = DonationIntakeService.startDonation(request).accessToken;
         }
         Test.stopTest();
 
+        // The service returns the access token; the attempt is found through its hash.
+        Id attemptId = [
+            SELECT Id FROM Payment_Attempt__c WHERE Portal_Access_Token_Hash__c = :DonationAccessToken.hashOf(token) WITH SYSTEM_MODE
+        ].Id;
         Payment_Attempt__c attempt = attemptOf(attemptId);
         Assert.isTrue(attempt.Privacy_Notice_Accepted__c, 'The acceptance travels through the portal service');
         Assert.isNotNull(attempt.Privacy_Notice_Accepted_At__c, 'The server sets the date and time');
@@ -290,7 +294,7 @@ private class DonationPrivacyNoticeTest {
     private static DonationIntakeService.DonationFormInputDTO invoiceFormRequest() {
         DonationIntakeService.DonationFormInputDTO request = new DonationIntakeService.DonationFormInputDTO();
         request.campaignId = String.valueOf(campaign().Id);
-        request.amount = 500;
+        request.amount = '500';
         request.email = 'donante@example.com';
         request.visibility = 'Anonymous';
         request.invoiceRequested = true;

@@ -1,18 +1,32 @@
 <template>
     <div class="donation">
-        <div class="donation__back">
-            <lightning-button
-                variant="base"
-                label={messages.back}
-                icon-name="utility:chevronleft"
-                onclick={handleBack}
-            ></lightning-button>
-        </div>
+        <template lwc:if={showBack}>
+            <div class="donation__back">
+                <lightning-button
+                    variant="base"
+                    label={messages.back}
+                    icon-name="utility:chevronleft"
+                    onclick={handleBack}
+                ></lightning-button>
+            </div>
+        </template>
 
-        <template lwc:if={hasCampaign}>
+        <template lwc:if={isReviewing}>
+            <c-donation-summary
+                summary={summary}
+                is-busy={isSubmitting}
+                is-opening-payment={isOpeningPayment}
+                confirm-disabled={confirmBlocked}
+                error-message={reviewError}
+                onedit={handleEdit}
+                onconfirm={handleConfirm}
+            ></c-donation-summary>
+        </template>
+
+        <template lwc:elseif={hasCampaign}>
             <section class="form" aria-labelledby="form-title">
                 <header class="form__header">
-                    <h1 id="form-title" class="form__title">{messages.title}</h1>
+                    <h1 id="form-title" class="form__title" tabindex="-1">{messages.title}</h1>
                     <template lwc:if={campaignLabel}>
                         <p class="form__campaign">{campaignLabel}</p>
                     </template>
@@ -42,7 +56,40 @@
                                 </label>
                             </lightning-layout-item>
                         </template>
+                        <lightning-layout-item
+                            size="6"
+                            small-device-size="4"
+                            medium-device-size="3"
+                            padding="around-small"
+                        >
+                            <label class="pill">
+                                <input
+                                    class="pill__input"
+                                    type="radio"
+                                    name="amount"
+                                    value={otherAmountValue}
+                                    checked={isCustomAmount}
+                                    onchange={handleAmountChange}
+                                />
+                                <span class="pill__label">{messages.amount.other}</span>
+                            </label>
+                        </lightning-layout-item>
                     </lightning-layout>
+                    <template lwc:if={isCustomAmount}>
+                        <div class="custom-amount">
+                            <lightning-input
+                                data-field="customAmount"
+                                type="text"
+                                label={messages.amount.customLabel}
+                                value={form.customAmount}
+                                required
+                                autocomplete="off"
+                                field-level-help={messages.amount.customHint}
+                                onchange={handleFieldChange}
+                                onblur={handleFieldBlur}
+                            ></lightning-input>
+                        </div>
+                    </template>
                     <template lwc:if={amountError}>
                         <p class="field-error" role="alert">{amountError}</p>
                     </template>

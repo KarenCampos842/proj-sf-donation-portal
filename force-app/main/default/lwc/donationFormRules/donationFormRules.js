@@ -13,6 +13,20 @@ export const MAX_LEGAL_NAME_LENGTH = 254;
 // (DonationIntakeService.getAmountSettings); these are only shown while it loads or if it fails.
 export const SUGGESTED_AMOUNTS = [100, 250, 500, 1000, 2000, 5000, 10000, 20000];
 
+// DON-09. Value of the "Otro monto" option of the amount radio group.
+export const OTHER_AMOUNT = 'other';
+
+// Whole digits that Payment_Attempt__c.Amount__c (Currency(16, 2)) can hold. It is a limit of the field,
+// not a business maximum. The server reads the same value from the field and is the authority.
+export const MAX_INTEGER_DIGITS = 14;
+const MAX_DECIMALS = 2;
+const AMOUNT_PATTERN = /^[0-9]+(\.[0-9]+)?$/;
+const NEGATIVE_AMOUNT_PATTERN = /^-[0-9]+(\.[0-9]+)?$/;
+const MINIMUM_AMOUNT_PATTERN = /^[0-9]+(\.[0-9]{1,2})?$/;
+const LEADING_ZEROS = /^0+(?=[0-9])/;
+// Cents of an amount of zero, already normalized (see toCents).
+const ZERO_CENTS = '0';
+
 // Same patterns as the server (DonationIntakeService) and the RFC_Format validation rule.
 const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/;
 export const RFC_PATTERN = /^[A-ZÑ&]{3,4}[0-9]{2}(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])[A-Z0-9]{2}[0-9A]$/;
@@ -135,6 +149,112 @@ export function parseServerError(error) {
     const match = typeof raw === 'string' ? SERVER_ERROR_PATTERN.exec(raw) : null;
     const message = match ? match[2].trim() : '';
     return message ? { field: match[1] || '', message } : null;
+}
+
+/**
+ * Normalizes a decimal text with at most two decimals into its integer cents, written as a string of digits
+ * without leading zeros (at least one digit): "0050.5" gives "5050" and "0.00" gives "0".
+ *
+ * Amounts are compared as strings on purpose. Currency(16, 2) holds 16 digits in cents, more than
+ * Number.MAX_SAFE_INTEGER, so Number would lose cents; BigInt is not used because it has not been tested
+ * under Lightning Web Security. The value sent to Apex stays the text the donor typed.
+ * @param {string} text amount that already matches AMOUNT_PATTERN and has at most two decimals
+ * @returns {string} integer cents as digits without leading zeros
+ */
+export function toCents(text) {
+    const [whole, decimals = ''] = text.split('.');
+    return `${whole}${decimals.padEnd(MAX_DECIMALS, '0')}`.replace(LEADING_ZEROS, '');
+}
+
+/**
+ * Compares two amounts written by toCents: the longer one is the greater and, with the same length,
+ * the string order is the numeric order.
+ * @param {string} left integer cents as digits without leading zeros
+ * @param {string} right integer cents as digits without leading zeros
+ * @returns {number} negative when left is lower, 0 when equal, positive when left is greater
+ */
+export function compareCents(left, right) {
+    if (left.length !== right.length) {
+        return left.length - right.length;
+    }
+    if (left === right) {
+        return 0;
+    }
+    return left < right ? -1 : 1;
+}
+
+/**
+ * Writes an exact amount of the server for the donor, with thousands separators, without going through
+ * Number: "1234.50" gives "$1,234.50" and "500.00" gives "$500". The text keeps every digit.
+ * @param {string} text amount as text, for example "1234.50"
+ * @returns {string} amount ready to show, without the currency name
+ */
+export function formatAmountText(text) {
+    const [whole, decimals = ''] = String(text ?? '').split('.');
+    const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return /[1-9]/.test(decimals) ? `$${grouped}.${decimals}` : `$${grouped}`;
+}
+
+/**
+ * Minimum amount of the configuration as cents.
+ * @param {number|string|null|undefined} minimumAmount minimum received from the server
+ * @returns {string|null} cents as written by toCents, or null when the value is missing or has no valid shape
+ */
+export function minimumToCents(minimumAmount) {
+    const text = minimumAmount === null || minimumAmount === undefined ? '' : String(minimumAmount);
+    return MINIMUM_AMOUNT_PATTERN.test(text) ? toCents(text) : null;
+}
+
+/**
+ * Amount in cents written as a plain amount, without trailing zeros: "5000" gives "50" and "7550" "75.5".
+ * @param {string} cents integer cents as written by toCents
+ * @returns {string} plain amount
+ */
+export function centsToText(cents) {
+    const digits = cents.padStart(MAX_DECIMALS + 1, '0');
+    const whole = digits.slice(0, -MAX_DECIMALS).replace(LEADING_ZEROS, '');
+    const decimals = digits.slice(-MAX_DECIMALS).replace(/0+$/, '');
+    return decimals ? `${whole}.${decimals}` : whole;
+}
+
+function validateAmountShape(value) {
+    if (!value) return 'empty';
+    if (NEGATIVE_AMOUNT_PATTERN.test(value)) return 'positive';
+    if (!AMOUNT_PATTERN.test(value)) return 'format';
+    const [whole, decimals = ''] = value.split('.');
+    if (decimals.length > MAX_DECIMALS) return 'decimals';
+    return whole.replace(LEADING_ZEROS, '').length > MAX_INTEGER_DIGITS ? 'digits' : null;
+}
+
+/**
+ * Checks the text of a custom amount. It mirrors DonationAmountValidator of the server, in the same order.
+ * @param {string} text amount typed by the donor
+ * @param {string|null} minimumCents current minimum as written by toCents, or null when it is unknown
+ * @returns {string|null} key of FORM_MESSAGES.amount.errors, or null when the amount is valid
+ */
+export function validateAmountText(text, minimumCents) {
+    const value = String(text ?? '').trim();
+    const shapeError = validateAmountShape(value);
+    if (shapeError) return shapeError;
+    const cents = toCents(value);
+    if (cents === ZERO_CENTS) return 'positive';
+    if (!minimumCents) return 'configuration';
+    return compareCents(cents, minimumCents) < 0 ? 'belowMinimum' : null;
+}
+
+/**
+ * Message to show for a custom amount.
+ * @param {string} text amount typed by the donor
+ * @param {string|null} minimumCents current minimum as written by toCents, or null when it is unknown
+ * @returns {string} Spanish message, or an empty string when the amount is valid
+ */
+export function validateCustomAmount(text, minimumCents) {
+    const key = validateAmountText(text, minimumCents);
+    if (!key) {
+        return '';
+    }
+    const template = FORM_MESSAGES.amount.errors[key];
+    return key === 'belowMinimum' ? template.replace('{0}', `$${centsToText(minimumCents)} MXN`) : template;
 }
 
 export function validateEmail(value) {
