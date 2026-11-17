@@ -214,7 +214,7 @@ Both rules belong to D2 (MOD-03, RF-D2) and are not part of the D1 metadata. The
 | Monto mínimo (MXN) | `Minimum_Amount__c` | Number(16, 2), required: `50` |
 | Monto sugerido 1 … 8 (MXN) | `Amount_1__c` … `Amount_8__c` | Number(10, 0); `Amount_1__c` required, the others optional (empty = not shown): `100, 250, 500, 1000, 2000, 5000, 10000, 20000` |
 
-Validation rules: `Minimum_Must_Be_Positive` (minimum ≤ 0 is rejected, AC4) and `Suggested_Not_Below_Minimum` (a suggested amount below the minimum is rejected, AC3).
+Validation rules: `Minimum_Must_Be_Positive` (a minimum below $20 MXN is rejected, which also covers zero and negative values, AC4) and `Suggested_Not_Below_Minimum` (a suggested amount below the minimum is rejected, AC3).
 
 Design decision: the D1 draft planned one text field with the amounts separated by commas. It was replaced by eight number fields because a validation rule cannot go through a comma-separated list, so AC3 could not be enforced when saving.
 
