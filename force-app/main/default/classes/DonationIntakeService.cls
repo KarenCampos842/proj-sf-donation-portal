@@ -161,7 +161,7 @@ public with sharing class DonationIntakeService {
      * @return minimum amount and suggested amounts, in the order set by the administrator
      */
     @AuraEnabled(cacheable=true)
-    public static DonationAmountSettings.Settings getAmountSettings() {
+    public static DonationAmountSettingsDTO getAmountSettings() {
         return DonationAmountSettings.current();
     }
 

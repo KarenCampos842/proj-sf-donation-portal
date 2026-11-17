@@ -38,41 +38,27 @@ public with sharing class DonationAmountSettings {
     private static Boolean recordMissing = false;
 
     /**
-     * What the donation form needs.
-     */
-    public class Settings {
-        @AuraEnabled
-        public Decimal minimumAmount;
-        @AuraEnabled
-        public List<Decimal> suggestedAmounts;
-    }
-
-    /**
      * Current configuration, in the order the administrator set the amounts. Empty amounts are left out.
      * @return minimum amount and suggested amounts
      */
-    public static Settings current() {
+    public static DonationAmountSettingsDTO current() {
         Donation_Amount_Setting__mdt record = recordMissing
             ? null
             : (recordOverride != null ? recordOverride : Donation_Amount_Setting__mdt.getInstance(RECORD_NAME));
-        Settings settings = new Settings();
         if (record == null || record.Minimum_Amount__c == null) {
-            settings.minimumAmount = normalize(DEFAULT_MINIMUM);
-            settings.suggestedAmounts = normalize(DEFAULT_AMOUNTS);
-            return settings;
+            return new DonationAmountSettingsDTO(normalize(DEFAULT_MINIMUM), normalize(DEFAULT_AMOUNTS));
         }
-        settings.minimumAmount = normalize(record.Minimum_Amount__c);
-        settings.suggestedAmounts = new List<Decimal>();
+        List<Decimal> amounts = new List<Decimal>();
         for (SObjectField field : AMOUNT_FIELDS) {
             Decimal amount = normalize((Decimal) record.get(field));
-            if (amount != null && !settings.suggestedAmounts.contains(amount)) {
-                settings.suggestedAmounts.add(amount);
+            if (amount != null && !amounts.contains(amount)) {
+                amounts.add(amount);
             }
         }
-        if (settings.suggestedAmounts.isEmpty()) {
-            settings.suggestedAmounts = normalize(DEFAULT_AMOUNTS);
+        if (amounts.isEmpty()) {
+            amounts = normalize(DEFAULT_AMOUNTS);
         }
-        return settings;
+        return new DonationAmountSettingsDTO(normalize(record.Minimum_Amount__c), amounts);
     }
 
     /**

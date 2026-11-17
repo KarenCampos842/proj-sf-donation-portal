@@ -23,7 +23,7 @@ private class DonationAmountSettingsTest {
         // Technical task 2: initial values are the eight amounts of DON-08 and a minimum of $50.
         Donation_Amount_Setting__mdt deployed = Donation_Amount_Setting__mdt.getInstance('Default');
         Assert.isNotNull(deployed, 'The Default record is deployed with the metadata');
-        DonationAmountSettings.Settings s = DonationAmountSettings.current();
+        DonationAmountSettingsDTO s = DonationAmountSettings.current();
         Assert.areEqual(DonationAmountSettings.DEFAULT_MINIMUM.setScale(2), s.minimumAmount);
         Assert.areEqual(amounts(DonationAmountSettings.DEFAULT_AMOUNTS), s.suggestedAmounts);
     }
@@ -32,7 +32,7 @@ private class DonationAmountSettingsTest {
     static void changedAmountsAreUsed() {
         // AC1: the visitor gets the updated options, in the order the administrator set them.
         DonationAmountSettings.recordOverride = record(80, new List<Decimal>{ 150, 300, 900 });
-        DonationAmountSettings.Settings s = DonationAmountSettings.current();
+        DonationAmountSettingsDTO s = DonationAmountSettings.current();
         Assert.areEqual(amounts(new List<Decimal>{ 150, 300, 900 }), s.suggestedAmounts);
         Assert.isTrue(DonationAmountSettings.isSuggested(150.0), 'The scale of the number does not matter');
         Assert.isTrue(DonationAmountSettings.isSuggested(300));
@@ -58,7 +58,7 @@ private class DonationAmountSettingsTest {
     @IsTest
     static void missingRecordFallsBackToDeliveryOne() {
         DonationAmountSettings.recordMissing = true;
-        DonationAmountSettings.Settings s = DonationAmountSettings.current();
+        DonationAmountSettingsDTO s = DonationAmountSettings.current();
         Assert.areEqual(DonationAmountSettings.DEFAULT_MINIMUM.setScale(2), s.minimumAmount);
         Assert.areEqual(amounts(DonationAmountSettings.DEFAULT_AMOUNTS), s.suggestedAmounts);
     }
@@ -66,7 +66,7 @@ private class DonationAmountSettingsTest {
     @IsTest
     static void recordWithoutAmountsFallsBackToDeliveryOneAmounts() {
         DonationAmountSettings.recordOverride = record(60, new List<Decimal>());
-        DonationAmountSettings.Settings s = DonationAmountSettings.current();
+        DonationAmountSettingsDTO s = DonationAmountSettings.current();
         Assert.areEqual(((Decimal) 60).setScale(2), s.minimumAmount, 'The minimum still comes from the record');
         Assert.areEqual(amounts(DonationAmountSettings.DEFAULT_AMOUNTS), s.suggestedAmounts);
     }
