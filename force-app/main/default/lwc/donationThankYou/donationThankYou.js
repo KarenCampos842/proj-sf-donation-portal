@@ -62,9 +62,9 @@ export default class DonationThankYou extends NavigationMixin(LightningElement) 
         const fromState = state?.payment_id;
         const fromUrl = new URLSearchParams(window.location.search).get('payment_id');
         const value = Array.isArray(fromState) ? fromState[0] : fromState || fromUrl;
-        // Mercado Pago sends the text "null" when nothing was paid. The payment flow of Workstream A
-        // handles that value, but fails with an empty one.
-        return String(value ?? '').trim() || 'null';
+        // Mercado Pago sends the text "null" when nothing was paid; it is kept so the server answers NoPayment.
+        // With no payment_id in the URL the value stays empty and the server answers Unknown (DON-20 AC4, #54).
+        return String(value ?? '').trim();
     }
 
     async checkPayment() {

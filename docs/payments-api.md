@@ -9,7 +9,7 @@ Everything below is deployed in `donations-dev`. Stories: PAY-07, DON-19, DON-20
 
 Both paths use the same flow, `Donation_Register`, and the payment id is unique, so a payment is registered only once (PAY-03).
 
-**Repository note.** The public-name cleaning described in section 1 (`PublicNameSanitizer`, and the matching changes in `DonationIntakeService` and `DonationPaymentController`) was deployed to the Sandbox on 2026-11-10, but its Apex source is not committed yet, so the version of this class in the repository does not include it.
+**Repository note.** The public-name cleaning described in section 1 (`PublicNameSanitizer`, and the matching changes in `DonationIntakeService` and `DonationPaymentController`) was deployed to the Sandbox on 2026-11-10 and its Apex source is in the repository since PR #58. On 2026-11-16 `PublicNameSanitizer` was checked against the Sandbox and both versions match.
 
 The portal talks to one Apex class, `DonationPaymentController`, with three methods. Each method runs a flow in system mode, so the portal never touches `Payment_Attempt__c` or `Donation__c` directly and the guest user has no permission on them.
 
@@ -121,7 +121,7 @@ Which state the page gets without a payment (DON-20 AC4, #54):
 | "Volver al sitio" button of Mercado Pago | `"null"` | `NoPayment` |
 | No `payment_id` in the URL (window closed, page opened directly) | empty or `null` | `Unknown`: the result is not known, so the page must not say the payment was not completed |
 
-For the second row to reach the server, the thank-you page must send an empty value when the URL has no `payment_id`, not the text `"null"`.
+The thank-you page sends an empty value when the URL has no `payment_id`, and keeps the text `"null"` that Mercado Pago sends (fixed in #54, 2026-11-16).
 
 Rules from DON-20 / DON-21: always show a thank-you page; only `Confirmed` may say the contribution was received; `Unknown` and `Pending` must never say "rechazado", "cancelado" or "confirmado".
 

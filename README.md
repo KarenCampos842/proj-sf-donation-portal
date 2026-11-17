@@ -25,7 +25,7 @@ These are three different things in this project:
 - **Accepted:** the Definition of Done below is met. Accepted so far: the 8 Workstream B stories and PAY-07, PAY-02 and ADM-07 (A). DON-19, DON-20 and DON-21 have evidence for most of their ACs, but the following are still open, so they stay In review:
   - DON-19 AC3 (closed campaign) has a test and, since 2026-11-16, a screenshot showing that a closed campaign is no longer offered in the portal (`19-don-24/19-2`); the message with the reason still needs a screenshot.
   - DON-21 AC4 (anonymous donation): covered on 2026-11-16 by the thank-you page of an anonymous donation (`42-pay-03/42-0`), which shows no name.
-  - DON-20 AC4 is only partly met. The server part of #54 is done in Delivery 2; the portal page still sends `"null"` when the URL has no `payment_id`, a one-line change owned by Workstream B.
+  - DON-20 AC4: fixed on 2026-11-16 by #54. The server answers `Unknown` when there is no `payment_id`, and the thank-you page now sends an empty value instead of `"null"` (change authorized by Workstream B).
 
   The Workstream C stories are partly In progress and are not counted as accepted until their owner moves them to Done. The Workstream A issues list their evidence per AC in their "Evidence" section; the other issues still hold the placeholder "Pendiente de evidencia".
 
@@ -43,7 +43,7 @@ These are three different things in this project:
 | [#55](https://github.com/KarenCampos842/proj-sf-donation-portal/pull/55) | Merged | Workstream A: Delivery 1 payment evidence, `Payment_Attempt_Viewer` permission set and attempt list view |
 | [#56](https://github.com/KarenCampos842/proj-sf-donation-portal/pull/56) | Merged | Workstream C evidence and campaign layout |
 | [#58](https://github.com/KarenCampos842/proj-sf-donation-portal/pull/58) | Merged | Workstream B: public name cleaning and form validation (DON-11, DON-17) |
-| `rodrigo/e2-payments` | Open | Workstream A, Delivery 2: signed Mercado Pago webhook (PAY-06, PAY-01, PAY-03, DON-24, ADM-12), fix for #54 and evidence |
+| [#59](https://github.com/KarenCampos842/proj-sf-donation-portal/pull/59) | Merged | Workstream A, Delivery 2: signed Mercado Pago webhook (PAY-06, PAY-01, PAY-03, DON-24, ADM-12), server fix for #54 and evidence |
 
 ## Definition of Done (DoD)
 
