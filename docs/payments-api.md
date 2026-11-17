@@ -172,7 +172,13 @@ Stories: PAY-06, PAY-01, PAY-03, DON-24, ADM-12. Deployed in `donations-dev` on 
 POST https://uady--class2026b.sandbox.my.site.com/portalvforcesite/services/apexrest/mp/notifications
 ```
 
-It is configured in the Mercado Pago panel (test mode) under **Webhooks**, event **Pagos (legacy)** only. The preference does not send `notification_url`, so Mercado Pago sends each payment notice only once.
+Each preference sends this URL as `notification_url` (custom label `Donation_Notification_Url`, passed by `Payment_Preference_Create`), with `?source_news=webhooks` so that Mercado Pago sends only the signed webhook and not the older IPN notice.
+
+Why not only the panel: the app uses the credentials of a Mercado Pago **test seller account**. Payments made with them come back with `live_mode=true`, so Mercado Pago sends their notices to the panel's **production** webhook URL, not to the test-mode one. Setting the production URL in the panel requires registering a business, which the team does not do for a school project. Found on 2026-11-16: an approved test payment got no notice for more than 15 minutes; after the change, notices arrived 1–3 seconds after each payment. The URL in the panel's **test mode** (event **Pagos (legacy)**) stays configured; it is used by the panel's notice simulator.
+
+The notices sent through `notification_url` are signed with the same secret, so PAY-01 applies to them unchanged.
+
+**Notices can be late or never arrive.** Mercado Pago retries failed notices, but it does not guarantee when they arrive. If the donor does not return to the portal and the notice never arrives, the attempt stays `Started` and is deleted after 7 days (PAY-07). A scheduled reconciliation (search the payment by `external_reference` for old `Started` attempts) is proposed as a backlog story; see `security.md`, section 5.
 
 | Class | Role |
 |---|---|

@@ -23,9 +23,9 @@ These are three different things in this project:
 - **Implemented:** the code or configuration exists, is merged in `main` and has automated tests. The Delivery 1 stories were implemented across the three workstreams: A (payments, 6 stories), B (portal, 8 stories) and C (internal operation, security and data model, 8 stories). Some Workstream C stories are still In progress.
 - **Issue closed / Project status Done:** a team decision recorded in GitHub. All 8 Workstream B stories and 3 Workstream A stories (PAY-07, PAY-02, ADM-07) are Done and closed with every acceptance criterion ticked. Four other Delivery 1 issues are closed but still show In review in Project 13: DON-19, DON-20 and DON-21 (A) and one Workstream C story.
 - **Accepted:** the Definition of Done below is met. Accepted so far: the 8 Workstream B stories and PAY-07, PAY-02 and ADM-07 (A). DON-19, DON-20 and DON-21 have evidence for most of their ACs, but the following are still open, so they stay In review:
-  - DON-19 AC3 (closed campaign) needs a screenshot.
-  - DON-21 AC4 (anonymous donation) needs a screenshot.
-  - DON-20 AC4 is only partly met; the fix is planned for Delivery 2 in #54.
+  - DON-19 AC3 (closed campaign) has a test and, since 2026-11-16, a screenshot showing that a closed campaign is no longer offered in the portal (`19-don-24/19-2`); the message with the reason still needs a screenshot.
+  - DON-21 AC4 (anonymous donation): covered on 2026-11-16 by the thank-you page of an anonymous donation (`42-pay-03/42-0`), which shows no name.
+  - DON-20 AC4 is only partly met. The server part of #54 is done in Delivery 2; the portal page still sends `"null"` when the URL has no `payment_id`, a one-line change owned by Workstream B.
 
   The Workstream C stories are partly In progress and are not counted as accepted until their owner moves them to Done. The Workstream A issues list their evidence per AC in their "Evidence" section; the other issues still hold the placeholder "Pendiente de evidencia".
 
@@ -40,8 +40,10 @@ These are three different things in this project:
 | [#50](https://github.com/KarenCampos842/proj-sf-donation-portal/pull/50) | Merged | Field configurations, documentation and first evidence images |
 | [#48](https://github.com/KarenCampos842/proj-sf-donation-portal/pull/48) | Merged | Demo data under `data/demo/`, `Portal_Developer` permission set and logs |
 | [#51](https://github.com/KarenCampos842/proj-sf-donation-portal/pull/51), [#53](https://github.com/KarenCampos842/proj-sf-donation-portal/pull/53) | Merged | Workstream B documentation, project tracking and evidence |
-| [#55](https://github.com/KarenCampos842/proj-sf-donation-portal/pull/55) | Open | Workstream A: Delivery 1 payment evidence, `Payment_Attempt_Viewer` permission set and attempt list view |
-| [#56](https://github.com/KarenCampos842/proj-sf-donation-portal/pull/56) | Open | Workstream C evidence and campaign layout |
+| [#55](https://github.com/KarenCampos842/proj-sf-donation-portal/pull/55) | Merged | Workstream A: Delivery 1 payment evidence, `Payment_Attempt_Viewer` permission set and attempt list view |
+| [#56](https://github.com/KarenCampos842/proj-sf-donation-portal/pull/56) | Merged | Workstream C evidence and campaign layout |
+| [#58](https://github.com/KarenCampos842/proj-sf-donation-portal/pull/58) | Merged | Workstream B: public name cleaning and form validation (DON-11, DON-17) |
+| `rodrigo/e2-payments` | Open | Workstream A, Delivery 2: signed Mercado Pago webhook (PAY-06, PAY-01, PAY-03, DON-24, ADM-12), fix for #54 and evidence |
 
 ## Definition of Done (DoD)
 
@@ -100,7 +102,8 @@ The Definition of Done establishes the minimum quality and completion requiremen
 - Test-mode payment preferences and buyer accounts.
 - Server-side payment lookup and confirmation.
 - Payment attempts separated from confirmed donations.
-- Payment return handling through the portal: in Delivery 1 the donation is registered when the donor returns to `/portal/gracias`. There is no webhook yet; recovering a payment confirmed when the donor does not return is planned for Delivery 2 (PAY-06, DON-24).
+- Payment return handling through the portal: the donation is registered when the donor returns to `/portal/gracias` (Delivery 1).
+- Signed Mercado Pago webhook (Delivery 2): the donation is also registered when the donor never returns (PAY-06), only after the `x-signature` check (PAY-01), once per payment (PAY-03), even if the campaign closed while paying (DON-24). Rejected notices are listed in the **Avisos rechazados** tab (ADM-12). Details in [`docs/payments-api.md`](docs/payments-api.md), section 5.
 
 ### Internal operation
 

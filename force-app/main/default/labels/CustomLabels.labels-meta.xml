@@ -8,4 +8,12 @@
         <shortDescription>URL de la página de agradecimiento</shortDescription>
         <value>https://uady--class2026b.sandbox.my.site.com/portal/gracias</value>
     </labels>
+    <labels>
+        <fullName>Donation_Notification_Url</fullName>
+        <categories>Mercado Pago</categories>
+        <language>es_MX</language>
+        <protected>true</protected>
+        <shortDescription>URL pública de avisos de pago (PAY-06)</shortDescription>
+        <value>https://uady--class2026b.sandbox.my.site.com/portalvforcesite/services/apexrest/mp/notifications?source_news=webhooks</value>
+    </labels>
 </CustomLabels>
