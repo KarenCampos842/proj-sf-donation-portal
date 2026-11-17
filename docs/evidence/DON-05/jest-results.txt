@@ -1,0 +1,34 @@
+# Jest, run on 2026-11-17 in the DON-05 worktree (main at cdf938b)
+# Command: npm run test:unit
+PASS force-app/main/default/lwc/campaignProgress/__tests__/campaignProgress.test.js
+PASS force-app/main/default/lwc/donorRecognitionList/__tests__/donorRecognitionList.test.js
+PASS force-app/main/default/lwc/donationThankYou/__tests__/donationThankYou.test.js
+PASS force-app/main/default/lwc/closedCampaignHistory/__tests__/closedCampaignHistory.test.js
+PASS force-app/main/default/lwc/campaignList/__tests__/campaignList.test.js
+PASS force-app/main/default/lwc/campaignDetail/__tests__/campaignDetail.test.js
+PASS force-app/main/default/lwc/donationPortal/__tests__/donationPortal.test.js
+PASS force-app/main/default/lwc/donationForm/__tests__/donationForm.test.js
+Test Suites: 8 passed, 8 total
+Tests:       228 passed, 228 total
+
+# Command: npx jest force-app/main/default/lwc/closedCampaignHistory --verbose
+PASS force-app/main/default/lwc/closedCampaignHistory/__tests__/closedCampaignHistory.test.js
+  c-closed-campaign-history
+    √ shows the page title, the explanation and the way back, with a single h1 (75 ms)
+    √ shows the loading state, announced to assistive technology, before the data arrives (5 ms)
+    √ shows the name, the final total, the goal and the closed badge of a single campaign (11 ms)
+    √ shows several campaigns in the order received, with the count announced politely (10 ms)
+    √ shows the real percentage of the goal, even above 100 %, and says the goal was reached (10 ms)
+    √ formats amounts with cents when the final total has them (5 ms)
+    √ shows the number of donations and the closing date only when they exist (8 ms)
+    √ never offers a donation action on the cards (8 ms)
+    √ shows the image with its alt text and a described placeholder when there is none (8 ms)
+    √ falls back to the placeholder when an image cannot be loaded (7 ms)
+    √ shows the empty message, and no invented cards, when there are no closed campaigns (8 ms)
+    √ shows a Spanish error without technical detail and retries on request (10 ms)
+    √ ignores a slow answer that arrives after a newer request (20 ms)
+    √ opens the detail of a campaign through an event with its Id (12 ms)
+    √ gives each campaign button an accessible name that says what it opens (5 ms)
+    √ asks the portal to go back to the catalog (3 ms)
+Test Suites: 1 passed, 1 total
+Tests:       16 passed, 16 total

@@ -1,0 +1,89 @@
+# Guest checks on the published site, 2026-11-17 (Playwright with Chrome, new context without session)
+# Script run: 1280 px and 360 px, then AC3 on the server. No payments, no record changes.
+
+
+===== 1280 px =====
+PASS  [1280] catálogo: carga y muestra el enlace «Ver campañas cerradas»
+PASS  [1280] catálogo: ninguna campaña cerrada aparece entre las elegibles  -> Apoya la participación en Mexico Dreamin 2026 | Fondo general SF Vibe Lab | Transporte local durante el evento | Viaje y hospedaje en la Ciudad de México | Kits de bienvenida
+PASS  [1280] catálogo: sin desplazamiento horizontal
+PASS  [1280] historial: se abre desde el catálogo (URL con vista=historial)  -> https://uady--class2026b.sandbox.my.site.com/portal/?vista=historial
+PASS  [1280] historial: título único (un solo h1)
+PASS  [1280] historial: muestra «[PRUEBA Rodrigo] DON-19 AC3»
+PASS  [1280] historial: muestra «[PRUEBA] Campaña cerrada»
+PASS  [1280] historial: muestra «[PRUEBA Rodrigo] DON-24»
+PASS  [1280] historial: muestra Meta y Total final
+PASS  [1280] historial: Total final de DON-24 es $100 y su meta $1,000
+PASS  [1280] historial: etiqueta «Cerrada» en las 3 tarjetas
+PASS  [1280] historial: sin botón ni texto de «Donar»
+PASS  [1280] historial: sin desplazamiento horizontal
+PASS  [1280] historial: no se ve ningún correo ni RFC
+   respuesta Apex (campos devueltos): availability, canDonate, donationCount, endDate, goal, id, isGeneral, name, progressPercent, startDate, status, totalRaised
+PASS  [Apex invitado] getClosedCampaigns devuelve exactamente las 3 cerradas  -> status 200, n=3
+PASS  [Apex invitado] nombre, meta y total coinciden con Salesforce  -> [["[PRUEBA Rodrigo] DON-19 AC3",1000,0],["[PRUEBA] Campaña cerrada",2000,0],["[PRUEBA Rodrigo] DON-24",1000,100]]
+PASS  [Apex invitado] todas son Closed, availability CLOSED y canDonate=false
+PASS  [Apex invitado] la respuesta no trae correos ni datos fiscales
+   paradas de Tab: ["a:Skip to Main [auto 1px]","button:Volver a las campañas [none 0px+sombra]","button:Ver detalle de la campaña [PRUEBA Rodrigo] DON-19 AC3 [solid 2px+sombra]","button:Ver detalle de la campaña [PRUEBA] Campaña cerrada [solid 2px+sombra]","button:Ver detalle de la campaña [PRUEBA Rodrigo] DON-24 [solid 2px+sombra]","a:Skip to Main [auto 1px]","button:Volver a las campañas [none 0px+sombra]","button:Ver detalle de la campaña [PRUEBA Rodrigo] DON-19 AC3 [solid 2px+sombra]","button:Ver detalle de la campaña [PRUEBA] Campaña cerrada [solid 2px+sombra]","button:Ver detalle de la campaña [PRUEBA Rodrigo] DON-24 [solid 2px+sombra]"]
+PASS  [teclado] Tab llega a elementos interactivos del historial  -> 8
+PASS  [teclado] cada elemento enfocado tiene indicador de foco visible (≥2 px)  -> 8/8
+PASS  [teclado] Enter sobre una tarjeta abre el detalle  -> https://uady--class2026b.sandbox.my.site.com/portal/?campana=a1bVC000008q3EwYAI&vista=historial
+   estructura accesible (extracto):
+         - button "Volver a las campañas"
+         - heading "Historial de campañas" [level=1]
+         - status: 3 campañas cerradas
+         - list "Campañas cerradas":
+           - listitem:
+               - img "Imagen no disponible para la campaña [PRUEBA Rodrigo] DON-19 AC3"
+               - heading "Ver detalle de la campaña [PRUEBA Rodrigo] DON-19 AC3" [level=2]:
+                 - button "Ver detalle de la campaña [PRUEBA Rodrigo] DON-19 AC3": "[PRUEBA Rodrigo] DON-19 AC3"
+           - listitem:
+               - img "Imagen no disponible para la campaña [PRUEBA] Campaña cerrada"
+               - heading "Ver detalle de la campaña [PRUEBA] Campaña cerrada" [level=2]:
+                 - button "Ver detalle de la campaña [PRUEBA] Campaña cerrada": "[PRUEBA] Campaña cerrada"
+           - listitem:
+               - img "Imagen no disponible para la campaña [PRUEBA Rodrigo] DON-24"
+               - heading "Ver detalle de la campaña [PRUEBA Rodrigo] DON-24" [level=2]:
+                 - button "Ver detalle de la campaña [PRUEBA Rodrigo] DON-24": "[PRUEBA Rodrigo] DON-24"
+PASS  [1280] detalle: abre la campaña cerrada elegida en el historial  -> https://uady--class2026b.sandbox.my.site.com/portal/?campana=a1bVC000008pm2nYAA&vista=historial
+PASS  [1280] detalle: indica «Cerrada» y «Donaciones cerradas»
+PASS  [1280] detalle: el botón «Donaciones cerradas» está deshabilitado
+PASS  [1280] detalle: no hay botón «Donar» habilitado
+PASS  [1280] detalle: sin desplazamiento horizontal
+PASS  [1280] navegación: «Volver a las campañas» regresa al historial  -> https://uady--class2026b.sandbox.my.site.com/portal/?vista=historial
+PASS  [1280] navegación: Atrás vuelve al detalle  -> https://uady--class2026b.sandbox.my.site.com/portal/?campana=a1bVC000008pm2nYAA&vista=historial
+PASS  [1280] navegación: Adelante vuelve al historial  -> https://uady--class2026b.sandbox.my.site.com/portal/?vista=historial
+PASS  [1280] sin errores de página
+
+===== 360 px =====
+PASS  [360] catálogo: carga y muestra el enlace «Ver campañas cerradas»
+PASS  [360] catálogo: ninguna campaña cerrada aparece entre las elegibles  -> Apoya la participación en Mexico Dreamin 2026 | Fondo general SF Vibe Lab | Transporte local durante el evento | Viaje y hospedaje en la Ciudad de México | Kits de bienvenida
+PASS  [360] catálogo: sin desplazamiento horizontal
+PASS  [360] historial: se abre desde el catálogo (URL con vista=historial)  -> https://uady--class2026b.sandbox.my.site.com/portal/?vista=historial
+PASS  [360] historial: título único (un solo h1)
+PASS  [360] historial: muestra «[PRUEBA Rodrigo] DON-19 AC3»
+PASS  [360] historial: muestra «[PRUEBA] Campaña cerrada»
+PASS  [360] historial: muestra «[PRUEBA Rodrigo] DON-24»
+PASS  [360] historial: muestra Meta y Total final
+PASS  [360] historial: Total final de DON-24 es $100 y su meta $1,000
+PASS  [360] historial: etiqueta «Cerrada» en las 3 tarjetas
+PASS  [360] historial: sin botón ni texto de «Donar»
+PASS  [360] historial: sin desplazamiento horizontal
+PASS  [360] historial: no se ve ningún correo ni RFC
+PASS  [360] detalle: abre la campaña cerrada elegida en el historial  -> https://uady--class2026b.sandbox.my.site.com/portal/?campana=a1bVC000008pm2nYAA&vista=historial
+PASS  [360] detalle: indica «Cerrada» y «Donaciones cerradas»
+PASS  [360] detalle: el botón «Donaciones cerradas» está deshabilitado
+PASS  [360] detalle: no hay botón «Donar» habilitado
+PASS  [360] detalle: sin desplazamiento horizontal
+PASS  [360] navegación: «Volver a las campañas» regresa al historial  -> https://uady--class2026b.sandbox.my.site.com/portal/?vista=historial
+PASS  [360] navegación: Atrás vuelve al detalle  -> https://uady--class2026b.sandbox.my.site.com/portal/?campana=a1bVC000008pm2nYAA&vista=historial
+PASS  [360] navegación: Adelante vuelve al historial  -> https://uady--class2026b.sandbox.my.site.com/portal/?vista=historial
+PASS  [360] sin errores de página
+
+===== AC3 en servidor (sin pagos) =====
+PASS  AC3 servidor: formulario (DonationIntakeService) rechaza donar a «[PRUEBA] Campaña cerrada»  -> 400 {"error":[{"message":"|Esta campaña ya no acepta donaciones."}]}
+PASS  AC3 servidor: directa (DonationPaymentController) rechaza donar a «[PRUEBA] Campaña cerrada»  -> 400 {"error":[{"message":"Esta campaña ya no acepta donaciones."}]}
+PASS  AC3 servidor: formulario (DonationIntakeService) rechaza donar a «[PRUEBA Rodrigo] DON-24»  -> 400 {"error":[{"message":"|Esta campaña ya no acepta donaciones."}]}
+PASS  AC3 servidor: directa (DonationPaymentController) rechaza donar a «[PRUEBA Rodrigo] DON-24»  -> 400 {"error":[{"message":"Esta campaña ya no acepta donaciones."}]}
+PASS  AC3 interfaz: con ?donar=1 en una cerrada, al continuar se rechaza y no sale a Mercado Pago  -> https://uady--class2026b.sandbox.my.site.com/portal/?campana=a1bVC000008jevxYAA&donar=1
+PASS  AC3: el catálogo de campañas elegibles no incluye cerradas
+
+TOTAL 59  PASS 59  FAIL 0
