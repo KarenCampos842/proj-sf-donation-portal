@@ -4,7 +4,7 @@
     <description>ADM-13. Monto mínimo de una donación en MXN. Lo usan el servidor y la regla Minimum_Amount del intento de pago. Valor inicial 50.</description>
     <externalId>false</externalId>
     <fieldManageability>SubscriberControlled</fieldManageability>
-    <inlineHelpText>Monto mínimo que un donante puede aportar, en MXN. No puede ser menor a $20.</inlineHelpText>
+    <inlineHelpText>Monto mínimo que un donante puede aportar, en MXN. Debe ser mayor a cero.</inlineHelpText>
     <label>Monto mínimo (MXN)</label>
     <precision>16</precision>
     <required>true</required>

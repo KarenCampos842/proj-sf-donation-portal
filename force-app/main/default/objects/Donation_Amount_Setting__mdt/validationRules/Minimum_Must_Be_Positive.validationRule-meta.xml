@@ -2,8 +2,8 @@
 <ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>Minimum_Must_Be_Positive</fullName>
     <active>true</active>
-    <description>ADM-13 AC4. El monto mínimo no puede ser menor a $20 MXN (cubre también cero y negativos). El valor vigente inicial es $50.</description>
-    <errorConditionFormula><![CDATA[Minimum_Amount__c < 20]]></errorConditionFormula>
+    <description>ADM-13 AC4. El monto mínimo debe ser mayor a cero.</description>
+    <errorConditionFormula><![CDATA[Minimum_Amount__c <= 0]]></errorConditionFormula>
     <errorDisplayField>Minimum_Amount__c</errorDisplayField>
-    <errorMessage>El monto mínimo no puede ser menor a $20 MXN.</errorMessage>
+    <errorMessage>El monto mínimo debe ser mayor a cero.</errorMessage>
 </ValidationRule>
