@@ -20,6 +20,10 @@
     color: var(--portal-text-muted);
 }
 
+.catalog__history {
+    margin-top: 0.75rem;
+}
+
 .grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));

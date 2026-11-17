@@ -327,6 +327,30 @@ private class DonationIntakeServiceTest {
         Assert.areEqual(0, gateway.attemptCalls, 'The server blocks the payment start, not only the interface');
     }
 
+    // DON-05 AC3: a closed campaign cannot be donated to, even if the visitor skips the portal service.
+    @IsTest
+    static void shouldSaveNoAttempt_WhenClosedCampaignIsSentStraightToThePaymentController() {
+        DonationPaymentController.DonationRequest request = new DonationPaymentController.DonationRequest();
+        request.campaignId = idOf(CLOSED_CAMPAIGN);
+        request.amount = 500;
+        request.email = 'donante@example.com';
+        request.visibility = 'Anonymous';
+        request.invoiceRequested = false;
+
+        Test.startTest();
+        System.runAs(PortalTestDataFactory.getUser(PortalTestDataFactory.GUEST_LAST_NAME)) {
+            try {
+                DonationPaymentController.startDonation(request);
+                Assert.fail('The payment code must refuse a closed campaign');
+            } catch (AuraHandledException e) {
+                Assert.isFalse(String.isBlank(e.getMessage()), 'The visitor gets a message');
+            }
+        }
+        Test.stopTest();
+
+        Assert.areEqual(0, [SELECT COUNT() FROM Payment_Attempt__c WITH SYSTEM_MODE], 'No payment attempt is created for a closed campaign');
+    }
+
     @IsTest
     static void shouldShowFriendlyError_WhenUserCannotReadCampaigns() {
         CapturingGateway gateway = useCapturingGateway();

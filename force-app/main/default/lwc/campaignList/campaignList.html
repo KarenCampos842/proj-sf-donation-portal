@@ -3,6 +3,15 @@
         <header class="catalog__header">
             <h1 id="catalog-title" class="catalog__title">{messages.title}</h1>
             <p class="catalog__subtitle">{messages.subtitle}</p>
+            <div class="catalog__history">
+                <lightning-button
+                    variant="base"
+                    label={messages.viewHistory}
+                    icon-name="utility:chevronright"
+                    icon-position="right"
+                    onclick={handleShowHistory}
+                ></lightning-button>
+            </div>
         </header>
 
         <template lwc:if={isLoading}>

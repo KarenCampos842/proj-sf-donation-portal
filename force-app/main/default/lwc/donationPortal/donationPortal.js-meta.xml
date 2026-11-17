@@ -17,6 +17,12 @@
                 label="Nombre API de la página"
                 description="Nombre API de la página del sitio donde está este componente. Se usa para cambiar de vista sin recargar. Por omisión: Home."
             />
+            <property
+                name="eventDate"
+                type="String"
+                label="Fecha del evento"
+                description="Propiedad en desuso. Se conserva porque Experience Builder no permite quitar una propiedad de un componente que ya está en una página publicada. No tiene efecto en el portal."
+            />
         </targetConfig>
     </targetConfigs>
 </LightningComponentBundle>

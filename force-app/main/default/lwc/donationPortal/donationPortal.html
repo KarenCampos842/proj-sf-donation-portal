@@ -1,12 +1,22 @@
 <template>
     <div class="portal">
         <template lwc:if={showList}>
-            <c-campaign-list oncampaignselect={handleCampaignSelect}></c-campaign-list>
+            <c-campaign-list
+                oncampaignselect={handleCampaignSelect}
+                onshowhistory={handleShowHistory}
+            ></c-campaign-list>
+        </template>
+        <template lwc:elseif={showHistory}>
+            <c-closed-campaign-history
+                oncampaignselect={handleCampaignSelect}
+                onbacktolist={handleBackToList}
+            ></c-closed-campaign-history>
         </template>
         <template lwc:elseif={showDetail}>
             <c-campaign-detail
                 campaign-id={campaignId}
                 onbacktolist={handleBackToList}
+                onviewcatalog={handleViewCatalog}
                 ondonationstart={handleDonationStart}
             ></c-campaign-detail>
         </template>

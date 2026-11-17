@@ -117,6 +117,11 @@ export default class CampaignDetail extends LightningElement {
         this.dispatchEvent(new CustomEvent('backtolist'));
     }
 
+    // "Ver campañas disponibles" always means the catalog, whatever view the detail was opened from.
+    handleViewCatalog() {
+        this.dispatchEvent(new CustomEvent('viewcatalog'));
+    }
+
     handleDonate() {
         if (!this.canDonate) {
             return;

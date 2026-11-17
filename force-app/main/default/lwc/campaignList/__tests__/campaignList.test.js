@@ -186,6 +186,32 @@ describe('c-campaign-list', () => {
         expect(element.shadowRoot.querySelector('[role="alert"]')).toBeNull();
     });
 
+    it('offers a visible way to the history of closed campaigns, even while loading or when the catalog is empty', async () => {
+        getAvailableCampaigns.mockReturnValue(new Promise(() => {}));
+        const loading = createComponent();
+        await Promise.resolve();
+        expect(loading.shadowRoot.querySelector('.catalog__history lightning-button').label).toBe('Ver campañas cerradas');
+
+        getAvailableCampaigns.mockResolvedValue([]);
+        const empty = createComponent();
+        await flushPromises();
+        expect(empty.shadowRoot.querySelector('.catalog__history lightning-button').label).toBe('Ver campañas cerradas');
+    });
+
+    it('asks the portal to show the history when the visitor chooses it, and keeps closed campaigns out of the catalog', async () => {
+        getAvailableCampaigns.mockResolvedValue([OPEN_CAMPAIGN]);
+        const element = createComponent();
+        await flushPromises();
+        const handler = jest.fn();
+        element.addEventListener('showhistory', handler);
+
+        element.shadowRoot.querySelector('.catalog__history lightning-button').click();
+
+        expect(handler).toHaveBeenCalledTimes(1);
+        expect(element.shadowRoot.querySelectorAll('article.card')).toHaveLength(1);
+        expect(element.shadowRoot.querySelector('article.card .badge').textContent).not.toBe('Cerrada');
+    });
+
     it('opens the detail of a campaign through an event with its Id', async () => {
         getAvailableCampaigns.mockResolvedValue([OPEN_CAMPAIGN, PAUSED_CAMPAIGN]);
         const element = createComponent();

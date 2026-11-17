@@ -18,10 +18,27 @@ export const MESSAGES = {
         viewDetail: 'Ver detalle',
         viewDetailOf: 'Ver detalle de la campaña {0}',
         generalCampaign: 'Campaña general',
+        viewHistory: 'Ver campañas cerradas',
         closesOn: 'Cierra el {0}',
         pausedNote: 'Pausada por ahora: todavía no recibe donaciones.',
         imageAlt: 'Imagen de la campaña {0}',
         noImageAlt: 'Imagen no disponible para la campaña {0}'
+    },
+    history: {
+        title: 'Historial de campañas',
+        subtitle: 'Estas campañas ya concluyeron. Aquí puedes consultar su meta y el total que se recaudó.',
+        back: 'Volver a las campañas',
+        loading: 'Cargando el historial…',
+        empty: 'No hay campañas cerradas para consultar por ahora',
+        error: 'No pudimos cargar el historial de campañas. Intenta de nuevo en unos momentos.',
+        retry: 'Reintentar',
+        countOne: '1 campaña cerrada',
+        countMany: '{0} campañas cerradas',
+        listLabel: 'Campañas cerradas',
+        goalLabel: 'Meta',
+        totalLabel: 'Total final',
+        percentOfGoal: '{0} de la meta',
+        closedOn: 'Fecha de cierre: {0}'
     },
     progress: {
         label: 'Avance de la campaña',

@@ -166,7 +166,7 @@ The server-side campaign query and eligibility checks apply additional visibilit
 
 The rule's retrieved metadata stores Spanish picklist labels (`Cerrada,Activa,Pausada`). If recreating it manually, select those three states and verify the result in `Fundraising_Campaign__Share`; do not assume that API values and translated labels are interchangeable in the sharing-rule metadata.
 
-A legacy `ClosedCampaignReader` helper in `CampaignPortalController` was retained as a workaround for the closed-campaign detail route. The sharing rule also includes Closed. Review this helper before removing it; do not remove it as part of routine content maintenance.
+DON-05 (branch `don05-closed-campaigns`, not deployed yet): the legacy `ClosedCampaignReader` helper (`without sharing`) was removed from `CampaignPortalController`. A read-only check of the real Guest user (a test running as the Guest user with `SeeAllData`, check-only, 2026-11-16) showed that the sharing rule already shares Closed campaigns (1 Closed, 1 Paused and 6 Active visible; Draft hidden), so the detail and the history are read in user mode under the sharing rule. After deploying, repeat the check as a visitor: a Closed campaign must still open by direct link.
 
 ### 2.6 Guest timezone
 
@@ -193,10 +193,11 @@ The portal uses one page and updates the URL without a full page reload:
 | URL | View |
 |---|---|
 | `/portal/` | Public campaign catalog |
-| `/portal/?campana=<Id>` | Campaign detail, including eligible closed-campaign history |
+| `/portal/?campana=<Id>` | Campaign detail (Closed campaigns can be opened by direct link; they never accept donations) |
+| `/portal/?vista=historial` | History of closed campaigns (DON-05): name, goal and final total; reached from the catalog link **Ver campañas cerradas**. A `campana` parameter takes precedence |
 | `/portal/?campana=<Id>&donar=1` | Donation form for the selected campaign |
 
-Browser Back and Forward navigate between catalog, detail and form states. An invalid or unavailable campaign ID displays **“No encontramos esta campaña…”** and a link back to the catalog.
+Browser Back and Forward navigate between catalog, history, detail and form states. An invalid or unavailable campaign ID displays **“No encontramos esta campaña…”** and a link back to the catalog.
 
 ## 4. Theme and colors
 
@@ -348,7 +349,7 @@ These are previously reported results, not a claim that the entire suite was rer
 | “No pudimos cargar las campañas” | Check Guest FLS, Apex class access and the campaign Guest sharing rule (Section 2). |
 | Catalog is empty despite Active campaigns | Check campaign start/end dates, Guest timezone and `Campanas_Publicas_Invitado`. |
 | Selecting a campaign does not change the view | Check the page API name property on `donationPortal`. |
-| Closed campaign detail says “No encontramos…” | Check Guest campaign read access and the `ClosedCampaignReader` path before changing sharing metadata. |
+| Closed campaign detail says “No encontramos…” | Check Guest campaign read access and the `Campanas_Publicas_Invitado` rule (it must include the Closed state) before changing sharing metadata. |
 | Campaign image does not load | Check that `Image_URL__c` is HTTPS, under 255 characters, accessible without authentication, and returns an image. For non-Salesforce hosts, verify the Experience Builder `img-src` CSP allowlist. |
 | Campaign dates appear one day early/late | Check the Guest user's `America/Merida` timezone. |
 | Portal redirects to `example.com` | The org may have an older build with the mock gateway. The current implementation uses `DonationPaymentGateway` and `DonationPaymentController`. |

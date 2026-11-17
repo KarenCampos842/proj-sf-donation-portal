@@ -1,5 +1,6 @@
 /**
- * Tests for CampaignPortalController: DON-01 (catalog), DON-02 (detail) and DON-03 (progress).
+ * Tests for CampaignPortalController: DON-01 (catalog), DON-02 (detail), DON-03 (progress) and
+ * DON-05 (history of closed campaigns).
  * The catalog and detail tests run as a user that only has read access to the public campaign
  * fields, the closest simulation of the site guest that does not need the site to exist.
  */
@@ -15,6 +16,7 @@ private class CampaignPortalControllerTest {
     private static final String CLOSED = 'Campaña cerrada';
     private static final String ENDED_ACTIVE = 'Campaña activa vencida';
     private static final String CLOSED_FUTURE_START = 'Campaña cerrada con inicio futuro';
+    private static final String CLOSED_NO_END = 'Campaña cerrada sin fecha de cierre';
     private static final String PAUSED_FUTURE_START = 'Campaña pausada con inicio futuro';
 
     @TestSetup
@@ -44,6 +46,7 @@ private class CampaignPortalControllerTest {
                 closedCampaign,
                 PortalTestDataFactory.buildCampaign(ENDED_ACTIVE, 'Active', today.addDays(-30), today.addDays(-1)),
                 PortalTestDataFactory.buildCampaign(CLOSED_FUTURE_START, 'Closed', today.addDays(10), today.addDays(20)),
+                PortalTestDataFactory.buildCampaign(CLOSED_NO_END, 'Closed', today.addDays(-90), null),
                 PortalTestDataFactory.buildCampaign(PAUSED_FUTURE_START, 'Paused', today.addDays(5), today.addDays(30))
             }
         );
@@ -55,7 +58,9 @@ private class CampaignPortalControllerTest {
                 PortalTestDataFactory.buildDonation(idOf(OPEN_WITH_END), 200, 'Anonymous', null, now),
                 PortalTestDataFactory.buildPaymentAttempt(idOf(OPEN_WITH_END), 500),
                 PortalTestDataFactory.buildDonation(idOf(EXACT_GOAL), 400, 'Anonymous', null, now),
-                PortalTestDataFactory.buildDonation(idOf(CLOSED), 600, 'Public', 'Familia Pérez', now)
+                PortalTestDataFactory.buildDonation(idOf(CLOSED), 600, 'Public', 'Familia Pérez', now),
+                PortalTestDataFactory.buildDonation(idOf(CLOSED_NO_END), 250, 'Anonymous', null, now),
+                PortalTestDataFactory.buildPaymentAttempt(idOf(CLOSED_NO_END), 900)
             }
         );
     }
@@ -244,27 +249,15 @@ private class CampaignPortalControllerTest {
     }
 
     @IsTest
-    static void shouldEnforceObjectPermissions_WhenClosedCampaignReaderRunsWithoutSharing() {
-        Id closedId = idOf(CLOSED);
+    static void shouldThrowFriendlyError_WhenUserCannotReadAClosedCampaignDetail() {
+        String closedId = idOf(CLOSED);
         System.runAs(PortalTestDataFactory.getUser(PortalTestDataFactory.NO_ACCESS_LAST_NAME)) {
             try {
-                new CampaignPortalController.ClosedCampaignReader().find(closedId);
-                Assert.fail('The workaround must skip sharing only, never object or field permissions');
-            } catch (QueryException e) {
-                Assert.isNotNull(e.getMessage(), 'A user without access to the object is rejected');
+                CampaignPortalController.getCampaignDetail(closedId);
+                Assert.fail('A closed campaign is read in user mode like any other one');
+            } catch (AuraHandledException e) {
+                Assert.areEqual(CampaignPortalController.MSG_DETAIL_ERROR, e.getMessage(), 'The visitor sees a Spanish message');
             }
-        }
-    }
-
-    @IsTest
-    static void shouldReturnClosedCampaignOnly_WhenClosedCampaignReaderIsUsed() {
-        Id activeId = idOf(OPEN_WITH_END);
-        Id closedId = idOf(CLOSED);
-        System.runAs(PortalTestDataFactory.getUser(PortalTestDataFactory.GUEST_LAST_NAME)) {
-            CampaignPortalController.ClosedCampaignReader reader = new CampaignPortalController.ClosedCampaignReader();
-
-            Assert.isNotNull(reader.find(closedId), 'A closed campaign is returned');
-            Assert.isNull(reader.find(activeId), 'The elevated read never returns a campaign that is not closed');
         }
     }
 
@@ -371,6 +364,123 @@ private class CampaignPortalControllerTest {
         Assert.areEqual(0, detail.donationCount, 'Donation count');
     }
 
+    // DON-05: history of closed campaigns
+
+    @IsTest
+    static void shouldListOnlyClosedCampaigns_WhenGuestOpensHistory() {
+        Set<String> names = namesOf(getHistoryAsGuest());
+
+        Assert.areEqual(new Set<String>{ CLOSED, CLOSED_FUTURE_START, CLOSED_NO_END }, names, 'Only Closed campaigns are in the history');
+        for (String excluded : new List<String>{ OPEN_WITH_END, OPEN_NO_END, EXACT_GOAL, GENERAL, PAUSED, FUTURE_ACTIVE, DRAFT, ENDED_ACTIVE }) {
+            Assert.isFalse(names.contains(excluded), 'The history must not list: ' + excluded);
+        }
+    }
+
+    @IsTest
+    static void shouldOrderMostRecentlyClosedFirst_WhenSeveralClosedCampaignsExist() {
+        List<CampaignDTO> history = getHistoryAsGuest();
+
+        Assert.areEqual(3, history.size(), 'Three closed campaigns');
+        Assert.areEqual(CLOSED_FUTURE_START, history[0].name, 'Latest end date first');
+        Assert.areEqual(CLOSED, history[1].name, 'Earlier end date next');
+        Assert.areEqual(CLOSED_NO_END, history[2].name, 'Campaigns without end date go last');
+    }
+
+    @IsTest
+    static void shouldReturnNameGoalAndFinalTotal_WhenCampaignIsClosed() {
+        CampaignDTO result = findByName(getHistoryAsGuest(), CLOSED);
+
+        Assert.areEqual(CLOSED, result.name, 'Name');
+        Assert.areEqual(500, result.goal, 'Goal');
+        Assert.areEqual(600, result.totalRaised, 'Final total is the roll-up of confirmed donations');
+        Assert.areEqual(120, result.progressPercent, 'The real percentage is not capped at 100 %');
+        Assert.areEqual(1, result.donationCount, 'Donation count');
+        Assert.areEqual('Closed', result.status, 'Status');
+        Assert.areEqual('CLOSED', result.availability, 'Availability');
+    }
+
+    @IsTest
+    static void shouldIncludeAnonymousDonationsAndIgnoreAttempts_WhenCalculatingFinalTotal() {
+        CampaignDTO result = findByName(getHistoryAsGuest(), CLOSED_NO_END);
+
+        Assert.areEqual(250, result.totalRaised, 'The anonymous confirmed donation counts and the 900 MXN attempt does not');
+        Assert.areEqual(1, result.donationCount, 'Only the confirmed donation is counted');
+    }
+
+    @IsTest
+    static void shouldNeverAllowDonating_WhenCampaignIsInTheHistory() {
+        for (CampaignDTO campaign : getHistoryAsGuest()) {
+            Assert.isFalse(campaign.canDonate, 'A closed campaign never allows donating: ' + campaign.name);
+            Assert.areEqual('CLOSED', campaign.availability, 'Availability of ' + campaign.name);
+        }
+    }
+
+    @IsTest
+    static void shouldNotExposeDescriptionOrDonorData_WhenGuestOpensHistory() {
+        String serialized = JSON.serialize(getHistoryAsGuest());
+
+        for (CampaignDTO campaign : getHistoryAsGuest()) {
+            Assert.isNull(campaign.description, 'The history does not need the long description');
+        }
+        for (String privateValue : new List<String>{
+            'donante.privado@example.com',
+            'intento.privado@example.com',
+            'Razón Social Privada',
+            'GODE561231GR8',
+            'Familia Pérez',
+            'Nombre de un intento'
+        }) {
+            Assert.isFalse(serialized.contains(privateValue), 'The response must not contain: ' + privateValue);
+        }
+    }
+
+    @IsTest
+    static void shouldLeaveRecordsUnchanged_WhenGuestOpensHistory() {
+        Integer campaigns = [SELECT COUNT() FROM Fundraising_Campaign__c WITH SYSTEM_MODE];
+        Integer donations = [SELECT COUNT() FROM Donation__c WITH SYSTEM_MODE];
+        Integer attempts = [SELECT COUNT() FROM Payment_Attempt__c WITH SYSTEM_MODE];
+
+        getHistoryAsGuest();
+
+        Assert.areEqual(campaigns, [SELECT COUNT() FROM Fundraising_Campaign__c WITH SYSTEM_MODE], 'Campaigns are unchanged');
+        Assert.areEqual(donations, [SELECT COUNT() FROM Donation__c WITH SYSTEM_MODE], 'Donations are unchanged');
+        Assert.areEqual(attempts, [SELECT COUNT() FROM Payment_Attempt__c WITH SYSTEM_MODE], 'Payment attempts are unchanged');
+    }
+
+    @IsTest
+    static void shouldReturnEmptyList_WhenThereAreNoClosedCampaigns() {
+        List<Fundraising_Campaign__c> closed = [SELECT Id FROM Fundraising_Campaign__c WHERE Status__c = 'Closed' WITH SYSTEM_MODE];
+        for (Fundraising_Campaign__c campaign : closed) {
+            campaign.Status__c = 'Draft';
+        }
+        Database.update(closed, AccessLevel.SYSTEM_MODE);
+
+        Assert.isTrue(getHistoryAsGuest().isEmpty(), 'Without closed campaigns the list is empty, with no invented data');
+    }
+
+    @IsTest
+    static void shouldCapTheHistoryAtOneHundred_WhenThereAreMoreClosedCampaigns() {
+        List<Fundraising_Campaign__c> many = new List<Fundraising_Campaign__c>();
+        for (Integer i = 0; i < 101; i++) {
+            many.add(PortalTestDataFactory.buildCampaign('Campaña cerrada masiva ' + i, 'Closed', Date.today().addDays(-200), Date.today().addDays(-100)));
+        }
+        PortalTestDataFactory.insertRecords(many);
+
+        Assert.areEqual(100, getHistoryAsGuest().size(), 'The list is bounded like the catalog');
+    }
+
+    @IsTest
+    static void shouldThrowFriendlyError_WhenUserCannotReadTheHistory() {
+        System.runAs(PortalTestDataFactory.getUser(PortalTestDataFactory.NO_ACCESS_LAST_NAME)) {
+            try {
+                CampaignPortalController.getClosedCampaigns();
+                Assert.fail('Expected an AuraHandledException');
+            } catch (AuraHandledException e) {
+                Assert.areEqual(CampaignPortalController.MSG_HISTORY_ERROR, e.getMessage(), 'The visitor sees a Spanish message, without technical detail');
+            }
+        }
+    }
+
     // Helpers and internal rules
 
     @IsTest
@@ -414,6 +524,14 @@ private class CampaignPortalControllerTest {
         List<CampaignDTO> campaigns;
         System.runAs(PortalTestDataFactory.getUser(PortalTestDataFactory.GUEST_LAST_NAME)) {
             campaigns = CampaignPortalController.getAvailableCampaigns();
+        }
+        return campaigns;
+    }
+
+    private static List<CampaignDTO> getHistoryAsGuest() {
+        List<CampaignDTO> campaigns;
+        System.runAs(PortalTestDataFactory.getUser(PortalTestDataFactory.GUEST_LAST_NAME)) {
+            campaigns = CampaignPortalController.getClosedCampaigns();
         }
         return campaigns;
     }
