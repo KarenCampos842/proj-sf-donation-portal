@@ -104,6 +104,22 @@ public with sharing class MercadoPagoPaymentLookupAction {
         return result;
     }
 
+    /**
+     * Reads one payment as Mercado Pago returns it (also used for each item of /v1/payments/search).
+     * @param body the payment JSON, already deserialized
+     * @return the payment; found is false when a required value is missing or the currency is not MXN
+     */
+    public static Result fromPayment(Map<String, Object> body) {
+        Result result = new Result();
+        try {
+            readPayment(body, result);
+        } catch (TypeException e) {
+            result.found = false;
+            result.errorType = ERROR_INVALID_RESPONSE;
+        }
+        return result;
+    }
+
     private static void readPayment(Map<String, Object> body, Result result) {
         Object id = body.get('id');
         Object amount = body.get('transaction_amount');
