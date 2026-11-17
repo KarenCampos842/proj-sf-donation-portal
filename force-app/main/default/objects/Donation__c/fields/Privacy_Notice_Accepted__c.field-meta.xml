@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Privacy_Notice_Accepted__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>DON-13. Indica si el donante aceptó el aviso de privacidad al solicitar factura. Se copia del intento de pago cuando se registra la donación.</description>
+    <inlineHelpText>Indica si el donante aceptó el aviso de privacidad al pedir factura.</inlineHelpText>
+    <label>Acepta aviso de privacidad</label>
+    <type>Checkbox</type>
+</CustomField>

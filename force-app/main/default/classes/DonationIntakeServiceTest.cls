@@ -123,6 +123,64 @@ private class DonationIntakeServiceTest {
         Assert.areEqual('601', sent.taxRegime, 'taxRegime');
     }
 
+    // DON-13: the privacy notice is checked here, before the payment code, and only the acceptance is passed on.
+    @IsTest
+    static void shouldPassTheAcceptanceToThePaymentCode_WhenInvoiceIsRequestedAndAccepted() {
+        CapturingGateway gateway = useCapturingGateway();
+
+        Test.startTest();
+        runAsGuestStart(validPublicInvoiceRequest());
+        Test.stopTest();
+
+        Assert.isTrue(gateway.capturedRequest.privacyNoticeAccepted, 'The acceptance reaches the payment code');
+    }
+
+    @IsTest
+    static void shouldNeverCallThePaymentCode_WhenInvoiceIsRequestedWithoutAcceptance() {
+        CapturingGateway gateway = useCapturingGateway();
+
+        Test.startTest();
+        for (Boolean accepted : new List<Boolean>{ false, null }) {
+            DonationIntakeService.DonationFormInputDTO request = validPublicInvoiceRequest();
+            request.privacyNoticeAccepted = accepted;
+            assertStartRejected(
+                request,
+                DonationIntakeService.FIELD_PRIVACY_NOTICE,
+                DonationIntakeService.MSG_PRIVACY_NOTICE_REQUIRED,
+                'accepted=' + accepted
+            );
+        }
+        Test.stopTest();
+
+        Assert.areEqual(0, gateway.attemptCalls, 'The server blocks it before any attempt is created');
+    }
+
+    @IsTest
+    static void shouldReportTheFiscalFieldFirst_WhenFiscalDataAndAcceptanceAreMissing() {
+        useCapturingGateway();
+        DonationIntakeService.DonationFormInputDTO request = validPublicInvoiceRequest();
+        request.rfc = null;
+        request.privacyNoticeAccepted = false;
+
+        Test.startTest();
+        assertStartRejected(request, 'rfc', DonationIntakeService.MSG_INVOICE_DATA_MISSING, 'fiscal data comes first');
+        Test.stopTest();
+    }
+
+    @IsTest
+    static void shouldNotRequireAcceptanceAndPassFalse_WhenNoInvoiceIsRequested() {
+        CapturingGateway gateway = useCapturingGateway();
+        DonationIntakeService.DonationFormInputDTO request = validAnonymousRequest();
+        request.privacyNoticeAccepted = true;
+
+        Test.startTest();
+        runAsGuestStart(request);
+        Test.stopTest();
+
+        Assert.isFalse(gateway.capturedRequest.privacyNoticeAccepted, 'An acceptance without invoice is not passed on');
+        Assert.isFalse(gateway.capturedRequest.invoiceRequested, 'No invoice');
+    }
+
     @IsTest
     static void shouldKeepAnonymousVisibility_WhenInvoiceIsRequested() {
         CapturingGateway gateway = useCapturingGateway();
@@ -1041,6 +1099,7 @@ private class DonationIntakeServiceTest {
         request.rfc = COMPANY_RFC;
         request.taxPostalCode = '97000';
         request.taxRegime = '601';
+        request.privacyNoticeAccepted = true;
         return request;
     }
 

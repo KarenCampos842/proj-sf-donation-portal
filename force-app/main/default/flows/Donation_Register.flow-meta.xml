@@ -353,7 +353,7 @@
             <label>Yes</label>
         </rules>
     </decisions>
-    <description>PAY-02. Registra la donación solo cuando el proveedor confirmó el pago (status approved) y el monto coincide con el intento. Copia los datos del intento y marca el intento como Confirmado. Si falla crear la donación no se guardó nada; Mark_Attempt_Confirmed no tiene ruta de fallo a propósito: si falla, el error no se atrapa y Salesforce revierte toda la transacción, incluida la donación (los flows autolanzados no admiten Revertir registros), y quien llama recibe una excepción. Lo llaman la página de retorno (DON-21) y, en E2, el aviso del proveedor (PAY-06). Salidas: outcome = Registered, AlreadyProcessed, AmountMismatch, AttemptNotFound, Rejected, Cancelled, NotConfirmed, InvalidInput o Error; donationId.</description>
+    <description>PAY-02. Registra la donación solo cuando el proveedor confirmó el pago (status approved) y el monto coincide con el intento. Copia los datos del intento (incluida la aceptación del aviso de privacidad y su fecha, DON-13; un intento anterior a DON-13 la trae en falso y sin fecha, y eso no impide registrarlo) y marca el intento como Confirmado. Si falla crear la donación no se guardó nada; Mark_Attempt_Confirmed no tiene ruta de fallo a propósito: si falla, el error no se atrapa y Salesforce revierte toda la transacción, incluida la donación (los flows autolanzados no admiten Revertir registros), y quien llama recibe una excepción. Lo llaman la página de retorno (DON-21) y, en E2, el aviso del proveedor (PAY-06). Salidas: outcome = Registered, AlreadyProcessed, AmountMismatch, AttemptNotFound, Rejected, Cancelled, NotConfirmed, InvalidInput o Error; donationId.</description>
     <formulas>
         <name>fxAmountMatches</name>
         <dataType>Boolean</dataType>
@@ -442,6 +442,18 @@
             <field>Payment_Status__c</field>
             <value>
                 <stringValue>Confirmed</stringValue>
+            </value>
+        </inputAssignments>
+        <inputAssignments>
+            <field>Privacy_Notice_Accepted__c</field>
+            <value>
+                <elementReference>Get_Attempt.Privacy_Notice_Accepted__c</elementReference>
+            </value>
+        </inputAssignments>
+        <inputAssignments>
+            <field>Privacy_Notice_Accepted_At__c</field>
+            <value>
+                <elementReference>Get_Attempt.Privacy_Notice_Accepted_At__c</elementReference>
             </value>
         </inputAssignments>
         <inputAssignments>
@@ -589,6 +601,8 @@
         <queriedFields>RFC__c</queriedFields>
         <queriedFields>Tax_Postal_Code__c</queriedFields>
         <queriedFields>Tax_Regime__c</queriedFields>
+        <queriedFields>Privacy_Notice_Accepted__c</queriedFields>
+        <queriedFields>Privacy_Notice_Accepted_At__c</queriedFields>
         <queriedFields>Status__c</queriedFields>
         <storeOutputAutomatically>true</storeOutputAutomatically>
     </recordLookups>

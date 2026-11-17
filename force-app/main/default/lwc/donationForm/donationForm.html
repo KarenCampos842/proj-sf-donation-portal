@@ -164,6 +164,17 @@
                                         ></lightning-combobox>
                                     </template>
                                 </lightning-layout-item>
+                                <lightning-layout-item size="12" padding="horizontal-small">
+                                    <lightning-input
+                                        data-field="privacyNoticeAccepted"
+                                        type="checkbox"
+                                        label={messages.invoice.privacyNotice}
+                                        checked={form.privacyNoticeAccepted}
+                                        required
+                                        onchange={handleFieldChange}
+                                        onblur={handleFieldBlur}
+                                    ></lightning-input>
+                                </lightning-layout-item>
                             </lightning-layout>
                         </div>
                     </template>

@@ -18,6 +18,16 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>false</editable>
+        <field>Payment_Attempt__c.Privacy_Notice_Accepted_At__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Payment_Attempt__c.Privacy_Notice_Accepted__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
         <field>Payment_Attempt__c.Public_Name__c</field>
         <readable>true</readable>
     </fieldPermissions>

@@ -41,10 +41,13 @@ Validates everything again on the server and saves the payment attempt. It does 
 | `rfc` | String | If invoice | Spaces removed and uppercased on the server. |
 | `taxPostalCode` | String | If invoice | 5 digits. |
 | `taxRegime` | String | If invoice | SAT code, e.g. `612` (picklist API value). |
+| `privacyNoticeAccepted` | Boolean | If invoice | DON-13. Must be `true` when `invoiceRequested` is `true`; otherwise the call is rejected and no attempt is created (also when the field is omitted). The server saves it with the date and time of its own clock in `Privacy_Notice_Accepted_At__c`: do not send a date. Without invoice it is ignored and saved as false. |
 
-Errors: throws an `AuraHandledException` whose message is already in Spanish and safe to show, for example "El monto mínimo es de $50 MXN.", "El RFC no tiene un formato válido.", "Esta campaña ya no acepta donaciones.", "Escribe el nombre con el que quieres aparecer." (public name empty after cleaning) and "El nombre público no puede tener más de 80 caracteres.".
+Errors: throws an `AuraHandledException` whose message is already in Spanish and safe to show, for example "El monto mínimo es de $50 MXN.", "El RFC no tiene un formato válido.", "Esta campaña ya no acepta donaciones.", "Escribe el nombre con el que quieres aparecer." (public name empty after cleaning), "El nombre público no puede tener más de 80 caracteres." and "Acepta el aviso de privacidad para solicitar factura." (invoice requested without accepting the privacy notice).
 
 The public name is cleaned by `PublicNameSanitizer`. `startDonation` applies it itself, so the cleaning also covers direct calls to this method, and `DonationIntakeService` (the portal form) applies it before delegating here. Attempts saved before this cleaning existed are not changed.
+
+**Privacy notice (DON-13).** `startDonation` checks `privacyNoticeAccepted` itself, so a direct call cannot skip it, and `Payment_Attempt_Create` checks it again and saves `Privacy_Notice_Accepted__c` and `Privacy_Notice_Accepted_At__c` (server clock). `Donation_Register` copies both to the donation. It is the flow that the thank-you page and the webhook (section 5) run, so both confirmation routes behave the same, and neither one is blocked when an attempt has no acceptance: attempts created before DON-13 are registered normally, with the acceptance false and no date. The portal form (`DonationIntakeService`) sends `privacyNoticeAccepted` and reports a missing acceptance on the checkbox field. Deploy the flows, the four fields and `DonationPaymentController` together: the controller passes the new flow input.
 
 ### `openPayment(attemptId)` → `String checkoutUrl`
 
@@ -77,7 +80,8 @@ async handlePay() {
                 legalName: this.legalName,
                 rfc: this.rfc,
                 taxPostalCode: this.taxPostalCode,
-                taxRegime: this.taxRegime
+                taxRegime: this.taxRegime,
+                privacyNoticeAccepted: this.invoiceRequested ? this.privacyNoticeAccepted : false
             }
         });
         const checkoutUrl = await openPayment({ attemptId });

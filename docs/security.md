@@ -55,6 +55,28 @@ No permission set other than the integration one `Mercado_Pago_Callout` and the 
 
 Internal read access to payment attempts: permission set `Payment_Attempt_Viewer` (read-only, view all, no create/edit/delete) lets the payments owner audit attempts and take evidence. `Donation_Admin` still has no access to attempts. Never assign `Payment_Attempt_Viewer` to the site guest user. Assigned to the payments developer on 2026-11-10.
 
+**Privacy notice acceptance fields (DON-13), field-level security.** The four fields hold the proof of consent given when a donor asks for an invoice. They are read-only evidence: the flows `Payment_Attempt_Create` and `Donation_Register` write them in system mode, so no permission set needs edit access.
+
+| Field | `Donation_Admin` | `Payment_Attempt_Viewer` | All other permission sets | Guest user |
+|---|---|---|---|---|
+| `Donation__c.Privacy_Notice_Accepted__c` | Read | No access to the object | None | None |
+| `Donation__c.Privacy_Notice_Accepted_At__c` | Read | No access to the object | None | None |
+| `Payment_Attempt__c.Privacy_Notice_Accepted__c` | No access to the object | Read | None | None |
+| `Payment_Attempt__c.Privacy_Notice_Accepted_At__c` | No access to the object | Read | None | None |
+
+- **Why these two sets.**
+  - `Donation_Admin` handles the invoice requests (`data-model.md` D-04), and the consent is part of the invoice request data.
+  - `Payment_Attempt_Viewer` exists so the payments owner can audit attempts as evidence and support; the attempt is where the consent is first recorded.
+- **Sets without access.** `Campaign_Manager` and `Moderator` do not handle invoices, and D-04 (whether all three internal roles see tax data) is still open, so they get no consent fields. `Portal_Developer` and the integration sets (`Mercado_Pago_Callout`, `Rejected_Notice_Viewer`) get none either. If D-04 is settled in favor of the three roles, add read access to their `Donation__c` fields only.
+- **Separation between viewing and changing.**
+  - Each of the four entries has `readable=true` and `editable=false`.
+  - Object permissions, view-all settings, sharing rules and the other fields of each set did not change.
+  - No set was given access to an object it did not have: `Donation_Admin` still has none on `Payment_Attempt__c`, and `Payment_Attempt_Viewer` has none on `Donation__c`.
+  - Only server code (the flows, in system mode) writes these fields.
+- **Guest user.** The site guest profile and `Mercado_Pago_Callout` carry no permission on these fields or on either object; nothing was added. The guest only reaches the data through the Apex classes, which never return these fields.
+- **System Administrator.** The profile can read and edit everything by design (RNF-03). It was not changed, and its effective access to the four fields is **pending verification after deployment**: the fields do not exist in the Sandbox yet, and the Sandbox shows no explicit `FieldPermissions` row for that profile even on an existing field. After deploying, confirm it with a field-permission query or by opening a record as an administrator, and record the result here.
+- **Pending.** A permission set deploys together with the fields: deploy the four fields, the two flows and the two permission sets in one operation. The access is not active until then.
+
 ## 3. Where the Mercado Pago credentials live
 
 - Storage mechanism: access token in a **Named Credential / External Credential**; webhook secret key in a **protected setting** (D2). Nothing in code, site or repo (TEC-05).
@@ -87,7 +109,7 @@ Internal read access to payment attempts: permission set `Payment_Attempt_Viewer
 | Fiscal name or business name | Yes | Yes (invoice request only) | Invoice request | Staff only |
 | RFC | Yes | Yes (invoice request only) | Invoice request | Staff only |
 | Fiscal postal code and fiscal regime | Yes | Yes (invoice request only) | Invoice request | Staff only |
-| Privacy notice acceptance and its date | Yes | Yes (invoice request only) | Proof of consent | Staff only |
+| Privacy notice acceptance and its date | Yes | Yes (invoice request only) | Proof of consent | `Donation_Admin` (donations) and `Payment_Attempt_Viewer` (attempts), read-only; no other role |
 | Donation amount | Not by itself; linked to a person it becomes personal | Yes | Progress and receipt | Totals public; amount per name public only for credited donors |
 | Anonymous flag | No | Yes | Hide the name | Staff |
 | Card number / CVC / expiry | Yes (sensitive) | **No** | Captured entirely by Mercado Pago | Nobody on our side |

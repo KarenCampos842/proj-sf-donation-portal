@@ -21,6 +21,7 @@ This log keeps the most useful **best-prompt** and **worst-result** examples. Ea
 | 11 | 2026-11-10 | Rodrigo Colli | Claude Code (Opus 5.5), VS Code | Delivery 1 evidence (DON-19/20/21, PAY-02/07, ADM-07) | Worst | The AI changed and deployed two page layouts owned by another workstream to make a screenshot easier, and first gave wrong advice about Mercado Pago test emails; both were reverted or corrected. ~45 min lost. |
 | 12 | 2026-11-16 | Rodrigo Colli | Claude Code (Opus 5.5), VS Code | PAY-06, PAY-01, PAY-03, DON-24, ADM-12; bug #54 | Best | Real test payments got no webhook. The AI checked the payment with the Mercado Pago API (`live_mode=true`), and after the owner refused the first fix (registering a business for production webhooks) it sent `notification_url` in the preference. Notices then arrived 1–3 s after each payment; 16 screenshots taken. Time not measured. |
 | 13 | 2026-11-16 | Rodrigo Colli | Claude Code (Opus 5.5), VS Code | PAY-08 (#60) | Best | Hourly reconciliation built from the owner's concern that notices can be lost. The AI tested the Mercado Pago search endpoint live before designing, and the first dry run caught an invalid Schedulable+Queueable class; 56 tests passed after the fix. Time not measured. |
+| 14 | 2026-11-16 | Karen Elizabeth Campos | Claude Code, VS Code | DON-13 (privacy notice with invoice) | Best | Server check in the controller and the flow, server-side timestamp and copy to the donation, with Jest and Apex tests; check-only validation passed (115/115 tests). Time not measured. |
 | 15 | 2026-11-17 | Rodrigo Colli | Claude Code (Opus 5.5), VS Code | PAY-08 (#60) | Worst | A teammate's review of PR #61 found two problems the AI missed: an amount mismatch would log the same rejected notice every hour, and more than ~50 pending payments would exceed Apex limits and fail the whole run. Fixed with Batch Apex (chunks of 20) and a filter on existing mismatch notices; 61 tests passed. Time not measured. |
 
 ---
@@ -477,7 +478,6 @@ I paid the first one but I am not sure if I closed in time, check it.
 - After the change, three real test payments were registered by the webhook without returning to the portal, including one whose campaign was closed while the payment was open (DON-24).
 - The owner pointed out that, in production, Mercado Pago notices can be hours late or never arrive. The gap was documented in `security.md` and a scheduled reconciliation was proposed for the backlog; it was not built, because Delivery 2 was due the next day.
 
----
 
 ### Entry 13 — Reconciliation for notices that never arrive
 
@@ -508,6 +508,36 @@ hours can pass and it never arrives. [later] Implement it and open the PR.
 
 ---
 
+### Entry 14 — Privacy notice when an invoice is requested (DON-13)
+
+- **Date:** 2026-11-16
+- **Author:** Karen Elizabeth Campos
+- **Tool / model:** Claude Code, VS Code
+- **Related stories:** DON-13 (#12)
+- **Result type:** Best prompt
+- **Verification:** Jest (all suites) and a check-only deployment against `donations-dev` of the four fields, the two flows, the Apex classes and the form (115/115 Apex tests in the selected classes, nothing saved). No real deployment, commit or push.
+- **Estimated speed-up:** Not measured.
+
+**Prompt / decision summary**
+
+```text
+Record the acceptance of the privacy notice when the donor asks for an invoice, without breaking the Mercado Pago payment flow.
+Validate on the server, set the date and time on the server, copy both to the donation, and never block attempts created before DON-13.
+```
+
+**What happened**
+
+- The AI read the payment contract and the two flows first and found the smallest change: a new input in `Payment_Attempt_Create` with a decision and server-clock formulas, two copied fields in `Donation_Register`, and a new flag in `DonationPaymentController`. Both confirmation routes already run `Donation_Register`, so nothing was duplicated.
+- It used a check in the flow and the controller instead of a validation rule, because a rule would also block status updates of older attempts without acceptance. A test registers such an attempt and passes.
+- The new tests call the controller directly with the field false, null and omitted, call the flow without the controller, and confirm the payment through the return page and through the shared register flow.
+
+**What we verified and corrected**
+
+- The first check-only run failed: nine existing portal tests built invoice requests without the acceptance, which is now rejected by design. They were adapted and four tests were added. The first run also selected too few test classes, so the coverage warnings were an artifact of the selection.
+- The owner of the payment flows (Workstream A) still has to review the changes to `Payment_Attempt_Create`, `Donation_Register` and `DonationPaymentController`. The permission sets do not give anyone read access to the four new fields yet.
+
+---
+
 ### Entry 15 — Limits and repeated notices missed in the first reconciliation
 
 - **Date:** 2026-11-17
@@ -515,7 +545,7 @@ hours can pass and it never arrives. [later] Implement it and open the PR.
 - **Tool / model:** Claude Code (Opus 5.5), VS Code
 - **Related stories:** PAY-08 (#60)
 - **Result type:** Worst prompt
-- **Estimated time lost:** Not measured; the job was never scheduled, so no data was affected.
+- **Estimated time lost:** Not measured; the first version was never scheduled, so no data was affected.
 
 **What went wrong**
 
