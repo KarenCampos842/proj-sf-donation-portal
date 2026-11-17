@@ -9,7 +9,8 @@ export const MAX_EMAIL_LENGTH = 80;
 export const MAX_PUBLIC_NAME_LENGTH = 80;
 export const MAX_LEGAL_NAME_LENGTH = 254;
 
-// Fixed amounts of Delivery 1 (DON-08). Free amounts and configurable amounts belong to E2.
+// Amounts of Delivery 1 (DON-08). Since ADM-13 the form shows the amounts of the configuration
+// (DonationIntakeService.getAmountSettings); these are only shown while it loads or if it fails.
 export const SUGGESTED_AMOUNTS = [100, 250, 500, 1000, 2000, 5000, 10000, 20000];
 
 // Same patterns as the server (DonationIntakeService) and the RFC_Format validation rule.
