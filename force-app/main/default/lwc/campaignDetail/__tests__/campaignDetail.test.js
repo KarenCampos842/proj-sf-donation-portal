@@ -213,15 +213,32 @@ describe('c-campaign-detail', () => {
         expect(element.shadowRoot.querySelector('[role="status"]')).not.toBeNull();
     });
 
-    it('goes back to the list from the back button and from the not-found state', async () => {
+    it('asks to go back from the back button with backtolist, which keeps the origin of the navigation', async () => {
         const element = await createComponent(null);
-        const handler = jest.fn();
-        element.addEventListener('backtolist', handler);
+        const backHandler = jest.fn();
+        const catalogHandler = jest.fn();
+        element.addEventListener('backtolist', backHandler);
+        element.addEventListener('viewcatalog', catalogHandler);
 
         element.shadowRoot.querySelector('.detail__back lightning-button').click();
-        element.shadowRoot.querySelector('.state lightning-button').click();
 
-        expect(handler).toHaveBeenCalledTimes(2);
+        expect(backHandler).toHaveBeenCalledTimes(1);
+        expect(catalogHandler).not.toHaveBeenCalled();
+    });
+
+    it('asks for the catalog with its own event from the not-found button, never with backtolist', async () => {
+        const element = await createComponent(null);
+        const backHandler = jest.fn();
+        const catalogHandler = jest.fn();
+        element.addEventListener('backtolist', backHandler);
+        element.addEventListener('viewcatalog', catalogHandler);
+
+        const button = element.shadowRoot.querySelector('.state lightning-button');
+        expect(button.label).toBe('Ver campañas disponibles');
+        button.click();
+
+        expect(catalogHandler).toHaveBeenCalledTimes(1);
+        expect(backHandler).not.toHaveBeenCalled();
     });
 
     it('shows a Spanish error without technical detail and retries on request', async () => {

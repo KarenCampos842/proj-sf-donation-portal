@@ -11,10 +11,9 @@
  * Results are not cacheable on purpose: progress must include a donation as soon as the
  * portal is reloaded (DON-03).
  *
- * TEMPORARY WORKAROUND (DON-02, closed campaigns). The guest sharing rule documented in the
- * data model only shares Active and Paused campaigns, and Workstream C has not extended it to
- * Closed. Until it does, Closed campaigns are read through the isolated inner class
- * ClosedCampaignReader. See findConsultableCampaign for the scope and how to remove it.
+ * Closed campaigns (DON-02 detail, DON-05 history) are read the same way: the guest sharing rule
+ * Campanas_Publicas_Invitado shares the Cerrada, Activa and Pausada states, so no elevated
+ * (`without sharing`) read is needed. Draft campaigns are never shared.
  */
 public with sharing class CampaignPortalController {
     public static final String STATUS_ACTIVE = 'Active';
@@ -30,9 +29,11 @@ public with sharing class CampaignPortalController {
     private static final String MSG_LOAD_ERROR = 'No pudimos cargar las campañas. Intenta de nuevo en unos momentos.';
     @TestVisible
     private static final String MSG_DETAIL_ERROR = 'No pudimos cargar la campaña. Intenta de nuevo en unos momentos.';
+    @TestVisible
+    private static final String MSG_HISTORY_ERROR = 'No pudimos cargar el historial de campañas. Intenta de nuevo en unos momentos.';
 
     private static final Integer MAX_CAMPAIGNS = 100;
-    private static final List<String> SHARED_DETAIL_STATUSES = new List<String>{ STATUS_ACTIVE, STATUS_PAUSED };
+    private static final List<String> STARTED_DETAIL_STATUSES = new List<String>{ STATUS_ACTIVE, STATUS_PAUSED };
     private static final Pattern HTTPS_URL = Pattern.compile('(?i)^https://[^\\s<>"\']+$');
 
     /**
@@ -95,16 +96,62 @@ public with sharing class CampaignPortalController {
     }
 
     /**
+     * History of closed campaigns (DON-05): only Status__c = Closed, with the goal and the final
+     * total taken from the campaign roll-ups, never from individual donations. The most recently
+     * closed campaigns come first (End_Date__c descending, campaigns without end date last) and
+     * the name breaks ties, so the order is always the same. The query runs in user mode under
+     * the guest sharing rule; it does not use Is_Publicly_Visible__c, which is false for Closed
+     * campaigns by design. This is the only list that exposes Closed campaigns; none of them can
+     * be donated to (CampaignDTO.canDonate is false).
+     *
+     * @return closed campaigns without the long description, or an empty list when there are none
+     * @throws AuraHandledException when the campaigns cannot be read
+     * @example
+     * List<CampaignDTO> history = CampaignPortalController.getClosedCampaigns();
+     */
+    @AuraEnabled
+    public static List<CampaignDTO> getClosedCampaigns() {
+        Date today = Date.today();
+        List<Fundraising_Campaign__c> records;
+        try {
+            records = [
+                SELECT
+                    Id,
+                    Name,
+                    Goal__c,
+                    Start_Date__c,
+                    End_Date__c,
+                    Status__c,
+                    Is_General__c,
+                    Image_URL__c,
+                    Image_Alt_Text__c,
+                    Total_Raised__c,
+                    Donation_Count__c,
+                    Progress_Percent__c,
+                    Accepts_Donations__c
+                FROM Fundraising_Campaign__c
+                WHERE Status__c = :STATUS_CLOSED
+                WITH USER_MODE
+                ORDER BY End_Date__c DESC NULLS LAST, Name
+                LIMIT :MAX_CAMPAIGNS
+            ];
+        } catch (QueryException e) {
+            throw userFacingError(MSG_HISTORY_ERROR);
+        }
+
+        List<CampaignDTO> history = new List<CampaignDTO>();
+        for (Fundraising_Campaign__c record : records) {
+            history.add(toDto(record, today, false));
+        }
+        return history;
+    }
+
+    /**
      * Detail of one campaign (DON-02). Active and Paused campaigns that already started can be
      * read, and Closed campaigns can be read by a direct link whatever their start date.
      * Draft campaigns, Active or Paused campaigns that have not started, unknown Ids and
      * malformed Ids return null, so the response never reveals whether a hidden campaign exists.
      * The campaign can never be donated to unless it is open (see CampaignDTO.canDonate).
-     *
-     * WORKAROUND (temporary): Closed campaigns are not shared with the guest user yet, so they
-     * are read by ClosedCampaignReader, a `without sharing` inner class that is limited to
-     * Status__c = Closed and still enforces object and field permissions. Remove it when
-     * Workstream C extends the guest sharing rule to Status__c = Closed (see findConsultableCampaign).
      *
      * @param campaignId Id of the campaign, as text (it usually comes from the URL)
      * @return the campaign, or null when it is not publicly consultable
@@ -130,17 +177,11 @@ public with sharing class CampaignPortalController {
      * Reads a campaign only if it is publicly consultable. It is shared by the campaign detail
      * (DON-02) and by the eligibility check of the donor recognition (DON-04), so both apply
      * the same rule:
-     *   - Active and Paused: only after their start date. Read in user mode under this class'
-     *     sharing, so the guest sharing rule still applies.
+     *   - Active and Paused: only after their start date.
      *   - Closed: always, whatever the start date (DON-02 sets no date condition).
      *   - Draft: never.
-     *
-     * WORKAROUND (temporary, DON-02 and DON-04 for Closed campaigns): the guest sharing rule
-     * does not share Closed campaigns yet, so they are read through ClosedCampaignReader, which
-     * is `without sharing`. The elevation is limited to Status__c = Closed records, selects only
-     * the public fields and enforces object and field permissions. TO REMOVE: when Workstream C
-     * adds Closed to the guest sharing rule, delete ClosedCampaignReader and read Closed
-     * campaigns in the first query with WITH USER_MODE.
+     * A single query in user mode under this class' sharing, so the guest sharing rule (which
+     * shares Cerrada, Activa and Pausada and never Borrador) still applies to every state.
      *
      * @param campaignId Id of a Fundraising_Campaign__c
      * @return the campaign with its public fields, or null when it is not consultable
@@ -164,11 +205,16 @@ public with sharing class CampaignPortalController {
                 Progress_Percent__c,
                 Accepts_Donations__c
             FROM Fundraising_Campaign__c
-            WHERE Id = :campaignId AND Start_Date__c <= :today AND Status__c IN :SHARED_DETAIL_STATUSES
+            WHERE
+                Id = :campaignId
+                AND (
+                    (Status__c IN :STARTED_DETAIL_STATUSES AND Start_Date__c <= :today)
+                    OR Status__c = :STATUS_CLOSED
+                )
             WITH USER_MODE
             LIMIT 1
         ];
-        return records.isEmpty() ? new ClosedCampaignReader().find(campaignId) : records[0];
+        return records.isEmpty() ? null : records[0];
     }
 
     /**
@@ -239,47 +285,6 @@ public with sharing class CampaignPortalController {
         dto.canDonate = dto.availability == AVAILABILITY_OPEN && record.Accepts_Donations__c == true;
         dto.isGeneral = record.Is_General__c == true;
         return dto;
-    }
-
-    /**
-     * TEMPORARY WORKAROUND, isolated on purpose. Reads one Closed campaign by Id ignoring record
-     * sharing, because the guest sharing rule does not cover Closed campaigns yet. The class
-     * keyword removes only the sharing check. The query has no access-level clause on purpose:
-     * from API 67.0 a query in a `without sharing` class still enforces object and field
-     * permissions (covered by ClosedCampaignReader tests). The filter is limited to
-     * Status__c = Closed and only the public campaign fields are selected. It never touches
-     * Donation__c or Payment_Attempt__c.
-     * Delete this class when Workstream C shares Closed campaigns with the guest user.
-     */
-    @TestVisible
-    private without sharing class ClosedCampaignReader {
-        @TestVisible
-        private Fundraising_Campaign__c find(Id campaignId) {
-            if (!Fundraising_Campaign__c.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).isAccessible()) {
-                throw new QueryException('The user cannot read Fundraising_Campaign__c');
-            }
-            List<Fundraising_Campaign__c> records = [
-                SELECT
-                    Id,
-                    Name,
-                    Description__c,
-                    Goal__c,
-                    Start_Date__c,
-                    End_Date__c,
-                    Status__c,
-                    Is_General__c,
-                    Image_URL__c,
-                    Image_Alt_Text__c,
-                    Total_Raised__c,
-                    Donation_Count__c,
-                    Progress_Percent__c,
-                    Accepts_Donations__c
-                FROM Fundraising_Campaign__c
-                WHERE Id = :campaignId AND Status__c = :STATUS_CLOSED
-                LIMIT 1
-            ];
-            return records.isEmpty() ? null : records[0];
-        }
     }
 
     private static String sanitizeImageUrl(String rawUrl) {

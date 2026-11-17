@@ -3,6 +3,7 @@ import DonationPortal from 'c/donationPortal';
 import { CurrentPageReference, __navigateMock } from 'lightning/navigation';
 import getAvailableCampaigns from '@salesforce/apex/CampaignPortalController.getAvailableCampaigns';
 import getCampaignDetail from '@salesforce/apex/CampaignPortalController.getCampaignDetail';
+import getClosedCampaigns from '@salesforce/apex/CampaignPortalController.getClosedCampaigns';
 
 // The mocked router behaves like the LWR one: Navigate publishes a new page reference with the state.
 jest.mock('lightning/navigation', () => {
@@ -24,6 +25,9 @@ jest.mock('@salesforce/apex/CampaignPortalController.getAvailableCampaigns', () 
     virtual: true
 });
 jest.mock('@salesforce/apex/CampaignPortalController.getCampaignDetail', () => ({ default: jest.fn() }), {
+    virtual: true
+});
+jest.mock('@salesforce/apex/CampaignPortalController.getClosedCampaigns', () => ({ default: jest.fn() }), {
     virtual: true
 });
 jest.mock('@salesforce/apex/DonorRecognitionService.getDonorRecognition', () => ({ default: jest.fn() }), {
@@ -78,11 +82,13 @@ async function openAt(state, props) {
 const list = (element) => element.shadowRoot.querySelector('c-campaign-list');
 const detail = (element) => element.shadowRoot.querySelector('c-campaign-detail');
 const form = (element) => element.shadowRoot.querySelector('c-donation-form');
+const history = (element) => element.shadowRoot.querySelector('c-closed-campaign-history');
 
 describe('c-donation-portal', () => {
     beforeEach(() => {
         window.scrollTo = jest.fn();
         getAvailableCampaigns.mockResolvedValue([]);
+        getClosedCampaigns.mockResolvedValue([]);
         getCampaignDetail.mockResolvedValue(campaign());
     });
 
@@ -303,6 +309,391 @@ describe('c-donation-portal', () => {
             expect(window.location.replace).not.toHaveBeenCalled();
             expect(window.location.reload).not.toHaveBeenCalled();
             window.location = originalLocation;
+        });
+    });
+
+    describe('history of closed campaigns (DON-05)', () => {
+        const closedCampaign = (overrides = {}) =>
+            campaign({ status: 'Closed', availability: 'CLOSED', canDonate: false, ...overrides });
+
+        it('shows the history at ?vista=historial without loading the catalog or any detail', async () => {
+            getClosedCampaigns.mockResolvedValue([closedCampaign()]);
+            const element = await openAt({ vista: 'historial' });
+
+            expect(history(element)).not.toBeNull();
+            expect(list(element)).toBeNull();
+            expect(detail(element)).toBeNull();
+            expect(getAvailableCampaigns).not.toHaveBeenCalled();
+            expect(getClosedCampaigns).toHaveBeenCalledTimes(1);
+            expect(history(element).shadowRoot.querySelectorAll('article.card')).toHaveLength(1);
+        });
+
+        it('goes from the catalog to the history on showhistory, updating the URL state', async () => {
+            const element = await openAt({});
+
+            list(element).dispatchEvent(new CustomEvent('showhistory'));
+            await flushPromises();
+
+            expect(__navigateMock).toHaveBeenCalledTimes(1);
+            expect(__navigateMock).toHaveBeenCalledWith(pageReference({ vista: 'historial' }), undefined);
+            expect(history(element)).not.toBeNull();
+            expect(list(element)).toBeNull();
+        });
+
+        it('opens the detail of a closed campaign from the history and keeps donating impossible', async () => {
+            getClosedCampaigns.mockResolvedValue([closedCampaign()]);
+            getCampaignDetail.mockResolvedValue(closedCampaign());
+            const element = await openAt({ vista: 'historial' });
+
+            history(element).dispatchEvent(new CustomEvent('campaignselect', { detail: { campaignId: CAMPAIGN_ID } }));
+            await flushPromises();
+
+            expect(__navigateMock).toHaveBeenCalledWith(
+                pageReference({ campana: CAMPAIGN_ID, vista: 'historial' }),
+                undefined
+            );
+            expect(history(element)).toBeNull();
+            const buttons = Array.from(detail(element).shadowRoot.querySelectorAll('lightning-button'));
+            const disabled = buttons.find((button) => button.label === 'Donaciones cerradas');
+            expect(disabled.disabled).toBe(true);
+            expect(buttons.some((button) => button.label === 'Donar')).toBe(false);
+            expect(form(element)).toBeNull();
+        });
+
+        it('returns to the catalog from the history', async () => {
+            const element = await openAt({ vista: 'historial' });
+
+            history(element).dispatchEvent(new CustomEvent('backtolist'));
+            await flushPromises();
+
+            expect(__navigateMock).toHaveBeenLastCalledWith(pageReference({}), undefined);
+            expect(list(element)).not.toBeNull();
+            expect(history(element)).toBeNull();
+        });
+
+        it('follows Back and Forward between catalog, history and detail', async () => {
+            const element = await openAt({});
+
+            CurrentPageReference.emit(pageReference({ vista: 'historial' }));
+            await flushPromises();
+            expect(history(element)).not.toBeNull();
+
+            CurrentPageReference.emit(pageReference({ campana: CAMPAIGN_ID }));
+            await flushPromises();
+            expect(detail(element)).not.toBeNull();
+
+            // Back: detail -> history -> catalog
+            CurrentPageReference.emit(pageReference({ vista: 'historial' }));
+            await flushPromises();
+            expect(history(element)).not.toBeNull();
+            CurrentPageReference.emit(pageReference({}));
+            await flushPromises();
+            expect(list(element)).not.toBeNull();
+
+            // Forward: catalog -> history
+            CurrentPageReference.emit(pageReference({ vista: 'historial' }));
+            await flushPromises();
+            expect(history(element)).not.toBeNull();
+        });
+
+        it('lets a campaign in the URL win over the history parameter', async () => {
+            const element = await openAt({ campana: CAMPAIGN_ID, vista: 'historial' });
+
+            expect(detail(element).campaignId).toBe(CAMPAIGN_ID);
+            expect(history(element)).toBeNull();
+        });
+
+        it('shows the catalog for any other value of the view parameter and accepts a list of values', async () => {
+            const element = await openAt({ vista: 'otra' });
+            expect(list(element)).not.toBeNull();
+            expect(history(element)).toBeNull();
+
+            CurrentPageReference.emit(pageReference({ vista: ['historial', 'otra'] }));
+            await flushPromises();
+            expect(history(element)).not.toBeNull();
+        });
+
+        it('scrolls to the top when the view changes to the history', async () => {
+            const element = await openAt({});
+            window.scrollTo.mockClear();
+
+            list(element).dispatchEvent(new CustomEvent('showhistory'));
+            await flushPromises();
+
+            expect(window.scrollTo).toHaveBeenCalledWith(0, 0);
+        });
+    });
+
+    describe('back button of the detail respects where it was opened from (DON-05)', () => {
+        const closedCampaign = () => campaign({ status: 'Closed', availability: 'CLOSED', canDonate: false });
+        const backFromDetail = async (element) => {
+            detail(element).dispatchEvent(new CustomEvent('backtolist'));
+            await flushPromises();
+        };
+        const select = async (element, source, campaignId = CAMPAIGN_ID) => {
+            source(element).dispatchEvent(new CustomEvent('campaignselect', { detail: { campaignId } }));
+            await flushPromises();
+        };
+        const lastState = () => __navigateMock.mock.calls[__navigateMock.mock.calls.length - 1][0].state;
+
+        beforeEach(() => {
+            getClosedCampaigns.mockResolvedValue([closedCampaign()]);
+            getCampaignDetail.mockResolvedValue(closedCampaign());
+        });
+
+        it('opens a campaign from the history with the history context and goes back to the history', async () => {
+            const element = await openAt({ vista: 'historial' });
+
+            await select(element, history);
+            expect(__navigateMock).toHaveBeenLastCalledWith(
+                pageReference({ campana: CAMPAIGN_ID, vista: 'historial' }),
+                undefined
+            );
+            expect(detail(element).campaignId).toBe(CAMPAIGN_ID);
+            expect(history(element)).toBeNull();
+
+            await backFromDetail(element);
+            expect(__navigateMock).toHaveBeenLastCalledWith(pageReference({ vista: 'historial' }), undefined);
+            expect(Object.keys(lastState())).toEqual(['vista']);
+            expect(history(element)).not.toBeNull();
+            expect(detail(element)).toBeNull();
+            expect(list(element)).toBeNull();
+        });
+
+        it('opens a campaign from the catalog without the history context and goes back to the catalog', async () => {
+            const element = await openAt({});
+
+            await select(element, list);
+            expect(__navigateMock).toHaveBeenLastCalledWith(pageReference({ campana: CAMPAIGN_ID }), undefined);
+            expect(Object.keys(lastState())).toEqual(['campana']);
+
+            await backFromDetail(element);
+            expect(__navigateMock).toHaveBeenLastCalledWith(pageReference({}), undefined);
+            expect(Object.keys(lastState())).toEqual([]);
+            expect(list(element)).not.toBeNull();
+            expect(history(element)).toBeNull();
+            expect(detail(element)).toBeNull();
+        });
+
+        it('goes back to the catalog from a direct link without context', async () => {
+            const element = await openAt({ campana: CAMPAIGN_ID });
+            expect(detail(element)).not.toBeNull();
+
+            await backFromDetail(element);
+
+            expect(__navigateMock).toHaveBeenLastCalledWith(pageReference({}), undefined);
+            expect(list(element)).not.toBeNull();
+            expect(history(element)).toBeNull();
+        });
+
+        it('goes back to the history from a direct link that carries the history context', async () => {
+            const element = await openAt({ campana: CAMPAIGN_ID, vista: 'historial' });
+            expect(detail(element).campaignId).toBe(CAMPAIGN_ID);
+            expect(history(element)).toBeNull();
+
+            await backFromDetail(element);
+
+            expect(__navigateMock).toHaveBeenLastCalledWith(pageReference({ vista: 'historial' }), undefined);
+            expect(history(element)).not.toBeNull();
+        });
+
+        it('lets the campaign win over the view parameter when both are present', async () => {
+            const element = await openAt({ vista: 'historial', campana: CAMPAIGN_ID });
+
+            expect(detail(element).campaignId).toBe(CAMPAIGN_ID);
+            expect(history(element)).toBeNull();
+            expect(list(element)).toBeNull();
+            expect(form(element)).toBeNull();
+        });
+
+        it('keeps the origin of each opening when the visitor goes back and opens another campaign', async () => {
+            const element = await openAt({ vista: 'historial' });
+
+            await select(element, history, CAMPAIGN_ID);
+            await backFromDetail(element);
+            await select(element, history, OTHER_CAMPAIGN_ID);
+            expect(lastState()).toEqual({ campana: OTHER_CAMPAIGN_ID, vista: 'historial' });
+            await backFromDetail(element);
+
+            expect(lastState()).toEqual({ vista: 'historial' });
+            expect(history(element)).not.toBeNull();
+            // The catalog is a different origin: it never inherits the history context.
+            history(element).dispatchEvent(new CustomEvent('backtolist'));
+            await flushPromises();
+            expect(lastState()).toEqual({});
+            await select(element, list);
+            expect(lastState()).toEqual({ campana: CAMPAIGN_ID });
+        });
+
+        it('follows browser Back and Forward through history, detail and catalog keeping the context', async () => {
+            const element = await openAt({});
+
+            await select(element, list); // catalog -> detail (no context)
+            CurrentPageReference.emit(pageReference({}));
+            await flushPromises();
+            expect(list(element)).not.toBeNull();
+
+            CurrentPageReference.emit(pageReference({ vista: 'historial' })); // catalog -> history
+            await flushPromises();
+            expect(history(element)).not.toBeNull();
+
+            CurrentPageReference.emit(pageReference({ campana: CAMPAIGN_ID, vista: 'historial' })); // -> detail
+            await flushPromises();
+            expect(detail(element)).not.toBeNull();
+
+            // Back: detail -> history -> catalog
+            CurrentPageReference.emit(pageReference({ vista: 'historial' }));
+            await flushPromises();
+            expect(history(element)).not.toBeNull();
+            expect(detail(element)).toBeNull();
+            CurrentPageReference.emit(pageReference({}));
+            await flushPromises();
+            expect(list(element)).not.toBeNull();
+            expect(history(element)).toBeNull();
+
+            // Forward: catalog -> history -> detail, and its back button still returns to the history
+            CurrentPageReference.emit(pageReference({ vista: 'historial' }));
+            await flushPromises();
+            CurrentPageReference.emit(pageReference({ campana: CAMPAIGN_ID, vista: 'historial' }));
+            await flushPromises();
+            expect(detail(element).campaignId).toBe(CAMPAIGN_ID);
+            await backFromDetail(element);
+            expect(lastState()).toEqual({ vista: 'historial' });
+            expect(history(element)).not.toBeNull();
+        });
+
+        it('never sends repeated or unexpected parameters in a full round trip', async () => {
+            const element = await openAt({});
+
+            list(element).dispatchEvent(new CustomEvent('showhistory'));
+            await flushPromises();
+            await select(element, history);
+            await backFromDetail(element);
+            history(element).dispatchEvent(new CustomEvent('backtolist'));
+            await flushPromises();
+            await select(element, list);
+            await backFromDetail(element);
+
+            const sent = __navigateMock.mock.calls.map(([reference]) => Object.keys(reference.state).sort().join(','));
+            expect(sent).toEqual(['vista', 'campana,vista', 'vista', '', 'campana', '']);
+            __navigateMock.mock.calls.forEach(([reference]) => {
+                expect(reference.attributes).toEqual({ name: 'Home' });
+                Object.values(reference.state).forEach((value) => expect(Array.isArray(value)).toBe(false));
+            });
+            expect(list(element)).not.toBeNull();
+        });
+
+        it('keeps the history context through the donation form of a campaign opened with it', async () => {
+            getCampaignDetail.mockResolvedValue(campaign());
+            const element = await openAt({ campana: CAMPAIGN_ID, vista: 'historial' });
+
+            detail(element).dispatchEvent(
+                new CustomEvent('donationstart', { detail: { campaignId: CAMPAIGN_ID, campaignName: 'Viaje' } })
+            );
+            await flushPromises();
+            expect(lastState()).toEqual({ campana: CAMPAIGN_ID, vista: 'historial', donar: '1' });
+            expect(form(element)).not.toBeNull();
+
+            form(element).dispatchEvent(new CustomEvent('backtocampaign'));
+            await flushPromises();
+            expect(lastState()).toEqual({ campana: CAMPAIGN_ID, vista: 'historial' });
+
+            await backFromDetail(element);
+            expect(lastState()).toEqual({ vista: 'historial' });
+            expect(history(element)).not.toBeNull();
+        });
+    });
+
+    describe('"Ver campañas disponibles" of the not-found state always leads to the catalog (DON-05)', () => {
+        const lastState = () => __navigateMock.mock.calls[__navigateMock.mock.calls.length - 1][0].state;
+        const clickViewCatalog = async (element) => {
+            const button = detail(element).shadowRoot.querySelector('.state lightning-button');
+            expect(button.label).toBe('Ver campañas disponibles');
+            button.click();
+            await flushPromises();
+        };
+        const clickGenericBack = async (element) => {
+            detail(element).shadowRoot.querySelector('.detail__back lightning-button').click();
+            await flushPromises();
+        };
+
+        beforeEach(() => {
+            getCampaignDetail.mockResolvedValue(null);
+        });
+
+        it('goes to the catalog when the campaign does not exist and the URL carries the history context', async () => {
+            const element = await openAt({ campana: 'a00000000000999AAA', vista: 'historial' });
+            expect(detail(element).shadowRoot.textContent).toContain('No encontramos esta campaña.');
+
+            await clickViewCatalog(element);
+
+            expect(__navigateMock).toHaveBeenLastCalledWith(pageReference({}), undefined);
+            expect(Object.keys(lastState())).toEqual([]);
+            expect(list(element)).not.toBeNull();
+            expect(history(element)).toBeNull();
+            expect(detail(element)).toBeNull();
+        });
+
+        it('goes to the catalog when the campaign does not exist and there is no history context', async () => {
+            const element = await openAt({ campana: 'no-es-un-id' });
+
+            await clickViewCatalog(element);
+
+            expect(__navigateMock).toHaveBeenLastCalledWith(pageReference({}), undefined);
+            expect(Object.keys(lastState())).toEqual([]);
+            expect(list(element)).not.toBeNull();
+            expect(history(element)).toBeNull();
+        });
+
+        it('leaves neither campana nor vista in the state when it returns to the catalog', async () => {
+            const element = await openAt({ campana: CAMPAIGN_ID, vista: 'historial' });
+
+            detail(element).dispatchEvent(new CustomEvent('viewcatalog'));
+            await flushPromises();
+
+            expect(lastState()).toEqual({});
+            expect(lastState()).not.toHaveProperty('campana');
+            expect(lastState()).not.toHaveProperty('vista');
+            expect(__navigateMock).toHaveBeenCalledTimes(1);
+            expect(list(element)).not.toBeNull();
+        });
+
+        it('keeps "Volver a las campañas" going back to the history from a detail opened in the history', async () => {
+            getClosedCampaigns.mockResolvedValue([campaign({ status: 'Closed', availability: 'CLOSED', canDonate: false })]);
+            getCampaignDetail.mockResolvedValue(campaign({ status: 'Closed', availability: 'CLOSED', canDonate: false }));
+            const element = await openAt({ vista: 'historial' });
+            history(element).dispatchEvent(new CustomEvent('campaignselect', { detail: { campaignId: CAMPAIGN_ID } }));
+            await flushPromises();
+            expect(lastState()).toEqual({ campana: CAMPAIGN_ID, vista: 'historial' });
+
+            await clickGenericBack(element);
+
+            expect(lastState()).toEqual({ vista: 'historial' });
+            expect(history(element)).not.toBeNull();
+            expect(list(element)).toBeNull();
+        });
+
+        it('keeps "Volver a las campañas" going back to the catalog from a detail opened in the catalog', async () => {
+            getCampaignDetail.mockResolvedValue(campaign());
+            const element = await openAt({});
+            list(element).dispatchEvent(new CustomEvent('campaignselect', { detail: { campaignId: CAMPAIGN_ID } }));
+            await flushPromises();
+            expect(lastState()).toEqual({ campana: CAMPAIGN_ID });
+
+            await clickGenericBack(element);
+
+            expect(lastState()).toEqual({});
+            expect(list(element)).not.toBeNull();
+            expect(history(element)).toBeNull();
+        });
+
+        it('keeps the generic back button on the history for a not-found campaign with the history context', async () => {
+            const element = await openAt({ campana: 'a00000000000999AAA', vista: 'historial' });
+
+            await clickGenericBack(element);
+
+            expect(lastState()).toEqual({ vista: 'historial' });
+            expect(history(element)).not.toBeNull();
         });
     });
 

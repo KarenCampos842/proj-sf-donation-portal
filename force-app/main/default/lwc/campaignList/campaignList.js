@@ -39,6 +39,10 @@ export default class CampaignList extends LightningElement {
         this.loadCampaigns();
     }
 
+    handleShowHistory() {
+        this.dispatchEvent(new CustomEvent('showhistory'));
+    }
+
     handleImageError(event) {
         const failedId = event.currentTarget.dataset.id;
         this.campaigns = this.campaigns.map((campaign) =>
