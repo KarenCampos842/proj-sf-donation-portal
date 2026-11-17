@@ -2,9 +2,18 @@ import { createElement } from 'lwc';
 import DonationForm from 'c/donationForm';
 import startDonation from '@salesforce/apex/DonationIntakeService.startDonation';
 import openPayment from '@salesforce/apex/DonationIntakeService.openPayment';
+import getAmountSettings from '@salesforce/apex/DonationIntakeService.getAmountSettings';
 
 jest.mock('@salesforce/apex/DonationIntakeService.startDonation', () => ({ default: jest.fn() }), { virtual: true });
 jest.mock('@salesforce/apex/DonationIntakeService.openPayment', () => ({ default: jest.fn() }), { virtual: true });
+jest.mock(
+    '@salesforce/apex/DonationIntakeService.getAmountSettings',
+    () => {
+        const { createApexTestWireAdapter } = require('@salesforce/sfdx-lwc-jest');
+        return { default: createApexTestWireAdapter(jest.fn()) };
+    },
+    { virtual: true }
+);
 
 const CAMPAIGN_ID = 'a00000000000001AAA';
 const ATTEMPT_ID = 'a01000000000001AAA';
@@ -103,6 +112,37 @@ describe('c-donation-form', () => {
             document.body.removeChild(document.body.firstChild);
         }
         jest.clearAllMocks();
+    });
+
+    describe('configurable amounts (ADM-13)', () => {
+        const pillLabels = (element) =>
+            Array.from(element.shadowRoot.querySelectorAll('.pill__label')).map((node) => normalize(node.textContent));
+
+        it('shows the amounts of the configuration, in their order', async () => {
+            const element = createComponent();
+            getAmountSettings.emit({ minimumAmount: 80, suggestedAmounts: [150, 300, 900] });
+            await flushPromises();
+
+            expect(pillLabels(element)).toEqual(['$150 MXN', '$300 MXN', '$900 MXN']);
+        });
+
+        it('keeps the amounts of Delivery 1 when the configuration cannot be read', async () => {
+            const element = createComponent();
+            getAmountSettings.error();
+            await flushPromises();
+
+            expect(pillLabels(element)).toHaveLength(8);
+            expect(pillLabels(element)[0]).toBe('$100 MXN');
+        });
+
+        it('clears a selected amount that the configuration no longer offers', async () => {
+            const element = createComponent();
+            await selectAmount(element, 250);
+            getAmountSettings.emit({ minimumAmount: 50, suggestedAmounts: [500, 1000] });
+            await flushPromises();
+
+            expect(radios(element).some((radio) => radio.checked)).toBe(false);
+        });
     });
 
     describe('amount (DON-08)', () => {

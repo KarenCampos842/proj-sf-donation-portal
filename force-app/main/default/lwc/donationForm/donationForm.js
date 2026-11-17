@@ -1,6 +1,7 @@
-import { LightningElement, api, track } from 'lwc';
+import { LightningElement, api, track, wire } from 'lwc';
 import startDonation from '@salesforce/apex/DonationIntakeService.startDonation';
 import openPayment from '@salesforce/apex/DonationIntakeService.openPayment';
+import getAmountSettings from '@salesforce/apex/DonationIntakeService.getAmountSettings';
 import { formatMessage } from 'c/portalMessages';
 import { formatMxn } from 'c/portalUtils';
 import { FORM_MESSAGES } from 'c/donationFormMessages';
@@ -93,8 +94,23 @@ export default class DonationForm extends LightningElement {
         return this.campaignName ? formatMessage(FORM_MESSAGES.campaign, this.campaignName) : '';
     }
 
+    // ADM-13. Amounts set by the administrator. Until they arrive, or if the server fails, the
+    // amounts of Delivery 1 are shown; the server validates the amount again in any case.
+    suggestedAmounts = SUGGESTED_AMOUNTS;
+
+    @wire(getAmountSettings)
+    wiredAmountSettings({ data }) {
+        const amounts = data?.suggestedAmounts?.map(Number).filter((amount) => amount > 0);
+        if (amounts?.length) {
+            this.suggestedAmounts = amounts;
+            if (this.selectedAmount && !amounts.includes(this.selectedAmount)) {
+                this.selectedAmount = undefined;
+            }
+        }
+    }
+
     get amountOptions() {
-        return SUGGESTED_AMOUNTS.map((amount) => ({
+        return this.suggestedAmounts.map((amount) => ({
             value: String(amount),
             label: formatMxn(amount),
             checked: amount === this.selectedAmount

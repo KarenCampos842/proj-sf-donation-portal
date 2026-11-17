@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Amount_7__c</fullName>
+    <description>ADM-13. Monto sugerido número 7 que ve el donante, en MXN. Vacío = no se muestra. Valor inicial 10000.</description>
+    <externalId>false</externalId>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+    <inlineHelpText>Monto sugerido en pesos enteros. Déjalo vacío para no mostrarlo. No puede ser menor que el monto mínimo.</inlineHelpText>
+    <label>Monto sugerido 7 (MXN)</label>
+    <precision>10</precision>
+    <required>false</required>
+    <scale>0</scale>
+    <type>Number</type>
+    <unique>false</unique>
+</CustomField>

@@ -96,7 +96,7 @@ private class DonationPaymentControllerTest {
             message = errorOf(e);
         }
         Test.stopTest();
-        Assert.areEqual('El monto mínimo es de $50 MXN.', message);
+        Assert.areEqual('El monto es menor al mínimo permitido.', message, 'ADM-13: the minimum comes from the configuration');
         Assert.areEqual(0, [SELECT COUNT() FROM Payment_Attempt__c WITH SYSTEM_MODE]);
     }
 

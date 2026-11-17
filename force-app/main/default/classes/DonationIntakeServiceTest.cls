@@ -454,6 +454,26 @@ private class DonationIntakeServiceTest {
     }
 
     @IsTest
+    static void shouldAcceptAmount_WhenTheAdministratorAddsItToTheConfiguration() {
+        // ADM-13 AC1: an amount added in the configuration is accepted; one removed is rejected.
+        DonationAmountSettings.recordOverride = (Donation_Amount_Setting__mdt) JSON.deserialize(
+            '{"Minimum_Amount__c": 50, "Amount_1__c": 150, "Amount_2__c": 2500}', Donation_Amount_Setting__mdt.class);
+        useCapturingGateway();
+
+        Test.startTest();
+        DonationIntakeService.DonationFormInputDTO request = validAnonymousRequest();
+        request.amount = 150;
+        String attemptId = DonationIntakeService.startDonation(request);
+        DonationIntakeService.DonationFormInputDTO removed = validAnonymousRequest();
+        removed.amount = 100;
+        assertStartRejected(removed, DonationIntakeService.MSG_AMOUNT_INVALID, 'amount removed from the configuration');
+        Test.stopTest();
+
+        Assert.isNotNull(attemptId, 'A configured amount starts the donation');
+        Assert.areEqual(new List<Decimal>{ 150.00, 2500.00 }, DonationIntakeService.getAmountSettings().suggestedAmounts);
+    }
+
+    @IsTest
     static void shouldRejectAmount_WhenItIsNotOneOfTheSuggestedOnes() {
         useCapturingGateway();
 

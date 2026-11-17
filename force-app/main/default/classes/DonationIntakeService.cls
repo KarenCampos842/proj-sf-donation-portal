@@ -81,17 +81,7 @@ public with sharing class DonationIntakeService {
     @TestVisible
     private static final String MSG_PAYMENT_FAILED = 'No pudimos abrir el pago, intenta de nuevo';
 
-    // E1 uses fixed amounts (DON-08). DON-09 and ADM-13 (E2) make them configurable.
-    private static final List<Integer> SUGGESTED_AMOUNTS = new List<Integer>{
-        100,
-        250,
-        500,
-        1000,
-        2000,
-        5000,
-        10000,
-        20000
-    };
+    // ADM-13: the suggested amounts come from the configuration (DonationAmountSettings), not from a fixed list.
     private static final Integer MAX_EMAIL_LENGTH = 80;
     private static final Integer MAX_LEGAL_NAME_LENGTH = 254;
     private static final Integer RFC_LENGTH_COMPANY = 12;
@@ -162,6 +152,17 @@ public with sharing class DonationIntakeService {
         // DON-13. Only the acceptance comes from the browser; its date and time are set on the server.
         @AuraEnabled
         public Boolean privacyNoticeAccepted { get; set; }
+    }
+
+    /**
+     * ADM-13. Suggested amounts and minimum amount of the current configuration, for the form.
+     * Cacheable: the configuration changes rarely and holds no personal data.
+     *
+     * @return minimum amount and suggested amounts, in the order set by the administrator
+     */
+    @AuraEnabled(cacheable=true)
+    public static DonationAmountSettingsDTO getAmountSettings() {
+        return DonationAmountSettings.current();
     }
 
     /**
@@ -264,10 +265,8 @@ public with sharing class DonationIntakeService {
         if (amount == null) {
             throw donorError(FIELD_AMOUNT, MSG_AMOUNT_REQUIRED);
         }
-        for (Integer suggested : SUGGESTED_AMOUNTS) {
-            if (amount == suggested) {
-                return amount;
-            }
+        if (DonationAmountSettings.isSuggested(amount)) {
+            return amount;
         }
         throw donorError(FIELD_AMOUNT, MSG_AMOUNT_INVALID);
     }
