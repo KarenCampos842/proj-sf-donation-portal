@@ -181,7 +181,7 @@ private class MercadoPagoPreferenceActionTest {
         Test.startTest();
         Flow.Interview i = runFlow(a.Id);
         Test.stopTest();
-        Assert.areEqual('No pudimos abrir el pago, intenta de nuevo', i.getVariableValue('errorMessage'));
+        Assert.areEqual(DonationPaymentController.GENERIC_ERROR, i.getVariableValue('errorMessage'));
         Assert.isNull(i.getVariableValue('checkoutUrl'));
         Assert.areEqual(0, attemptsLeft(), 'No half-finished attempt is left (AC5)');
     }
@@ -193,7 +193,7 @@ private class MercadoPagoPreferenceActionTest {
         Test.startTest();
         Flow.Interview i = runFlow(a.Id);
         Test.stopTest();
-        Assert.areEqual('No pudimos abrir el pago, intenta de nuevo', i.getVariableValue('errorMessage'));
+        Assert.areEqual(DonationPaymentController.GENERIC_ERROR, i.getVariableValue('errorMessage'));
         Assert.areEqual(0, attemptsLeft());
     }
 
@@ -220,7 +220,7 @@ private class MercadoPagoPreferenceActionTest {
         Test.startTest();
         Flow.Interview i = runFlow(a.Id);
         Test.stopTest();
-        Assert.areEqual('No pudimos abrir el pago, intenta de nuevo', i.getVariableValue('errorMessage'));
+        Assert.areEqual(DonationPaymentController.GENERIC_ERROR, i.getVariableValue('errorMessage'));
         Assert.isNull(mock.lastRequest);
         Assert.areEqual(1, attemptsLeft(), 'A confirmed attempt is never deleted here');
     }
@@ -235,7 +235,7 @@ private class MercadoPagoPreferenceActionTest {
         Test.startTest();
         Flow.Interview i = runFlow(a.Id);
         Test.stopTest();
-        Assert.areEqual('No pudimos abrir el pago, intenta de nuevo', i.getVariableValue('errorMessage'));
+        Assert.areEqual(DonationPaymentController.GENERIC_ERROR, i.getVariableValue('errorMessage'));
         Assert.isNull(mock.lastRequest, 'Mercado Pago must not be called again');
         Assert.areEqual('already-opened',
             [SELECT Preference_Id__c FROM Payment_Attempt__c WHERE Id = :a.Id WITH SYSTEM_MODE].Preference_Id__c);
@@ -249,6 +249,6 @@ private class MercadoPagoPreferenceActionTest {
             new Map<String, Object>{ 'attemptId' => 'abc' });
         i.start();
         Test.stopTest();
-        Assert.areEqual('No pudimos abrir el pago, intenta de nuevo', i.getVariableValue('errorMessage'));
+        Assert.areEqual(DonationPaymentController.GENERIC_ERROR, i.getVariableValue('errorMessage'));
     }
 }
