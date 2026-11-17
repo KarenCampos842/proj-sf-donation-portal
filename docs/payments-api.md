@@ -178,7 +178,7 @@ Why not only the panel: the app uses the credentials of a Mercado Pago **test se
 
 The notices sent through `notification_url` are signed with the same secret, so PAY-01 applies to them unchanged.
 
-**Notices can be late or never arrive.** Mercado Pago retries failed notices, but it does not guarantee when they arrive. If the donor does not return to the portal and the notice never arrives, the attempt stays `Started` and is deleted after 7 days (PAY-07). A scheduled reconciliation (search the payment by `external_reference` for old `Started` attempts) is proposed as a backlog story; see `security.md`, section 5.
+**Notices can be late or never arrive.** Mercado Pago retries failed notices, but it does not guarantee when they arrive. If the donor does not return to the portal and the notice never arrives, the attempt stays `Started` and is deleted after 7 days (PAY-07). The hourly reconciliation (PAY-08, section 6) covers that case.
 
 | Class | Role |
 |---|---|
@@ -210,3 +210,30 @@ The amount and the status always come from Mercado Pago's API, never from the no
 **Webhook secret.** It is stored in the protected custom setting `Mercado_Pago_Webhook__c.Secret__c` (Setup → Custom Settings → Mercado Pago Webhook → Manage → organization value). It is typed in by hand and is never in the repository, screenshots or AI prompts.
 
 **Rejection history (ADM-12).** Tab **Avisos rechazados**, list view "Historial de rechazos": folio, received at, reason, detail and technical id. Read-only, through the `Rejected_Notice_Viewer` permission set. It never stores the notice body, card data, emails or secrets. Ids that come from a notice whose signature was not valid are masked (`9876…3210`).
+
+## 6. Reconciliation of payments without a notice (PAY-08)
+
+Safety net for the case where the donor never returns **and** the notice never arrives. Deployed in `donations-dev` on 2026-11-16.
+
+| Class | Role |
+|---|---|
+| `MercadoPagoReconciliationJob` | Scheduled job. A scheduled job cannot make callouts, so it only queues its inner `Worker` (Queueable with callouts). |
+| `MercadoPagoReconciliationService` | Does the work and returns a summary that the job writes to the debug log. |
+
+**One run:**
+
+1. Reads the **approved** payments of the last 7 days with `GET /v1/payments/search?range=date_created&begin_date=NOW-7DAYS&end_date=NOW&status=approved` (100 per page, at most 5 pages). The number of calls does not depend on how many attempts are abandoned.
+2. Keeps the payments whose `external_reference` is a `Payment_Attempt__c` that is still `Started` and was created more than 30 minutes ago. Younger attempts are left to the webhook and the return page.
+3. Registers each one with `Donation_Register`, like the webhook. A payment registered in the meantime is not registered twice (unique payment id). Amount mismatches are logged by the flow (ADM-12).
+
+All callouts happen before any write. If Mercado Pago does not answer, nothing changes and the next run tries again. Payments that are not approved are never registered; rejections are still decided by the webhook and the return page.
+
+**Scheduling (once, by an administrator, in Developer Console → Execute Anonymous):**
+
+```apex
+System.schedule('Conciliación Mercado Pago', '0 15 * * * ?', new MercadoPagoReconciliationJob());
+```
+
+It runs at minute 15 of every hour, as the user who scheduled it. That user needs the `Mercado_Pago_Callout` permission set (External Credential access). To stop it: Setup → Scheduled Jobs → Delete.
+
+**Check (2026-11-16):** a manual run read the 18 approved test payments of the last 7 days and found that all were already registered, so it changed nothing.

@@ -20,6 +20,7 @@ This log keeps the most useful **best-prompt** and **worst-result** examples. Ea
 | 10 | 2026-11-16 | Rodrigo Colli | Claude Code (Opus 5.5), VS Code | PAY-06, PAY-01, PAY-03, DON-24, ADM-12; bug #54 | Best | Signed Mercado Pago webhook built from the issue ACs; dry-run deployment with 52 passing tests before the real deployment; public endpoint checked from the internet. Time not measured. |
 | 11 | 2026-11-10 | Rodrigo Colli | Claude Code (Opus 5.5), VS Code | Delivery 1 evidence (DON-19/20/21, PAY-02/07, ADM-07) | Worst | The AI changed and deployed two page layouts owned by another workstream to make a screenshot easier, and first gave wrong advice about Mercado Pago test emails; both were reverted or corrected. ~45 min lost. |
 | 12 | 2026-11-16 | Rodrigo Colli | Claude Code (Opus 5.5), VS Code | PAY-06, PAY-01, PAY-03, DON-24, ADM-12; bug #54 | Best | Real test payments got no webhook. The AI checked the payment with the Mercado Pago API (`live_mode=true`), and after the owner refused the first fix (registering a business for production webhooks) it sent `notification_url` in the preference. Notices then arrived 1–3 s after each payment; 16 screenshots taken. Time not measured. |
+| 13 | 2026-11-16 | Rodrigo Colli | Claude Code (Opus 5.5), VS Code | PAY-08 (#60) | Best | Hourly reconciliation built from the owner's concern that notices can be lost. The AI tested the Mercado Pago search endpoint live before designing, and the first dry run caught an invalid Schedulable+Queueable class; 56 tests passed after the fix. Time not measured. |
 
 ---
 
@@ -474,3 +475,32 @@ I paid the first one but I am not sure if I closed in time, check it.
 
 - After the change, three real test payments were registered by the webhook without returning to the portal, including one whose campaign was closed while the payment was open (DON-24).
 - The owner pointed out that, in production, Mercado Pago notices can be hours late or never arrive. The gap was documented in `security.md` and a scheduled reconciliation was proposed for the backlog; it was not built, because Delivery 2 was due the next day.
+
+---
+
+### Entry 13 — Reconciliation for notices that never arrive
+
+- **Date:** 2026-11-16
+- **Author:** Rodrigo Colli
+- **Tool / model:** Claude Code (Opus 5.5), VS Code
+- **Related stories:** PAY-08 (#60)
+- **Result type:** Best prompt
+- **Verification:** Dry-run deployment with 56 tests passing (service 89%, job 100%) before the real deployment; one manual run in `donations-dev` read 18 approved payments and changed nothing, because all were already registered.
+- **Estimated speed-up:** Not measured.
+
+**Prompt / decision summary**
+
+```text
+Sometimes Mercado Pago does not send webhooks; it happened to me in production,
+hours can pass and it never arrives. [later] Implement it and open the PR.
+```
+
+**What we got**
+
+- Before designing, the AI called `GET /v1/payments/search` once through the existing Named Credential (only ids, statuses and amounts were printed). One search returns all approved payments of the last 7 days with their attempt reference, so the design asks Mercado Pago a few times per run instead of once per attempt. Abandoned attempts can no longer push the useful ones out of a fixed batch.
+- The registration reuses `Donation_Register`, so duplicates, amount checks and rejection logging behave as in the webhook.
+
+**What we verified and corrected**
+
+- The first dry run failed: one Apex class cannot be both Schedulable and Queueable. The Queueable part was moved to an inner class.
+- Scheduling the job was not done by the AI; the owner schedules it with one documented line.
