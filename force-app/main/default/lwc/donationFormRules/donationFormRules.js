@@ -18,6 +18,11 @@ export const RFC_PATTERN = /^[A-ZÑ&]{3,4}[0-9]{2}(0[1-9]|1[0-2])(0[1-9]|[12][0-
 const POSTAL_CODE_PATTERN = /^[0-9]{5}$/;
 const CONTROL_CHARACTERS = /\p{Cc}/gu;
 
+// DON-17. DonationIntakeService throws every donor message as "<field>|<message>", where the field
+// is one of the data-field names of the form, or empty when the error belongs to no field.
+// Anything that does not have this shape (platform or unexpected errors) is never shown.
+const SERVER_ERROR_PATTERN = /^(amount|email|publicName|legalName|rfc|taxPostalCode|taxRegime)?\|([\s\S]+)$/;
+
 // SAT c_RegimenFiscal catalog (docs/data-model.md, appendix). The guest user cannot read the
 // Payment_Attempt__c picklist, so the list is local. Pending verification against Annex 20 (V-05).
 export const TAX_REGIMES = [
@@ -116,6 +121,19 @@ export function getRegimeOptions(taxpayerType) {
         }
         return taxpayerType === TAXPAYER_COMPANY ? regime.company : true;
     }).map(({ label, value }) => ({ label, value }));
+}
+
+/**
+ * Reads the error of startDonation or openPayment.
+ * @param {object} error error rejected by the Apex call
+ * @returns {{field: string, message: string}|null} the field to correct (empty for a general
+ * error) and the donor message, or null when the error is not a donor message
+ */
+export function parseServerError(error) {
+    const raw = error?.body?.message;
+    const match = typeof raw === 'string' ? SERVER_ERROR_PATTERN.exec(raw) : null;
+    const message = match ? match[2].trim() : '';
+    return message ? { field: match[1] || '', message } : null;
 }
 
 export function validateEmail(value) {

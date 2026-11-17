@@ -24,7 +24,7 @@ export const FORM_MESSAGES = {
         publicNameHelp:
             'Puede ser tu nombre y apellidos, el de tu familia o el de tu empresa. Así aparecerá en el reconocimiento de la campaña.',
         publicNameRequired: 'Escribe el nombre con el que quieres aparecer.',
-        publicNameTooLong: 'El nombre no puede tener más de 80 caracteres.'
+        publicNameTooLong: 'El nombre público no puede tener más de 80 caracteres.'
     },
     invoice: {
         toggle: 'Solicitar factura',
