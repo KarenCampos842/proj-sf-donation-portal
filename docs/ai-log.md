@@ -21,7 +21,7 @@ This log keeps the most useful **best-prompt** and **worst-result** examples. Ea
 | 11 | 2026-11-10 | Rodrigo Colli | Claude Code (Opus 5.5), VS Code | Delivery 1 evidence (DON-19/20/21, PAY-02/07, ADM-07) | Worst | The AI changed and deployed two page layouts owned by another workstream to make a screenshot easier, and first gave wrong advice about Mercado Pago test emails; both were reverted or corrected. ~45 min lost. |
 | 12 | 2026-11-16 | Rodrigo Colli | Claude Code (Opus 5.5), VS Code | PAY-06, PAY-01, PAY-03, DON-24, ADM-12; bug #54 | Best | Real test payments got no webhook. The AI checked the payment with the Mercado Pago API (`live_mode=true`), and after the owner refused the first fix (registering a business for production webhooks) it sent `notification_url` in the preference. Notices then arrived 1–3 s after each payment; 16 screenshots taken. Time not measured. |
 | 13 | 2026-11-16 | Rodrigo Colli | Claude Code (Opus 5.5), VS Code | PAY-08 (#60) | Best | Hourly reconciliation built from the owner's concern that notices can be lost. The AI tested the Mercado Pago search endpoint live before designing, and the first dry run caught an invalid Schedulable+Queueable class; 56 tests passed after the fix. Time not measured. |
-| 14 | 2026-11-17 | Rodrigo Colli | Claude Code (Opus 5.5), VS Code | PAY-08 (#60) | Worst | A teammate's review of PR #61 found two problems the AI missed: an amount mismatch would log the same rejected notice every hour, and more than ~50 pending payments would exceed Apex limits and fail the whole run. Fixed with Batch Apex (chunks of 20) and a filter on existing mismatch notices; 61 tests passed. Time not measured. |
+| 15 | 2026-11-17 | Rodrigo Colli | Claude Code (Opus 5.5), VS Code | PAY-08 (#60) | Worst | A teammate's review of PR #61 found two problems the AI missed: an amount mismatch would log the same rejected notice every hour, and more than ~50 pending payments would exceed Apex limits and fail the whole run. Fixed with Batch Apex (chunks of 20) and a filter on existing mismatch notices; 61 tests passed. Time not measured. |
 
 ---
 
@@ -508,7 +508,7 @@ hours can pass and it never arrives. [later] Implement it and open the PR.
 
 ---
 
-### Entry 14 — Limits and repeated notices missed in the first reconciliation
+### Entry 15 — Limits and repeated notices missed in the first reconciliation
 
 - **Date:** 2026-11-17
 - **Author:** Rodrigo Colli
