@@ -20,7 +20,9 @@ This log keeps the most useful **best-prompt** and **worst-result** examples. Ea
 | 10 | 2026-11-16 | Rodrigo Colli | Claude Code (Opus 5.5), VS Code | PAY-06, PAY-01, PAY-03, DON-24, ADM-12; bug #54 | Best | Signed Mercado Pago webhook built from the issue ACs; dry-run deployment with 52 passing tests before the real deployment; public endpoint checked from the internet. Time not measured. |
 | 11 | 2026-11-10 | Rodrigo Colli | Claude Code (Opus 5.5), VS Code | Delivery 1 evidence (DON-19/20/21, PAY-02/07, ADM-07) | Worst | The AI changed and deployed two page layouts owned by another workstream to make a screenshot easier, and first gave wrong advice about Mercado Pago test emails; both were reverted or corrected. ~45 min lost. |
 | 12 | 2026-11-16 | Rodrigo Colli | Claude Code (Opus 5.5), VS Code | PAY-06, PAY-01, PAY-03, DON-24, ADM-12; bug #54 | Best | Real test payments got no webhook. The AI checked the payment with the Mercado Pago API (`live_mode=true`), and after the owner refused the first fix (registering a business for production webhooks) it sent `notification_url` in the preference. Notices then arrived 1–3 s after each payment; 16 screenshots taken. Time not measured. |
+| 13 | 2026-11-16 | Rodrigo Colli | Claude Code (Opus 5.5), VS Code | PAY-08 (#60) | Best | Hourly reconciliation built from the owner's concern that notices can be lost. The AI tested the Mercado Pago search endpoint live before designing, and the first dry run caught an invalid Schedulable+Queueable class; 56 tests passed after the fix. Time not measured. |
 | 14 | 2026-11-16 | Karen Elizabeth Campos | Claude Code, VS Code | DON-13 (privacy notice with invoice) | Best | Server check in the controller and the flow, server-side timestamp and copy to the donation, with Jest and Apex tests; check-only validation passed (115/115 tests). Time not measured. |
+| 15 | 2026-11-17 | Rodrigo Colli | Claude Code (Opus 5.5), VS Code | PAY-08 (#60) | Worst | A teammate's review of PR #61 found two problems the AI missed: an amount mismatch would log the same rejected notice every hour, and more than ~50 pending payments would exceed Apex limits and fail the whole run. Fixed with Batch Apex (chunks of 20) and a filter on existing mismatch notices; 61 tests passed. Time not measured. |
 
 ---
 
@@ -477,6 +479,35 @@ I paid the first one but I am not sure if I closed in time, check it.
 - The owner pointed out that, in production, Mercado Pago notices can be hours late or never arrive. The gap was documented in `security.md` and a scheduled reconciliation was proposed for the backlog; it was not built, because Delivery 2 was due the next day.
 
 
+### Entry 13 — Reconciliation for notices that never arrive
+
+- **Date:** 2026-11-16
+- **Author:** Rodrigo Colli
+- **Tool / model:** Claude Code (Opus 5.5), VS Code
+- **Related stories:** PAY-08 (#60)
+- **Result type:** Best prompt
+- **Verification:** Dry-run deployment with 56 tests passing (service 89%, job 100%) before the real deployment; one manual run in `donations-dev` read 18 approved payments and changed nothing, because all were already registered.
+- **Estimated speed-up:** Not measured.
+
+**Prompt / decision summary**
+
+```text
+Sometimes Mercado Pago does not send webhooks; it happened to me in production,
+hours can pass and it never arrives. [later] Implement it and open the PR.
+```
+
+**What we got**
+
+- Before designing, the AI called `GET /v1/payments/search` once through the existing Named Credential (only ids, statuses and amounts were printed). One search returns all approved payments of the last 7 days with their attempt reference, so the design asks Mercado Pago a few times per run instead of once per attempt. Abandoned attempts can no longer push the useful ones out of a fixed batch.
+- The registration reuses `Donation_Register`, so duplicates, amount checks and rejection logging behave as in the webhook.
+
+**What we verified and corrected**
+
+- The first dry run failed: one Apex class cannot be both Schedulable and Queueable. The Queueable part was moved to an inner class.
+- Scheduling the job was not done by the AI; the owner schedules it with one documented line.
+
+---
+
 ### Entry 14 — Privacy notice when an invoice is requested (DON-13)
 
 - **Date:** 2026-11-16
@@ -504,4 +535,31 @@ Validate on the server, set the date and time on the server, copy both to the do
 
 - The first check-only run failed: nine existing portal tests built invoice requests without the acceptance, which is now rejected by design. They were adapted and four tests were added. The first run also selected too few test classes, so the coverage warnings were an artifact of the selection.
 - Rodrigo (Workstream A) reviewed the changes to `Payment_Attempt_Create`, `Donation_Register` and `DonationPaymentController` and approved the PR.
-- After deployment we found that the System Administrator profile has no access to the four new fields, so the consent evidence is only readable through `Donation_Admin` and `Payment_Attempt_Viewer`. Karen's user was then assigned `Donation_Admin` and `Payment_Attempt_Viewer` temporarily and real records were read: the two attempts created for the check store acceptance `true` with a server date, and the attempt without invoice stores false and no date; the seven donations with invoice that existed before DON-13 stay false with no date, and five of their attempts were confirmed without being blocked. The copy to a donation is **not yet verified on a real paid donation**: no test buyer account was available to the AI, so the checkout of an existing attempt was prepared for a manual sandbox payment. Issue #66 tracks the missing content of the privacy notice.
+- After deployment, we found that the System Administrator profile has no access to the four new fields. The consent evidence is therefore readable through `Donation_Admin` and `Payment_Attempt_Viewer`. Karen's user was temporarily assigned both permission sets so real records could be inspected. The two attempts created with invoice and accepted privacy notice store `true` and a server-generated date; the attempt without invoice stores `false` and no date. The seven donations with invoice that existed before DON-13 remain `false` with no date, and five of their attempts were confirmed without being blocked.
+- The copy from `Payment_Attempt__c` to `Donation__c` is **not yet verified on a real paid donation**. No test buyer account was available to the AI, so Checkout for an existing attempt was prepared for a manual sandbox payment. The temporary permission-set assignments remain in place until the verification is complete. Issue #66 tracks the missing visible content of the privacy notice.
+
+---
+
+### Entry 15 — Limits and repeated notices missed in the first reconciliation
+
+- **Date:** 2026-11-17
+- **Author:** Rodrigo Colli
+- **Tool / model:** Claude Code (Opus 5.5), VS Code
+- **Related stories:** PAY-08 (#60)
+- **Result type:** Worst prompt
+- **Estimated time lost:** Not measured; the first version was never scheduled, so no data was affected.
+
+**What went wrong**
+
+- The first version (PR #61) registered every pending payment in one transaction. Each payment runs `Donation_Register` (about 2 queries and 3 writes), so more than about 50 pending payments would exceed the Apex limits and the whole run would fail every hour.
+- When the amount does not match, `Donation_Register` logs a rejected notice but leaves the attempt `Started`. The first version would pick it up again every hour and log the same notice again, for up to 7 days.
+- Both problems were found by Karen Campos in her review, not by the AI.
+
+**What we changed and verified**
+
+- The reconciliation became a Batch Apex: `start` makes the callouts and picks the payments, oldest attempt first, and leaves out payments that already have an "Amount_Mismatch" notice; `execute` registers chunks of 20, each in its own transaction.
+- 61 tests passed in a dry run before deployment, including a test that a failing payment does not stop its chunk and a test for the mismatch filter. A manual batch run in `donations-dev` completed without errors.
+
+**Lesson**
+
+When a loop calls a flow, count the queries and writes per item and design for the worst case; and check what the reused flow leaves behind in each outcome.
