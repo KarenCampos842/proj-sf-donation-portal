@@ -23,6 +23,7 @@ This log keeps the most useful **best-prompt** and **worst-result** examples. Ea
 | 13 | 2026-11-16 | Rodrigo Colli | Claude Code (Opus 5.5), VS Code | PAY-08 (#60) | Best | Hourly reconciliation built from the owner's concern that notices can be lost. The AI tested the Mercado Pago search endpoint live before designing, and the first dry run caught an invalid Schedulable+Queueable class; 56 tests passed after the fix. Time not measured. |
 | 14 | 2026-11-16 | Karen Elizabeth Campos | Claude Code, VS Code | DON-13 (privacy notice with invoice) | Best | Server check in the controller and the flow, server-side timestamp and copy to the donation, with Jest and Apex tests; check-only validation passed (115/115 tests); a real paid sandbox payment confirmed the copy of the acceptance to the donation. Time not measured. |
 | 15 | 2026-11-17 | Rodrigo Colli | Claude Code (Opus 5.5), VS Code | PAY-08 (#60) | Worst | A teammate's review of PR #61 found two problems the AI missed: an amount mismatch would log the same rejected notice every hour, and more than ~50 pending payments would exceed Apex limits and fail the whole run. Fixed with Batch Apex (chunks of 20) and a filter on existing mismatch notices; 61 tests passed. Time not measured. |
+| 16 | 2026-11-17 | Rodrigo Colli | Claude Code (Opus 5.5), VS Code | ADM-13 (#39) | Best | Configurable amounts built from the data-model design; the AI changed the planned comma-separated field to eight number fields so AC3 can be enforced by a validation rule. Metadata check-only passed (15/15); 231 Jest tests passed; Apex tests not run yet (the scheduled PAY-08 job blocks Apex deployments). Time not measured. |
 
 ---
 
@@ -563,3 +564,35 @@ Validate on the server, set the date and time on the server, copy both to the do
 **Lesson**
 
 When a loop calls a flow, count the queries and writes per item and design for the worst case; and check what the reused flow leaves behind in each outcome.
+
+---
+
+### Entry 16 — Configurable suggested amounts and minimum (ADM-13)
+
+- **Date:** 2026-11-17
+- **Author:** Rodrigo Colli
+- **Tool / model:** Claude Code (Opus 5.5), VS Code
+- **Related stories:** ADM-13 (#39); touches DON-08 and DON-09
+- **Result type:** Best prompt
+- **Verification:** Check-only of the custom metadata, its rules, its record, the attempt rule and the flow (15/15 components); all Jest suites (231 tests). Apex tests are pending until the scheduled reconciliation job is removed for the deployment.
+- **Estimated speed-up:** Not measured.
+
+**Prompt / decision summary**
+
+```text
+ADM-13 is the only one that will be uploaded and it is urgent. Do it, but do not push
+or change the org until I review what was done.
+```
+
+**What we got**
+
+- `Donation_Amount_Setting__mdt` with a `Default` record (minimum 50 and the eight amounts of DON-08) and two validation rules for AC3 and AC4.
+- `DonationAmountSettings` reads it, and the attempt rule `Minimum_Amount` reads the minimum from it.
+- The form gets the amounts from the server and keeps the D1 amounts if the server fails.
+
+**What we verified and corrected**
+
+- The data model planned one text field with comma-separated amounts. A validation rule cannot check each value of such a list, so AC3 would not be enforced; it was changed to eight number fields.
+- Custom metadata fields are read-only in Apex, so the tests build the record from JSON.
+- The form and `DonationIntakeService` belong to Workstream B; those changes are in a separate commit for its owner to review.
+

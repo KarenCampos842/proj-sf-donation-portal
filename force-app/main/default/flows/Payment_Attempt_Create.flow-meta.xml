@@ -197,7 +197,7 @@
     <formulas>
         <name>fxFriendlyError</name>
         <dataType>String</dataType>
-        <expression>IF(CONTAINS({!$Flow.FaultMessage}, &quot;El monto mínimo&quot;), &quot;El monto mínimo es de $50 MXN.&quot;,
+        <expression>IF(CONTAINS({!$Flow.FaultMessage}, &quot;menor al mínimo permitido&quot;), &quot;El monto es menor al mínimo permitido.&quot;,
 IF(CONTAINS({!$Flow.FaultMessage}, &quot;Escribe el nombre&quot;), &quot;Escribe el nombre con el que quieres aparecer.&quot;,
 IF(CONTAINS({!$Flow.FaultMessage}, &quot;faltan datos fiscales&quot;), &quot;Para pedir factura faltan datos fiscales.&quot;,
 IF(CONTAINS({!$Flow.FaultMessage}, &quot;El RFC no tiene&quot;), &quot;El RFC no tiene un formato válido.&quot;,

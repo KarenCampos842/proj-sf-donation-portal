@@ -119,7 +119,7 @@ Created before the payment opens, from the form. It is not a donation: it does n
 
 | Rule | Error condition | Message (UI) | Story |
 |---|---|---|---|
-| `Minimum_Amount` | `Amount__c < 50` | "El monto mínimo es de $50 MXN." | DON-08, DON-09 |
+| `Minimum_Amount` | `Amount__c < $CustomMetadata.Donation_Amount_Setting__mdt.Default.Minimum_Amount__c` | "El monto es menor al mínimo permitido." | DON-08, DON-09, ADM-13 |
 | `Public_Name_Required` | `ISPICKVAL(Visibility__c, "Public") && ISBLANK(Public_Name__c)` | "Escribe el nombre con el que quieres aparecer." | DON-11 |
 | `Invoice_Data_Required` | `Invoice_Requested__c && (ISBLANK(Legal_Name__c) \|\| ISBLANK(RFC__c) \|\| ISBLANK(Tax_Postal_Code__c) \|\| ISPICKVAL(Tax_Regime__c, ""))` | "Para pedir factura faltan datos fiscales." | DON-12 |
 | `RFC_Format` | see below | "El RFC no tiene un formato válido." | DON-12 |
@@ -132,7 +132,7 @@ Invoice_Requested__c && NOT(REGEX(RFC__c, "^[A-ZÑ&]{3,4}[0-9]{2}(0[1-9]|1[0-2])
 
 The pattern was tested against the backlog examples: it accepts `GODE561231GR8` and `ABC010203XY1`, and rejects `GODE561331GR8` (month 13), 11- and 14-character values, letters in the date and special characters. It checks structure, not calendar validity (February 30 passes), which meets the guide's criterion (RF-F1 CA2).
 
-In D2, the `50` in `Minimum_Amount` is replaced by `$CustomMetadata.Donation_Amount_Setting__mdt.Default.Minimum_Amount__c` so the administrator can change it (ADM-13).
+Since D2 (ADM-13) the minimum in `Minimum_Amount` is read from `$CustomMetadata.Donation_Amount_Setting__mdt.Default.Minimum_Amount__c`, so the administrator can change it without code. Its initial value is still $50 MXN.
 
 **Retention:** attempts older than 7 days are deleted by a scheduled flow (PAY-07, decision D-01).
 
@@ -207,14 +207,18 @@ Both rules belong to D2 (MOD-03, RF-D2) and are not part of the D1 metadata. The
 | Id técnico | `Technical_Id__c` | Text(64) |
 | Detalle | `Detail__c` | Text(255). Never stores secrets, card data or personal data |
 
-**`Donation_Amount_Setting__mdt`** (ADM-13), with one record named `Default`:
+**`Donation_Amount_Setting__mdt`** (ADM-13, D2), with one record named `Default`. The administrator edits it in Setup → Custom Metadata Types → Configuración de montos → Manage Records.
 
 | Label (UI) | API name | Type |
 |---|---|---|
-| Montos sugeridos | `Suggested_Amounts__c` | Text(255): `100,250,500,1000,2000,5000,10000,20000` |
-| Monto mínimo | `Minimum_Amount__c` | Number(16, 2): `50` |
+| Monto mínimo (MXN) | `Minimum_Amount__c` | Number(16, 2), required: `50` |
+| Monto sugerido 1 … 8 (MXN) | `Amount_1__c` … `Amount_8__c` | Number(10, 0); `Amount_1__c` required, the others optional (empty = not shown): `100, 250, 500, 1000, 2000, 5000, 10000, 20000` |
 
-In D1 the suggested amounts are fixed in the portal (DON-08).
+Validation rules: `Minimum_Must_Be_Positive` (minimum ≤ 0 is rejected, AC4) and `Suggested_Not_Below_Minimum` (a suggested amount below the minimum is rejected, AC3).
+
+Design decision: the D1 draft planned one text field with the amounts separated by commas. It was replaced by eight number fields because a validation rule cannot go through a comma-separated list, so AC3 could not be enforced when saving.
+
+`DonationAmountSettings` reads the record (custom metadata needs no object or field permission, so the guest user gets the same values) and falls back to the D1 values if the record is missing. The form gets the amounts from `DonationIntakeService.getAmountSettings`. Changing the configuration never changes the amount of an attempt or a donation already saved.
 
 ---
 
