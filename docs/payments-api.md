@@ -234,6 +234,11 @@ All callouts happen in `start`, before any write. Each payment costs about 2 que
 System.schedule('Conciliación Mercado Pago', '0 15 * * * ?', new MercadoPagoReconciliationJob());
 ```
 
+**Guards:**
+
+- If the previous run is still waiting or working, the scheduled job skips this hour instead of starting a second run over the same payments.
+- One run reads at most 500 approved payments (5 pages of 100, newest first). If every page is full, older payments may not have been read: the summary says "LÍMITE ALCANZADO" and one warning "Conciliación incompleta (límite de pagos)" is added to the rejection history (ADM-12), at most once every 24 hours. Beyond that volume the design must change (go through the attempts instead of the payments); it is not needed at the volume of this project.
+
 It runs at minute 15 of every hour, as the user who scheduled it. That user needs the `Mercado_Pago_Callout` permission set (External Credential access). To stop it: Setup → Scheduled Jobs → Delete.
 
 **Check (2026-11-16):** a manual run read the 18 approved test payments of the last 7 days and found that all were already registered, so it changed nothing. After the batch change (review of PR #61), a manual batch run completed with 0 chunks and 0 errors: there was nothing left to register.

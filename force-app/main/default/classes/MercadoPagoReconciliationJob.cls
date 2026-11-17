@@ -6,6 +6,11 @@
  */
 public without sharing class MercadoPagoReconciliationJob implements Schedulable {
     public void execute(SchedulableContext context) {
+        // A long run can last more than an hour; the next one waits instead of repeating its work.
+        if (MercadoPagoReconciliationBatch.isRunning()) {
+            System.debug(LoggingLevel.INFO, 'Conciliación Mercado Pago: la corrida anterior sigue en curso; se omite esta.');
+            return;
+        }
         Database.executeBatch(new MercadoPagoReconciliationBatch(), MercadoPagoReconciliationBatch.BATCH_SIZE);
     }
 }

@@ -312,6 +312,60 @@ private class MercadoPagoReconciliationServiceTest {
         Assert.areEqual(1, batch.summary.notRegistered);
     }
 
+    // ---- Guards ----
+
+    @IsTest
+    static void limitReachedLeavesOneWarning() {
+        // Every page full: older payments may be unread. One visible warning, not one per run.
+        Map<Integer, List<Object>> pages = new Map<Integer, List<Object>>();
+        Long id = 6000000000L;
+        for (Integer p = 0; p < MercadoPagoReconciliationService.MAX_PAGES; p++) {
+            List<Object> page = new List<Object>();
+            for (Integer i = 0; i < MercadoPagoReconciliationService.PAGE_SIZE; i++) {
+                page.add(payment(String.valueOf(id++), 'approved', 'otro-' + id, 100));
+            }
+            pages.put(p * MercadoPagoReconciliationService.PAGE_SIZE, page);
+        }
+        Test.setMock(HttpCalloutMock.class, new SearchMock(pages));
+        MercadoPagoReconciliationService.Summary summary = new MercadoPagoReconciliationService.Summary();
+        Test.startTest();
+        MercadoPagoReconciliationService.findCandidates(summary);
+        MercadoPagoReconciliationService.warnIfLimitReached(summary);
+        MercadoPagoReconciliationService.warnIfLimitReached(summary);
+        Test.stopTest();
+        Assert.isTrue(summary.limitReached);
+        Assert.isTrue(summary.toString().contains('LÍMITE ALCANZADO'));
+        List<Rejected_Notice__c> warnings = [SELECT Reason__c, Detail__c FROM Rejected_Notice__c WITH SYSTEM_MODE];
+        Assert.areEqual(1, warnings.size(), 'At most one warning per 24 hours');
+        Assert.areEqual('Reconciliation_Limit', warnings[0].Reason__c);
+    }
+
+    @IsTest
+    static void noWarningBelowTheLimit() {
+        Payment_Attempt__c a = attempt(60);
+        MercadoPagoReconciliationService.Summary summary = run(onePage(new List<Object>{
+            payment(PAYMENT_ID, 'approved', a.Id, 250)
+        }));
+        MercadoPagoReconciliationService.warnIfLimitReached(summary);
+        Assert.isFalse(summary.limitReached);
+        Assert.areEqual(0, [SELECT COUNT() FROM Rejected_Notice__c WITH SYSTEM_MODE]);
+    }
+
+    @IsTest
+    static void scheduledJobSkipsWhileARunIsInProgress() {
+        // The first run is still queued: the next scheduled run does not start a second batch
+        // (a second executeBatch in one test would throw, so reaching stopTest proves the skip).
+        Payment_Attempt__c a = attempt(60);
+        Test.setMock(HttpCalloutMock.class, onePage(new List<Object>{ payment(PAYMENT_ID, 'approved', a.Id, 250) }));
+        Test.startTest();
+        new MercadoPagoReconciliationJob().execute((SchedulableContext) null);
+        Assert.isTrue(MercadoPagoReconciliationBatch.isRunning(), 'The first run is queued');
+        new MercadoPagoReconciliationJob().execute((SchedulableContext) null);
+        Test.stopTest();
+        Assert.areEqual(1, [SELECT COUNT() FROM AsyncApexJob WHERE ApexClass.Name = 'MercadoPagoReconciliationBatch']);
+        Assert.areEqual(1, donations().size(), 'Registered once');
+    }
+
     @IsTest
     static void summaryIsReadable() {
         MercadoPagoReconciliationService.Summary summary = new MercadoPagoReconciliationService.Summary();

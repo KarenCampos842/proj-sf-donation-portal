@@ -33,6 +33,20 @@ public without sharing class MercadoPagoReconciliationBatch
     }
 
     public void finish(Database.BatchableContext context) {
+        MercadoPagoReconciliationService.warnIfLimitReached(summary);
         System.debug(LoggingLevel.INFO, summary.toString());
+    }
+
+    /**
+     * True while a previous run of this batch is still waiting or working, so the scheduled
+     * job does not start a second run over the same payments.
+     */
+    public static Boolean isRunning() {
+        return [
+            SELECT COUNT() FROM AsyncApexJob
+            WHERE JobType = 'BatchApex' AND ApexClass.Name = 'MercadoPagoReconciliationBatch'
+                AND Status IN ('Holding', 'Queued', 'Preparing', 'Processing')
+            WITH SYSTEM_MODE
+        ] > 0;
     }
 }

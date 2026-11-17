@@ -39,6 +39,11 @@
                 <default>false</default>
                 <label>Reembolso o contracargo (ignorado)</label>
             </value>
+            <value>
+                <fullName>Reconciliation_Limit</fullName>
+                <default>false</default>
+                <label>Conciliación incompleta (límite de pagos)</label>
+            </value>
         </valueSetDefinition>
     </valueSet>
 </CustomField>

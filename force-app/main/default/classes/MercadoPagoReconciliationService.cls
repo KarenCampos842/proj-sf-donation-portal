@@ -49,14 +49,45 @@ public without sharing class MercadoPagoReconciliationService {
         public Integer alreadyRegistered = 0;
         public Integer notRegistered = 0;
         public Boolean providerFailed = false;
+        public Boolean limitReached = false;
 
         public override String toString() {
             return 'Conciliación Mercado Pago: pagos aprobados leídos=' + paymentsRead
                 + ', intentos sin registrar=' + candidates + ', omitidos por monto=' + skippedMismatch
                 + ', registrados=' + registered + ', ya registrados=' + alreadyRegistered
                 + ', no registrados=' + notRegistered
-                + (providerFailed ? ', Mercado Pago no respondió' : '');
+                + (providerFailed ? ', Mercado Pago no respondió' : '')
+                + (limitReached ? ', LÍMITE ALCANZADO: hay pagos más antiguos sin revisar' : '');
         }
+    }
+
+    private static final String REASON_LIMIT = 'Reconciliation_Limit';
+
+    /**
+     * Leaves a visible warning in the rejection history (ADM-12) when a run reached the
+     * MAX_PAGES limit, so an administrator knows that older approved payments were not checked.
+     * At most one warning per 24 hours, so it does not fill the history.
+     * @param summary counters of the run that just finished
+     */
+    public static void warnIfLimitReached(Summary summary) {
+        if (!summary.limitReached) {
+            return;
+        }
+        DateTime since = DateTime.now().addHours(-24);
+        Integer recent = [
+            SELECT COUNT() FROM Rejected_Notice__c
+            WHERE Reason__c = :REASON_LIMIT AND Received_At__c >= :since
+            WITH SYSTEM_MODE
+        ];
+        if (recent > 0) {
+            return;
+        }
+        Database.insert(new Rejected_Notice__c(
+            Reason__c = REASON_LIMIT,
+            Detail__c = ('La conciliación leyó el máximo de ' + (PAGE_SIZE * MAX_PAGES)
+                + ' pagos aprobados; puede haber pagos más antiguos sin registrar. Revisar Mercado Pago.').left(255),
+            Received_At__c = DateTime.now()
+        ), AccessLevel.SYSTEM_MODE);
     }
 
     /**
@@ -138,9 +169,11 @@ public without sharing class MercadoPagoReconciliationService {
                 }
             }
             if (results.size() < PAGE_SIZE) {
-                break;
+                return payments;
             }
         }
+        // Every page was full: there may be older approved payments that this run did not read.
+        summary.limitReached = true;
         return payments;
     }
 
