@@ -17,6 +17,9 @@ This log keeps the most useful **best-prompt** and **worst-result** examples. Ea
 | 7 | 2026-11-09 | Rodrigo Colli | Claude Code (Opus 5.5) | PAY-07, PAY-02 | Worst | AI initially proposed Apex against the Flow-first rule and generated invalid Flow metadata; check-only validation caught the errors before deployment. ~30 min lost. |
 | 8 | 2026-11-09 | Alan Pérez | Claude (Opus 5.5) | GES-02/03/06/07/09, ADM-03/05 | Worst | Workstream C configuration was deployed, but the initial command and verification guidance needed correction for PowerShell and permission-dependent visibility. ~1.5 h vs. 5 h, estimate. |
 | 9 | 2026-11-10 | Karen Elizabeth Campos | ChatGPT + Agentforce (VS Code) | DON-01/02/03/04/10/11; existing campaign records and public Guest catalog | Best | Existing campaigns updated by ID, test campaigns moved to Draft and seeded public-recognition records anonymized; Guest catalog and direct URLs checked. ~1–2 h vs. 3–4 h, rough estimate. |
+| 10 | 2026-11-16 | Rodrigo Colli | Claude Code (Opus 5.5), VS Code | PAY-06, PAY-01, PAY-03, DON-24, ADM-12; bug #54 | Best | Signed Mercado Pago webhook built from the issue ACs; dry-run deployment with 52 passing tests before the real deployment; public endpoint checked from the internet. Time not measured. |
+| 11 | 2026-11-10 | Rodrigo Colli | Claude Code (Opus 5.5), VS Code | Delivery 1 evidence (DON-19/20/21, PAY-02/07, ADM-07) | Worst | The AI changed and deployed two page layouts owned by another workstream to make a screenshot easier, and first gave wrong advice about Mercado Pago test emails; both were reverted or corrected. ~45 min lost. |
+| 12 | 2026-11-16 | Rodrigo Colli | Claude Code (Opus 5.5), VS Code | PAY-06, PAY-01, PAY-03, DON-24, ADM-12; bug #54 | Best | Real test payments got no webhook. The AI checked the payment with the Mercado Pago API (`live_mode=true`), and after the owner refused the first fix (registering a business for production webhooks) it sent `notification_url` in the preference. Notices then arrived 1–3 s after each payment; 16 screenshots taken. Time not measured. |
 
 ---
 
@@ -382,3 +385,92 @@ The key safeguard was to inspect existing records and update them by ID rather t
 The public distribution and field updates for four recently uploaded campaign images still required confirmation. This note records that follow-up separately from the acceptance status of the stories.
 
 ---
+
+---
+
+### Entry 10 — Signed Mercado Pago webhook from the acceptance criteria
+
+- **Date:** 2026-11-16
+- **Author:** Rodrigo Colli
+- **Tool / model:** Claude Code (Opus 5.5), VS Code
+- **Related stories:** PAY-06, PAY-01, PAY-03, DON-24, ADM-12 and bug #54 (DON-20 AC4)
+- **Result type:** Best prompt
+- **Verification:** Dry-run deployment with 52 tests passing (validator 100%, service 93%, REST entry 94% coverage) before the real deployment; unsigned `POST` sent from the internet to the public endpoint was answered and logged as a rejected notice.
+- **Estimated speed-up:** Not measured.
+
+**Prompt / decision summary**
+
+```text
+Do all my Delivery 2 cards, but give me the plan first. Read the ACs of each
+issue and the current code before planning. Do not modify components owned by
+other team members. Keep the webhook secret out of the repo and out of the chat.
+```
+
+**What we got**
+
+- A written plan, approved before any change: the order of work, what the owner must do by hand (the Mercado Pago panel and the secret in Salesforce), and the risks.
+- Three Apex classes: `MercadoPagoWebhookResource`, `MercadoPagoSignatureValidator` and `MercadoPagoNotificationService`. The webhook is Apex because a public REST endpoint cannot be built with Flow; the donation is still registered by the existing `Donation_Register` flow.
+- A protected custom setting for the secret, a new picklist value, the `Rejected_Notice_Viewer` permission set, and a tab and list view for the rejection history.
+- The `Payment_Return_Process` fix for #54.
+
+**Why it worked**
+
+- The plan came from the real ACs and the existing flows. The assistant found that duplicates, amount checks and rejection logging already existed in `Donation_Register`, so it reused them instead of rebuilding them.
+- It noticed that the #54 fix also needs a one-line change in the portal component of Workstream B. It did not change that component, and reported the change to its owner instead.
+
+**What we verified and corrected**
+
+- The first dry run failed: a permission-set description was over 255 characters. It was shortened and the dry run was run again.
+- Callouts after DML are not allowed in one transaction, so "the same notice twice" is tested by simulating the first registration with an existing donation.
+- The guest access is granted through the payments permission set; the guest profile was not changed.
+
+---
+
+### Entry 11 — Changing another workstream's layouts while collecting evidence
+
+- **Date:** 2026-11-10
+- **Author:** Rodrigo Colli
+- **Tool / model:** Claude Code (Opus 5.5), VS Code
+- **Related stories:** Delivery 1 evidence for DON-19/20/21, PAY-02, PAY-07, ADM-07
+- **Result type:** Worst prompt
+- **Estimated time lost:** About 45 minutes.
+
+**What went wrong**
+
+- To make some fields visible for a screenshot, the AI edited and deployed the `Donation__c` and `Payment_Attempt__c` page layouts. Those layouts belong to Workstream B. The owner stopped it ("no modifiques lo de karen"); both layouts were deployed back to their original version, and the evidence was taken with SOQL queries in the terminal instead.
+- The AI first said that Mercado Pago test payments could not use `@testuser.com` emails. After research, the right answer was the opposite: guest checkout in test mode works with the payer email `test@testuser.com`.
+
+**Lesson**
+
+Before changing any component, check who owns it. For evidence, prefer read-only ways (queries, list views in our own objects) over changing shared configuration.
+
+---
+
+### Entry 12 — Real payments did not trigger the webhook
+
+- **Date:** 2026-11-16
+- **Author:** Rodrigo Colli
+- **Tool / model:** Claude Code (Opus 5.5), VS Code
+- **Related stories:** PAY-06, PAY-01, PAY-03, DON-24, ADM-12 and bug #54
+- **Result type:** Best prompt
+- **Verification:** Signed notices registered donations `DON-000022`, `DON-000023` and `DON-000024` 1–3 seconds after each payment; a rejected payment created no donation; no rejected notice was logged for valid notices.
+- **Estimated speed-up:** Not measured.
+
+**Prompt / decision summary**
+
+```text
+I paid the first one but I am not sure if I closed in time, check it.
+[later] It asks me to register my organization and I do not want to do that.
+```
+
+**What happened**
+
+- The panel simulator reached Salesforce, but a real approved test payment did not: no log, no donation, no rejected notice after 15 minutes.
+- The AI asked Mercado Pago for that payment through the existing Named Credential (without showing the token) and found `live_mode=true`. Payments made with a test seller account count as "production" for Mercado Pago, so their notices go to the production webhook URL, not the test-mode one.
+- Its first proposal was to set the production URL in the panel. The owner refused, because it requires registering a business. The second proposal was to send `notification_url` in each preference. The action already had that input; only a custom label and one flow input were added, validated (22 tests) and then deployed.
+- That first approved payment was registered by resending its notice from the panel simulator with the real payment id. This is written down in the issue evidence.
+
+**What we verified and corrected**
+
+- After the change, three real test payments were registered by the webhook without returning to the portal, including one whose campaign was closed while the payment was open (DON-24).
+- The owner pointed out that, in production, Mercado Pago notices can be hours late or never arrive. The gap was documented in `security.md` and a scheduled reconciliation was proposed for the backlog; it was not built, because Delivery 2 was due the next day.

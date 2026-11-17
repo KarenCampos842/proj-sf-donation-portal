@@ -3,7 +3,11 @@
 Owner: Rodrigo Colli (workstream A). For: the public portal (workstream B).
 Everything below is deployed in `donations-dev`. Stories: PAY-07, DON-19, DON-20, DON-21, PAY-02.
 
-**Delivery 1 scope.** The donation is registered when the donor returns to the thank-you page (`/portal/gracias`): `getPaymentResult` looks the payment up in Mercado Pago and registers the donation. Delivery 1 has no webhook (`notification_url` is not sent). Registering a payment that was confirmed when the donor did not return is part of Delivery 2 (PAY-06, DON-24), together with signature validation (PAY-01) and duplicate handling (PAY-03). This is a planned scope boundary, not a Delivery 1 defect.
+**Two ways a donation is registered.**
+- **Return page (Delivery 1):** when the donor returns to the thank-you page (`/portal/gracias`), `getPaymentResult` looks the payment up in Mercado Pago and registers the donation.
+- **Webhook (Delivery 2):** Mercado Pago also sends a signed payment notice, so the donation is registered even if the donor never returns (PAY-06, DON-24). See section 5.
+
+Both paths use the same flow, `Donation_Register`, and the payment id is unique, so a payment is registered only once (PAY-03).
 
 **Repository note.** The public-name cleaning described in section 1 (`PublicNameSanitizer`, and the matching changes in `DonationIntakeService` and `DonationPaymentController`) was deployed to the Sandbox on 2026-11-10, but its Apex source is not committed yet, so the version of this class in the repository does not include it.
 
@@ -104,6 +108,15 @@ Asks Mercado Pago for the real payment and, if it is approved and the amount mat
 | `NoPayment` | No se completó el pago; no se registró tu donación. | Yes |
 | `Unknown` | Aún no podemos confirmar tu pago. | No |
 
+Which state the page gets without a payment (DON-20 AC4, #54):
+
+| How the donor reaches the page | `paymentId` sent | `resultState` |
+|---|---|---|
+| "Volver al sitio" button of Mercado Pago | `"null"` | `NoPayment` |
+| No `payment_id` in the URL (window closed, page opened directly) | empty or `null` | `Unknown`: the result is not known, so the page must not say the payment was not completed |
+
+For the second row to reach the server, the thank-you page must send an empty value when the URL has no `payment_id`, not the text `"null"`.
+
 Rules from DON-20 / DON-21: always show a thank-you page; only `Confirmed` may say the contribution was received; `Unknown` and `Pending` must never say "rechazado", "cancelado" or "confirmado".
 
 ### Example (thank-you LWC)
@@ -148,3 +161,52 @@ Checked in the Sandbox on 2026-11-10:
 - Use the Mercado Pago **test buyer** account and the test cards from the Mercado Pago panel ("Pagos de prueba"). The cardholder name decides the result: `APRO` approved, `OTHE` rejected (as in DON-20 AC2).
 - Never use a real card or a real Mercado Pago account (minimum M1).
 - After an approved payment, the donation appears in Salesforce with its Mercado Pago payment id (ADM-07), and the campaign progress goes up.
+
+## 5. Payment notices (webhook) — Delivery 2
+
+Stories: PAY-06, PAY-01, PAY-03, DON-24, ADM-12. Deployed in `donations-dev` on 2026-11-16.
+
+**Endpoint** (public, through the site, runs as the guest user):
+
+```
+POST https://uady--class2026b.sandbox.my.site.com/portalvforcesite/services/apexrest/mp/notifications
+```
+
+Each preference sends this URL as `notification_url` (custom label `Donation_Notification_Url`, passed by `Payment_Preference_Create`), with `?source_news=webhooks` so that Mercado Pago sends only the signed webhook and not the older IPN notice.
+
+Why not only the panel: the app uses the credentials of a Mercado Pago **test seller account**. Payments made with them come back with `live_mode=true`, so Mercado Pago sends their notices to the panel's **production** webhook URL, not to the test-mode one. Setting the production URL in the panel requires registering a business, which the team does not do for a school project. Found on 2026-11-16: an approved test payment got no notice for more than 15 minutes; after the change, notices arrived 1–3 seconds after each payment. The URL in the panel's **test mode** (event **Pagos (legacy)**) stays configured; it is used by the panel's notice simulator.
+
+The notices sent through `notification_url` are signed with the same secret, so PAY-01 applies to them unchanged.
+
+**Notices can be late or never arrive.** Mercado Pago retries failed notices, but it does not guarantee when they arrive. If the donor does not return to the portal and the notice never arrives, the attempt stays `Started` and is deleted after 7 days (PAY-07). A scheduled reconciliation (search the payment by `external_reference` for old `Started` attempts) is proposed as a backlog story; see `security.md`, section 5.
+
+| Class | Role |
+|---|---|
+| `MercadoPagoWebhookResource` | REST entry. Reads `x-signature`, `x-request-id`, `data.id` and `type`; the body is used only when the query string does not bring `data.id` or `type`. |
+| `MercadoPagoSignatureValidator` | PAY-01. HMAC-SHA256 of `id:{data.id};request-id:{x-request-id};ts:{ts};` with the webhook secret, compared with `v1` in constant time. Rejects `ts` older or newer than 5 minutes. |
+| `MercadoPagoNotificationService` | Decides what to do, reads the payment again with `GET /v1/payments/{id}` and runs `Donation_Register`. |
+
+**What happens with each notice**
+
+| Notice | Result | HTTP |
+|---|---|---|
+| No signature, wrong signature or outside the 5-minute window | Saved as rejected, "Firma inválida". Nothing is asked to Mercado Pago. | 400 |
+| Webhook secret not configured in Salesforce | Saved as rejected, "Firma inválida" (detail: secret not configured) | 500 (Mercado Pago retries) |
+| Type other than `payment` | "Tipo de aviso no soportado" | 200 |
+| Payment does not exist in Mercado Pago | "Intento no encontrado" | 200 |
+| Mercado Pago does not answer | Nothing is saved | 500 (retry) |
+| `refunded` or `charged_back` | "Reembolso o contracargo (ignorado)"; no donation changes (out of scope) | 200 |
+| `approved`, amount matches | Donation registered | 200 |
+| Already registered (return page or a previous notice) | "Aviso repetido"; no second donation | 200 |
+| Reference without an attempt / amount does not match | "Intento no encontrado" / "Monto no coincide" (saved by `Donation_Register`) | 200 |
+| `rejected`, `cancelled`, `pending`, `in_process` | Nothing to register | 200 |
+
+The amount and the status always come from Mercado Pago's API, never from the notice body. If anything fails while the donation is being registered, the work is rolled back and the answer is 500, so there is never a half-registered donation (PAY-06 AC5).
+
+**Closed campaigns (DON-24).** The campaign must accept donations when the attempt and the payment are created (`Payment_Attempt_Create`, `Payment_Preference_Create`). `Donation_Register` does not check it again, so a payment made before the close and confirmed after it is still registered. `Confirmed_At__c` is the payment's `date_approved`.
+
+**Duplicates (PAY-03).** `Provider_Payment_Id__c` is unique. A second insert is treated as "already processed", not as an error. The system sends no receipts, so it cannot send a second one (PAY-03 AC3).
+
+**Webhook secret.** It is stored in the protected custom setting `Mercado_Pago_Webhook__c.Secret__c` (Setup → Custom Settings → Mercado Pago Webhook → Manage → organization value). It is typed in by hand and is never in the repository, screenshots or AI prompts.
+
+**Rejection history (ADM-12).** Tab **Avisos rechazados**, list view "Historial de rechazos": folio, received at, reason, detail and technical id. Read-only, through the `Rejected_Notice_Viewer` permission set. It never stores the notice body, card data, emails or secrets. Ids that come from a notice whose signature was not valid are masked (`9876…3210`).

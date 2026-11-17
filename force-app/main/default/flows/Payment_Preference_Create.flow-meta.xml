@@ -27,6 +27,12 @@
             </value>
         </inputParameters>
         <inputParameters>
+            <name>notificationUrl</name>
+            <value>
+                <elementReference>$Label.Donation_Notification_Url</elementReference>
+            </value>
+        </inputParameters>
+        <inputParameters>
             <name>returnUrl</name>
             <value>
                 <elementReference>$Label.Donation_Return_Url</elementReference>

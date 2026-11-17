@@ -47,7 +47,7 @@ Goal: show that a visitor without login cannot **read** or **modify** other dono
 | "API Enabled" | Not granted | Stops REST access as guest |
 | "Run Flows" | Not granted | The guest does not run flows directly; the flows run from Apex |
 | Apex classes | Execute: `CampaignPortalController`, `DonationIntakeService`, `DonationPaymentController`, `DonorRecognitionService` | Each one returns aggregates or public fields only, or validates the request again on the server |
-| Permission set `Mercado_Pago_Callout` | Assigned to the guest user (and to one administrator account) | Only grants the External Credential principal needed to call Mercado Pago from server code; it grants no object access |
+| Permission set `Mercado_Pago_Callout` | Assigned to the guest user (and to one administrator account) | Grants the External Credential principal needed to call Mercado Pago from server code and, since Delivery 2, execute access to `MercadoPagoWebhookResource` (the payment-notice endpoint, see section 6). It grants no object access |
 
 Owner of the records created by the guest: to be confirmed (TEC-01).
 
@@ -100,15 +100,32 @@ Internal read access to payment attempts: permission set `Payment_Attempt_Viewer
 - **Abandoned attempts** keep personal data of people who did not donate. Mitigation: the scheduled flow `Payment_Attempt_Delete_Stale` runs daily and deletes attempts whose status is not `Confirmed` and that are older than 7 days (PAY-07). Two open points: deleted records stay in the Recycle Bin for up to 15 days (flows cannot hard-delete), and confirmed attempts are kept, which differs from decision D-01 in `data-model.md` (to be settled by the team).
 - **Salesforce System Administrator profile** can edit everything in the org. No project role can edit amount, reference or payment status; this profile is outside that rule and is documented here (RNF-03).
 - **Daily email limit** of the Developer Edition org for external addresses (DON-23). Tests use only team emails.
-- **Payment confirmed without a return to the portal.** Delivery 1 registers the donation when the donor returns to `/portal/gracias` and the server checks the payment with Mercado Pago. There is no webhook yet, so a donor who pays and does not return is not registered automatically. This is the planned scope of Delivery 2 (PAY-06, DON-24), not a Delivery 1 defect. Because unconfirmed attempts are deleted after 7 days, a payment that arrives later could no longer be matched to its attempt; keep this in mind when designing PAY-06.
+- **Payment confirmed without a return to the portal.** Solved in Delivery 2 by the webhook (section 6). Remaining risks:
+  - Unconfirmed attempts are deleted after 7 days, so a notice that arrives more than 7 days after the attempt (for example a long-pending payment) can no longer be matched and is logged as "Intento no encontrado".
+  - Mercado Pago does not guarantee that a notice arrives. If the donor does not return and the notice never arrives, the payment is approved in Mercado Pago but no donation is registered, and the attempt is deleted after 7 days. Proposed fix (backlog): a scheduled reconciliation that looks up `Started` attempts older than 30 minutes with `GET /v1/payments/search?external_reference={attempt id}` and registers approved payments through `Donation_Register`, which already ignores duplicates.
 - **Silent failure outcome.** When the return check fails for a reason other than a missing attempt or an amount mismatch, the flow returns a generic error and does not log a rejected notice (`Rejected_Notice__c` is deployed and used only for those two reasons).
 - **Public name cleaning (DON-11).** The public name is cleaned on the server (HTML tags and control characters removed, 80-character limit) by `PublicNameSanitizer`. It is deployed to the Sandbox on 2026-11-10, but its Apex source is not committed yet, so the repository does not match the Sandbox for those classes. Public attempts saved before the cleaning were not changed.
 - **Anonymous with invoice** is allowed (confirmed in the 2026-11-04 session, Q-01). The name stays hidden in the portal and the fiscal data is used only for the invoice request, kept apart from public data and visible to staff only.
 
 ## 6. Delivery 2 update: Mercado Pago webhook
 
-- Signature validation (`x-signature`, HMAC-SHA256): build `id:{data.id};request-id:{x-request-id};ts:{ts};`, compare with `v1`, reject if `ts` is outside a 5-minute window. Even with a valid signature, the payment status is always confirmed with `GET /v1/payments/{id}` (PAY-01): _..._
-- Rejected notices logged (date and reason): "Firma inválida", "Aviso repetido", "Intento no encontrado", "Monto no coincide", "Tipo de aviso no soportado" (ADM-12): _..._
-- Idempotency (same event twice): unique payment id, a second insert is treated as "already processed" (PAY-03): _..._
-- Permissions of the endpoint's guest/integration user: _..._
+Deployed in `donations-dev` on 2026-11-16. Details in `payments-api.md`, section 5.
+
+- **Signature validation (PAY-01).**
+  - `MercadoPagoSignatureValidator` builds `id:{data.id};request-id:{x-request-id};ts:{ts};` and compares its HMAC-SHA256 with `v1` in constant time.
+  - It rejects notices whose `ts` is outside a 5-minute window.
+  - The signature is checked before anything else. An unsigned or altered notice gets HTTP 400 and causes no callout and no write, except its own rejection record.
+  - Even with a valid signature, the status and the amount always come from `GET /v1/payments/{id}`.
+- **Webhook secret.** It is stored in the protected custom setting `Mercado_Pago_Webhook__c.Secret__c`. The value is typed in by hand in Setup and is never versioned, shown in screenshots or given to AI tools.
+- **Rejected notices logged (ADM-12).**
+  - `Rejected_Notice__c` records the received date, a safe reason and a technical id. The reasons are "Firma inválida", "Aviso repetido", "Intento no encontrado", "Monto no coincide", "Tipo de aviso no soportado" and "Reembolso o contracargo (ignorado)".
+  - The notice body, emails, card data and secrets are never stored. Ids taken from a notice that failed the signature check are masked (`9876…3210`).
+  - Read access is given only through the permission set `Rejected_Notice_Viewer`: read-only, view all, no create, edit or delete. It is assigned to the payments developer (2026-11-16) and never to the guest user.
+- **Idempotency (PAY-03).** `Provider_Payment_Id__c` is unique. A second insert is treated as "already processed", logged as "Aviso repetido" and answered with 200.
+- **Permissions of the endpoint.**
+  - The endpoint runs as the site guest user at `/portalvforcesite/services/apexrest/mp/notifications`. The guest only gets execute access to `MercadoPagoWebhookResource`, through `Mercado_Pago_Callout`. No object permission was added and the guest profile was not changed.
+  - The class runs without sharing and writes in system mode, only after the signature is valid.
+  - Records created by the endpoint are owned by the site's default record owner.
+- **Check (2026-11-16).** An unsigned `POST` from the internet was answered and logged (`REJ-000001`, secret not configured yet). A forged signature sent from the internet got HTTP 400 and was logged with a masked id (`REJ-000004`, `REJ-000005`). Real approved and rejected test payments were processed by signed notices 1–3 seconds after payment (evidence in `docs/evidence/43-pay-06`).
+- **Notice URL in the preference.** Each preference sends `notification_url` (custom label `Donation_Notification_Url`), because payments made with the test seller account are `live_mode=true` and Mercado Pago does not send their notices to the panel's test-mode URL. The URL is public by design; what protects it is the signature check, not the secrecy of the URL.
 
