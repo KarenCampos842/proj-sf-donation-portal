@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <assignments>
+        <name>Set_Manual_Reason</name>
+        <label>Causa de cierre: Manual</label>
+        <locationX>176</locationX>
+        <locationY>287</locationY>
+        <assignmentItems>
+            <assignToReference>$Record.Close_Reason__c</assignToReference>
+            <operator>Assign</operator>
+            <value>
+                <stringValue>Manual</stringValue>
+            </value>
+        </assignmentItems>
+    </assignments>
+    <description>GES-12. Antes de guardar, si una campaña queda Cerrada sin causa de cierre, guarda la causa "Manual". El cierre automático (Campaign_Close_Expired) ya llega con la causa "Por fecha", así que este flow no la cambia.</description>
+    <environments>Default</environments>
+    <interviewLabel>Campaign - Set Close Reason {!$Flow.CurrentDateTime}</interviewLabel>
+    <label>Campaña - Causa de cierre manual</label>
+    <processType>AutoLaunchedFlow</processType>
+    <start>
+        <locationX>50</locationX>
+        <locationY>0</locationY>
+        <connector>
+            <targetReference>Set_Manual_Reason</targetReference>
+        </connector>
+        <filterFormula>AND(ISPICKVAL({!$Record.Status__c}, &quot;Closed&quot;), ISBLANK(TEXT({!$Record.Close_Reason__c})))</filterFormula>
+        <object>Fundraising_Campaign__c</object>
+        <recordTriggerType>CreateAndUpdate</recordTriggerType>
+        <triggerType>RecordBeforeSave</triggerType>
+    </start>
+    <status>Active</status>
+</Flow>

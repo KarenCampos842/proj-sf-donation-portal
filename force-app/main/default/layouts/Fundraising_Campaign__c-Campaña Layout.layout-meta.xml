@@ -17,6 +17,10 @@
                 <field>Status__c</field>
             </layoutItems>
             <layoutItems>
+                <behavior>Readonly</behavior>
+                <field>Close_Reason__c</field>
+            </layoutItems>
+            <layoutItems>
                 <behavior>Edit</behavior>
                 <field>Description__c</field>
             </layoutItems>

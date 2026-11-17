@@ -5,6 +5,7 @@
     <inlineHelpText>Una campaña nueva inicia en Borrador. Para activarla necesita una descripción.</inlineHelpText>
     <label>Estado</label>
     <required>false</required>
+    <trackHistory>true</trackHistory>
     <type>Picklist</type>
     <valueSet>
         <restricted>true</restricted>
