@@ -1,0 +1,14 @@
+# Keyboard focus check on the closed-campaign history (1280 px), 2026-11-17
+
+[
+ "a:Skip to Main -> auto 1px rgb(10, 86, 160)",
+ "button:Volver a las campañas -> none 0px rgb(11, 92, 171) +sombra",
+ "button:Ver detalle de la campaña [PRUEBA Rodrigo] DON-19 AC3 -> tarjeta solid 2px rgb(11, 92, 171)",
+ "button:Ver detalle de la campaña [PRUEBA] Campaña cerrada -> tarjeta solid 2px rgb(11, 92, 171)",
+ "button:Ver detalle de la campaña [PRUEBA Rodrigo] DON-24 -> tarjeta solid 2px rgb(11, 92, 171)"
+]
+PASS  [teclado] las 3 tarjetas reciben foco con Tab  -> 3
+PASS  [teclado] la tarjeta enfocada muestra contorno sólido de 2 px  -> solid 2px rgb(11, 92, 171) | solid 2px rgb(11, 92, 171) | solid 2px rgb(11, 92, 171)
+PASS  [teclado] «Volver a las campañas» tiene indicador de foco (sombra de SLDS)  -> none 0px rgb(11, 92, 171)
+
+TOTAL 3  PASS 3  FAIL 0

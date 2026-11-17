@@ -1,0 +1,46 @@
+# Apex check-only (--dry-run, nothing saved), 2026-11-17, donations-dev
+# Sources: CampaignPortalController, CampaignPortalControllerTest, DonationIntakeServiceTest. Tests: CampaignPortalControllerTest, DonationIntakeServiceTest (RunSpecifiedTests)
+
+{
+ "id": "0AfVC00000PIB1q0AH",
+ "status": "Succeeded",
+ "checkOnly": true,
+ "components": "3/3",
+ "errors": 0,
+ "tests": "110/110",
+ "testErrors": 0,
+ "byClass": {
+  "CampaignPortalControllerTest": {
+   "p": 47,
+   "f": 0
+  },
+  "DonationIntakeServiceTest": {
+   "p": 63,
+   "f": 0
+  }
+ },
+ "coverage": [
+  "CampaignPortalController 98/98"
+ ],
+ "relevant": [
+  "CampaignPortalControllerTest.shouldCapTheHistoryAtOneHundred_WhenThereAreMoreClosedCampaigns",
+  "CampaignPortalControllerTest.shouldExcludeClosedCampaignWithFutureStart_WhenGuestOpensCatalog",
+  "CampaignPortalControllerTest.shouldExcludeClosedCampaign_WhenGuestOpensCatalog",
+  "CampaignPortalControllerTest.shouldLeaveRecordsUnchanged_WhenGuestOpensHistory",
+  "CampaignPortalControllerTest.shouldListOnlyClosedCampaigns_WhenGuestOpensHistory",
+  "CampaignPortalControllerTest.shouldNeverAllowDonating_WhenCampaignIsInTheHistory",
+  "CampaignPortalControllerTest.shouldNotExposeDescriptionOrDonorData_WhenGuestOpensHistory",
+  "CampaignPortalControllerTest.shouldOrderMostRecentlyClosedFirst_WhenSeveralClosedCampaignsExist",
+  "CampaignPortalControllerTest.shouldReturnDetailWithoutDonation_WhenCampaignIsClosedAndOpenedByDirectLink",
+  "CampaignPortalControllerTest.shouldReturnDetailWithoutDonation_WhenClosedCampaignStartsInTheFuture",
+  "CampaignPortalControllerTest.shouldReturnEmptyList_WhenNoCampaignIsAvailable",
+  "CampaignPortalControllerTest.shouldReturnEmptyList_WhenThereAreNoClosedCampaigns",
+  "CampaignPortalControllerTest.shouldReturnNameGoalAndFinalTotal_WhenCampaignIsClosed",
+  "CampaignPortalControllerTest.shouldThrowFriendlyError_WhenUserCannotReadAClosedCampaignDetail",
+  "CampaignPortalControllerTest.shouldThrowFriendlyError_WhenUserCannotReadTheHistory",
+  "DonationIntakeServiceTest.shouldRejectPublicName_WhenItIsEmptyOrOnlySpaces",
+  "DonationIntakeServiceTest.shouldRemoveAngleBrackets_WhenTagIsNeverClosed",
+  "DonationIntakeServiceTest.shouldSaveNoAttempt_WhenClosedCampaignIsSentStraightToThePaymentController"
+ ],
+ "failures": []
+}
