@@ -81,8 +81,9 @@ public with sharing class DonationIntakeService {
     // keeps the provider answer), so the message names the amount as a possible cause and offers to change it.
     private static final String MSG_PAYMENT_FAILED =
         'No pudimos abrir el pago. Puede que Mercado Pago no acepte esta cantidad: edita tu donación y elige otra cantidad.';
-    // The generic text that Payment_Preference_Create and DonationPaymentController return when the payment cannot be opened.
-    private static final String PAYMENT_CODE_GENERIC_MESSAGE = 'No pudimos abrir el pago, intenta de nuevo';
+    // The generic text that Payment_Preference_Create and DonationPaymentController return when the payment
+    // cannot be opened. Read from the payment code, not copied, so a change of the text there is followed here.
+    private static final String PAYMENT_CODE_GENERIC_MESSAGE = DonationPaymentController.GENERIC_ERROR;
 
     // ADM-13: the suggested amounts and the minimum come from the configuration (DonationAmountSettings).
     private static final Integer MAX_EMAIL_LENGTH = 80;

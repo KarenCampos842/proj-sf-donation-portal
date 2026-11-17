@@ -16,8 +16,10 @@
  * Usage guide: docs/payments-api.md.
  */
 public with sharing class DonationPaymentController {
-    @TestVisible
-    private static final String GENERIC_ERROR = 'No pudimos abrir el pago, intenta de nuevo';
+    // The generic text returned when the payment cannot be opened. Payment_Preference_Create returns the same
+    // text (a flow cannot read an Apex constant); MercadoPagoPreferenceActionTest compares the flow with this
+    // constant, so the two cannot drift apart. DonationIntakeService recognizes it to show its own message.
+    public static final String GENERIC_ERROR = 'No pudimos abrir el pago, intenta de nuevo';
     @TestVisible
     private static final String RESULT_UNKNOWN = 'Unknown';
     @TestVisible

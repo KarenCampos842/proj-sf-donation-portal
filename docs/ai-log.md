@@ -26,6 +26,7 @@ This log keeps the most useful **best-prompt** and **worst-result** examples. Ea
 | 16 | 2026-11-17 | Rodrigo Colli | Claude Code (Opus 5.5), VS Code | ADM-13 (#39) | Best | Configurable amounts built from the data-model design; the AI changed the planned comma-separated field to eight number fields so AC3 can be enforced by a validation rule. The first Apex validation failed 56 tests: amounts read from custom metadata (150.0) did not match the form's amounts (150) in List.contains; fixed by normalizing to two decimals. Then 242/242 Apex tests and 231 Jest tests passed. Time not measured. |
 | 17 | 2026-11-17 | Karen Elizabeth Campos | Claude Code, VS Code | DON-09 (#8), DON-18 (#14) | Best | Custom amount as exact text and a review step with a server-side token; the AI found that an Id alone could open a payment and closed it. Jest 336/336 and a check-only with 177/177 Apex tests before any deployment. Time impact not measured. |
 | 18 | 2026-11-17 | Karen Elizabeth Campos | Claude Code, VS Code | DON-09 (#8), DON-18 (#14) | Worst | An independent read-only review found five problems in the first pass: `BigInt` untested under Lightning Web Security, a payment error message that offered a retry that no longer exists, `invalidate` acting on an attempt that already opened a payment, no focus tests, and gaps in this log. All were corrected. Final check-only `0AfVC00000PJ0h40AD` is **Failed**: 459/465 tests, and the 6 failures belong to org code outside the repository. Time impact not measured. |
+| 19 | 2026-11-17 | Rodrigo Colli | Claude Code (Opus 5.5), VS Code | DON-18 (#14), ADM-13 (#39) | Best | Workstream A review of PR #72. The AI noticed that the minimum-amount rule ran on every save of an attempt, so raising the minimum could revert the donation of a payment already charged; the rule now runs only on create or amount change. The generic payment message was copied in two classes; it is now one constant, checked against the flow by tests. Double-payment mitigation decided: not applied. Time not measured. |
 
 ---
 
@@ -670,3 +671,29 @@ Act as an independent reviewer and try to break the implementation; then apply o
 - Deployment and publication in one window, then a smoke test.
 
 ---
+
+### Entry 19 — Workstream A review of DON-09 / DON-18 (PR #72)
+
+- **Date:** 2026-11-17
+- **Author:** Rodrigo Colli
+- **Tool / model:** Claude Code (Opus 5.5), VS Code
+- **Related stories:** DON-18 (#14), DON-09 (#8), ADM-13 (#39)
+- **Result type:** Best prompt
+
+**Prompt / decision summary**
+
+```text
+Review Karen's new PR. Then, in another branch, fix what you reported and open the PR.
+```
+
+**What happened**
+
+- The AI read the payment changes of PR #72 (the token, `PaymentAttemptAccess`, `DonationReview`, and `startDonation` / `openPayment` losing `@AuraEnabled`). It approved removing `@AuraEnabled`: no other caller exists, `getPaymentResult` is unchanged and `Payment_Preference_Create` still checks `Started` and an empty `Preference_Id__c`.
+- **Minimum rule (bug found by the AI, not reported in PR #72).** `Payment_Attempt__c.Minimum_Amount` ran on every save. If the administrator raises the minimum (ADM-13) while a donation is in progress, saving the confirmation, the preference or the `Confirmed` status fails, and in `Donation_Register` that failure reverts the donation of a payment already charged. The rule now runs only with `ISNEW()` or `ISCHANGED(Amount__c)`. It is not covered by an Apex test: tests read the custom metadata of the org and cannot raise the minimum.
+- **Generic payment message.** `DonationIntakeService` kept its own copy of «No pudimos abrir el pago, intenta de nuevo» to recognize it. It now reads `DonationPaymentController.GENERIC_ERROR` (made public), and the five `MercadoPagoPreferenceActionTest` assertions compare the flow output with that constant, so a change of the text in the flow fails a test instead of silently showing another message.
+- **Double payment (risk H2).** Decision of Workstream A: the mitigation is not applied; registering both charged payments keeps Salesforce equal to Mercado Pago. Written in `docs/security.md`.
+
+**What we verified**
+
+- Before the fixes, on PR #72 as it is: Jest 9 suites, 376/376; check-only `0AfVC00000PJ8Uv0AL` with `RunSpecifiedTests` (the 32 test classes of the repository, which avoids the 6 org-only failures): Succeeded, 201/201 components, 320/320 tests.
+- After the fixes: Jest 376/376; check-only `0AfVC00000PJAEz0AP` with the same `RunSpecifiedTests`: Succeeded, 201/201 components, 320/320 tests. The first check-only of the fixes failed because a validation rule description cannot pass 255 characters; the description was shortened. Nothing was deployed or published.
