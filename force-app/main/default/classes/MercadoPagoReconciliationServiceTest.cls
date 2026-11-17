@@ -65,9 +65,13 @@ private class MercadoPagoReconciliationServiceTest {
     }
 
     private static MercadoPagoReconciliationService.Summary run(HttpCalloutMock mock) {
+        // Same two steps as the batch (start, then execute), in one test transaction.
         Test.setMock(HttpCalloutMock.class, mock);
+        MercadoPagoReconciliationService.Summary summary = new MercadoPagoReconciliationService.Summary();
         Test.startTest();
-        MercadoPagoReconciliationService.Summary summary = MercadoPagoReconciliationService.run();
+        for (MercadoPagoPaymentLookupAction.Result payment : MercadoPagoReconciliationService.findCandidates(summary)) {
+            MercadoPagoReconciliationService.register(payment, summary);
+        }
         Test.stopTest();
         return summary;
     }
@@ -222,6 +226,90 @@ private class MercadoPagoReconciliationServiceTest {
         new MercadoPagoReconciliationJob().execute((SchedulableContext) null);
         Test.stopTest();
         Assert.areEqual(1, donations().size(), 'The scheduled job queues the reconciliation');
+    }
+
+    // ---- Batch (Karen's review of PR #61) ----
+
+    @IsTest
+    static void mismatchAlreadyLoggedIsNotRetriedEveryHour() {
+        // A payment already logged as "Amount_Mismatch" is left out, so no new notice is created.
+        Payment_Attempt__c a = attempt(60);
+        Database.insert(new Rejected_Notice__c(Reason__c = 'Amount_Mismatch', Technical_Id__c = PAYMENT_ID,
+            Detail__c = 'El monto confirmado por el proveedor no coincide con el del intento.',
+            Received_At__c = DateTime.now().addHours(-1)), AccessLevel.SYSTEM_MODE);
+        MercadoPagoReconciliationService.Summary summary = run(onePage(new List<Object>{
+            payment(PAYMENT_ID, 'approved', a.Id, 999)
+        }));
+        Assert.areEqual(1, summary.skippedMismatch);
+        Assert.areEqual(0, summary.candidates);
+        Assert.areEqual(1, [SELECT COUNT() FROM Rejected_Notice__c WITH SYSTEM_MODE], 'No second notice');
+        Assert.areEqual('Started', statusOf(a));
+    }
+
+    @IsTest
+    static void oldestAttemptComesFirst() {
+        Payment_Attempt__c newer = attempt(45);
+        Payment_Attempt__c older = attempt(120);
+        Test.setMock(HttpCalloutMock.class, onePage(new List<Object>{
+            payment('1111111111', 'approved', newer.Id, 250),
+            payment('2222222222', 'approved', older.Id, 250)
+        }));
+        Test.startTest();
+        List<MercadoPagoPaymentLookupAction.Result> candidates =
+            MercadoPagoReconciliationService.findCandidates(new MercadoPagoReconciliationService.Summary());
+        Test.stopTest();
+        Assert.areEqual(2, candidates.size());
+        Assert.areEqual('2222222222', candidates[0].paymentId, 'Oldest attempt first');
+    }
+
+    @IsTest
+    static void batchRegistersThePayments() {
+        // start (callouts) and execute (writes) run as separate steps of the batch.
+        Payment_Attempt__c a = attempt(60);
+        Test.setMock(HttpCalloutMock.class, onePage(new List<Object>{ payment(PAYMENT_ID, 'approved', a.Id, 250) }));
+        Test.startTest();
+        Database.executeBatch(new MercadoPagoReconciliationBatch(), MercadoPagoReconciliationBatch.BATCH_SIZE);
+        Test.stopTest();
+        Assert.areEqual(1, donations().size());
+        Assert.areEqual('Confirmed', statusOf(a));
+    }
+
+    @IsTest
+    static void batchStartReturnsEveryCandidate() {
+        // More candidates than one chunk: start returns all of them; Salesforce splits them in chunks.
+        List<Object> results = new List<Object>();
+        for (Integer i = 0; i < MercadoPagoReconciliationBatch.BATCH_SIZE + 5; i++) {
+            Payment_Attempt__c a = attempt(60);
+            results.add(payment(String.valueOf(8000000000L + i), 'approved', a.Id, 250));
+        }
+        Test.setMock(HttpCalloutMock.class, onePage(results));
+        MercadoPagoReconciliationBatch batch = new MercadoPagoReconciliationBatch();
+        Test.startTest();
+        List<Object> items = new List<Object>();
+        for (Object item : batch.start(null)) {
+            items.add(item);
+        }
+        Test.stopTest();
+        Assert.areEqual(MercadoPagoReconciliationBatch.BATCH_SIZE + 5, items.size());
+        Assert.areEqual(MercadoPagoReconciliationBatch.BATCH_SIZE + 5, batch.summary.candidates);
+    }
+
+    @IsTest
+    static void oneFailedPaymentDoesNotStopTheChunk() {
+        // execute registers the good payment even when another one in the same chunk cannot be registered.
+        Payment_Attempt__c a = attempt(60);
+        MercadoPagoPaymentLookupAction.Result good =
+            MercadoPagoPaymentLookupAction.fromPayment(payment(PAYMENT_ID, 'approved', a.Id, 250));
+        MercadoPagoPaymentLookupAction.Result wrongAmount =
+            MercadoPagoPaymentLookupAction.fromPayment(payment('7777777777', 'approved', a.Id, 999));
+        MercadoPagoReconciliationBatch batch = new MercadoPagoReconciliationBatch();
+        Test.startTest();
+        batch.execute(null, new List<Object>{ wrongAmount, good });
+        batch.finish(null);
+        Test.stopTest();
+        Assert.areEqual(1, donations().size());
+        Assert.areEqual(1, batch.summary.registered);
+        Assert.areEqual(1, batch.summary.notRegistered);
     }
 
     @IsTest

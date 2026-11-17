@@ -223,10 +223,10 @@ Safety net for the case where the donor never returns **and** the notice never a
 **One run:**
 
 1. Reads the **approved** payments of the last 7 days with `GET /v1/payments/search?range=date_created&begin_date=NOW-7DAYS&end_date=NOW&status=approved` (100 per page, at most 5 pages). The number of calls does not depend on how many attempts are abandoned.
-2. Keeps the payments whose `external_reference` is a `Payment_Attempt__c` that is still `Started` and was created more than 30 minutes ago. Younger attempts are left to the webhook and the return page.
-3. Registers each one with `Donation_Register`, like the webhook. A payment registered in the meantime is not registered twice (unique payment id). Amount mismatches are logged by the flow (ADM-12).
+2. *(batch start)* Keeps the payments whose `external_reference` is a `Payment_Attempt__c` that is still `Started` and was created more than 30 minutes ago, oldest attempt first. Younger attempts are left to the webhook and the return page. Payments that already have an "Amount_Mismatch" rejected notice are left out, so the same notice is not logged again every hour.
+3. *(batch execute, 20 per chunk)* Registers each one with `Donation_Register`, like the webhook. A payment registered in the meantime is not registered twice (unique payment id). Amount mismatches are logged by the flow (ADM-12).
 
-All callouts happen before any write. If Mercado Pago does not answer, nothing changes and the next run tries again. Payments that are not approved are never registered; rejections are still decided by the webhook and the return page.
+All callouts happen in `start`, before any write. Each payment costs about 2 queries and 3 writes (the savepoint counts), so a chunk of 20 stays far below the limits of 100 queries and 150 writes, however many payments are pending. If one chunk fails, only that chunk is rolled back; the next run tries its payments again. If Mercado Pago does not answer, nothing changes and the next run tries again. Payments that are not approved are never registered; rejections are still decided by the webhook and the return page.
 
 **Scheduling (once, by an administrator, in Developer Console → Execute Anonymous):**
 
@@ -236,4 +236,4 @@ System.schedule('Conciliación Mercado Pago', '0 15 * * * ?', new MercadoPagoRec
 
 It runs at minute 15 of every hour, as the user who scheduled it. That user needs the `Mercado_Pago_Callout` permission set (External Credential access). To stop it: Setup → Scheduled Jobs → Delete.
 
-**Check (2026-11-16):** a manual run read the 18 approved test payments of the last 7 days and found that all were already registered, so it changed nothing.
+**Check (2026-11-16):** a manual run read the 18 approved test payments of the last 7 days and found that all were already registered, so it changed nothing. After the batch change (review of PR #61), a manual batch run completed with 0 chunks and 0 errors: there was nothing left to register.
