@@ -48,7 +48,9 @@ export const FORM_MESSAGES = {
         regime: 'Régimen fiscal',
         regimePlaceholder: 'Selecciona un régimen',
         regimeHelp: 'Mostramos los regímenes que corresponden al tipo de persona de tu RFC.',
-        regimeRequired: 'Selecciona tu régimen fiscal.'
+        regimeRequired: 'Selecciona tu régimen fiscal.',
+        privacyNotice: 'Acepto el aviso de privacidad',
+        privacyNoticeRequired: 'Acepta el aviso de privacidad para solicitar factura.'
     },
     submit: {
         label: 'Continuar al pago',

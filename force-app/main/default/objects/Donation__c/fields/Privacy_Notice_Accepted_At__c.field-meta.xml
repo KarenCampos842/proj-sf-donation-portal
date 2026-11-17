@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Privacy_Notice_Accepted_At__c</fullName>
+    <description>DON-13. Fecha y hora de aceptación del aviso de privacidad, copiada del intento de pago. Es la que generó el servidor al crear el intento.</description>
+    <inlineHelpText>Fecha y hora en que el donante aceptó el aviso de privacidad.</inlineHelpText>
+    <label>Fecha de aceptación</label>
+    <required>false</required>
+    <type>DateTime</type>
+</CustomField>
