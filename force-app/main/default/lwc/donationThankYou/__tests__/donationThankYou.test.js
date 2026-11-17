@@ -135,12 +135,20 @@ describe('c-donation-thank-you', () => {
         expect(message(element)).toBe('Aún no podemos confirmar tu pago.');
     });
 
-    it('asks the server with the text "null" when the URL has no payment_id, so the answer is NoPayment', async () => {
+    it('asks the server with the text "null" when Mercado Pago sends it, so the answer is NoPayment', async () => {
         getPaymentResult.mockResolvedValue('NoPayment');
-        const element = await openWith({});
+        const element = await openWith({ payment_id: 'null' });
 
         expect(getPaymentResult).toHaveBeenCalledWith({ paymentId: 'null' });
         expect(message(element)).toBe('No se completó el pago; no se registró tu donación.');
+    });
+
+    it('asks the server with an empty value when the URL has no payment_id, so the answer is Unknown (#54)', async () => {
+        getPaymentResult.mockResolvedValue('Unknown');
+        const element = await openWith({});
+
+        expect(getPaymentResult).toHaveBeenCalledWith({ paymentId: '' });
+        expect(message(element)).toBe('Aún no podemos confirmar tu pago.');
     });
 
     it('does not ask twice when the page reference is delivered again', async () => {
