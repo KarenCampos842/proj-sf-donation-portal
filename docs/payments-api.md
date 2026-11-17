@@ -9,7 +9,7 @@ Everything below is deployed in `donations-dev`. Stories: PAY-07, DON-19, DON-20
 
 Both paths use the same flow, `Donation_Register`, and the payment id is unique, so a payment is registered only once (PAY-03).
 
-**Repository note.** The public-name cleaning described in section 1 (`PublicNameSanitizer`, and the matching changes in `DonationIntakeService` and `DonationPaymentController`) was deployed to the Sandbox on 2026-11-10, but its Apex source is not committed yet, so the version of this class in the repository does not include it.
+**Repository note.** The public-name cleaning described in section 1 (`PublicNameSanitizer`, and the matching changes in `DonationIntakeService` and `DonationPaymentController`) was deployed to the Sandbox on 2026-11-10 and its Apex source is in the repository since PR #58. On 2026-11-16 `PublicNameSanitizer` was checked against the Sandbox and both versions match.
 
 The portal talks to one Apex class, `DonationPaymentController`, with three methods. Each method runs a flow in system mode, so the portal never touches `Payment_Attempt__c` or `Donation__c` directly and the guest user has no permission on them.
 
@@ -48,6 +48,8 @@ Errors: throws an `AuraHandledException` whose message is already in Spanish and
 The public name is cleaned by `PublicNameSanitizer`. `startDonation` applies it itself, so the cleaning also covers direct calls to this method, and `DonationIntakeService` (the portal form) applies it before delegating here. Attempts saved before this cleaning existed are not changed.
 
 **Privacy notice (DON-13).** `startDonation` checks `privacyNoticeAccepted` itself, so a direct call cannot skip it, and `Payment_Attempt_Create` checks it again and saves `Privacy_Notice_Accepted__c` and `Privacy_Notice_Accepted_At__c` (server clock). `Donation_Register` copies both to the donation. It is the flow that the thank-you page and the webhook (section 5) run, so both confirmation routes behave the same, and neither one is blocked when an attempt has no acceptance: attempts created before DON-13 are registered normally, with the acceptance false and no date. The portal form (`DonationIntakeService`) sends `privacyNoticeAccepted` and reports a missing acceptance on the checkbox field. Deploy the flows, the four fields and `DonationPaymentController` together: the controller passes the new flow input.
+
+**Status (DON-13).** Deployed to `donations-dev` on 2026-11-17 together with the four fields, the two flows (`Payment_Attempt_Create` and `Donation_Register`, version 2 active), the Apex classes, the form and the two permission sets (deployment `0AfVC00000PICFd0AP`). The site was published afterwards (job `08PVC00000gD7QB2A0`). Checked as a guest: an invoice request with the acceptance omitted, `false` or `null` is rejected on both routes (the form service and a direct call to `DonationPaymentController.startDonation`), and no attempt is created. Real attempts created with invoice and acceptance store `true` and a server-generated date. Not yet checked: the copy to a donation and the return, webhook and reconciliation paths with the new version of `Donation_Register`, which need the first paid sandbox payment made with the test buyer account.
 
 ### `openPayment(attemptId)` → `String checkoutUrl`
 
@@ -119,7 +121,7 @@ Which state the page gets without a payment (DON-20 AC4, #54):
 | "Volver al sitio" button of Mercado Pago | `"null"` | `NoPayment` |
 | No `payment_id` in the URL (window closed, page opened directly) | empty or `null` | `Unknown`: the result is not known, so the page must not say the payment was not completed |
 
-For the second row to reach the server, the thank-you page must send an empty value when the URL has no `payment_id`, not the text `"null"`.
+The thank-you page sends an empty value when the URL has no `payment_id`, and keeps the text `"null"` that Mercado Pago sends (fixed in #54, 2026-11-16).
 
 Rules from DON-20 / DON-21: always show a thank-you page; only `Confirmed` may say the contribution was received; `Unknown` and `Pending` must never say "rechazado", "cancelado" or "confirmado".
 
