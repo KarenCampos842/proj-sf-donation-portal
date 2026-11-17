@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Donor_Confirmed_At__c</fullName>
+    <description>DON-18. Fecha y hora en que el donante confirmó el resumen de su donación. La genera el servidor (System.now()) al confirmar; nunca viene del navegador. El pago solo se abre si este campo tiene valor y el intento no fue reemplazado (Superseded_At__c vacío).</description>
+    <inlineHelpText>Fecha y hora en que el servidor registró la confirmación del resumen por el donante.</inlineHelpText>
+    <label>Fecha de confirmación del donante</label>
+    <required>false</required>
+    <type>DateTime</type>
+</CustomField>

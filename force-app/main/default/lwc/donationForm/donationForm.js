@@ -1,6 +1,9 @@
 import { LightningElement, api, track, wire } from 'lwc';
 import startDonation from '@salesforce/apex/DonationIntakeService.startDonation';
 import openPayment from '@salesforce/apex/DonationIntakeService.openPayment';
+import getDonationSummary from '@salesforce/apex/DonationIntakeService.getDonationSummary';
+import confirmDonation from '@salesforce/apex/DonationIntakeService.confirmDonation';
+import invalidateDonation from '@salesforce/apex/DonationIntakeService.invalidateDonation';
 import getAmountSettings from '@salesforce/apex/DonationIntakeService.getAmountSettings';
 import { formatMessage } from 'c/portalMessages';
 import { formatMxn } from 'c/portalUtils';
@@ -8,15 +11,18 @@ import { FORM_MESSAGES } from 'c/donationFormMessages';
 import {
     MAX_LEGAL_NAME_LENGTH,
     MAX_PUBLIC_NAME_LENGTH,
+    OTHER_AMOUNT,
     SUGGESTED_AMOUNTS,
     TAXPAYER_PERSON,
     VISIBILITY_ANONYMOUS,
     VISIBILITY_PUBLIC,
     getRegimeOptions,
     getTaxpayerType,
+    minimumToCents,
     normalizeText,
     parseServerError,
     sanitizeRfc,
+    validateCustomAmount,
     validateEmail,
     validateLegalName,
     validatePostalCode,
@@ -27,13 +33,38 @@ import {
 } from 'c/donationFormRules';
 
 const HTTPS_URL = /^https:\/\//i;
+// DON-09. Only one amount is active at a time: a suggested one or the one the donor types.
+const MODE_SUGGESTED = 'suggested';
+const MODE_CUSTOM = 'custom';
+// DON-18. The donation has two steps on screen: the form and the review of the summary.
+const STEP_FORM = 'form';
+const STEP_REVIEW = 'review';
 
 export default class DonationForm extends LightningElement {
     @api campaignId;
     @api campaignName;
 
+    // Text of the suggested amount chosen (for example '500'), or undefined. Amounts travel as text.
     selectedAmount;
+    amountMode = '';
+    // Minimum of the configuration in cents, as the digit string of toCents, or null until it arrives.
+    minimumCents = null;
+    focusCustomAmount = false;
     isAnonymous = true;
+
+    // DON-18. The token that startDonation returns authorizes the review, the confirmation and the payment
+    // of this attempt only. It stays in memory: not in the DOM, not in the URL, not stored. Reloading the
+    // page loses it and starts again from the form.
+    accessToken = '';
+    step = STEP_FORM;
+    summary;
+    reviewError = '';
+    // True after the server refused to open the payment: that attempt cannot be confirmed again, so the
+    // only way forward is «Editar donación».
+    confirmBlocked = false;
+    isOpeningPayment = false;
+    // Step whose title receives the focus after the next render.
+    focusStep = '';
     invoiceRequested = false;
     amountError = '';
     errorMessage = '';
@@ -50,6 +81,7 @@ export default class DonationForm extends LightningElement {
     regimeFieldKeys = [{ id: 0 }];
 
     @track form = {
+        customAmount: '',
         email: '',
         publicName: '',
         legalName: '',
@@ -63,6 +95,7 @@ export default class DonationForm extends LightningElement {
         // Coming back from the payment page with the browser's back button must not leave the form locked.
         if (event.persisted) {
             this.isSubmitting = false;
+            this.isOpeningPayment = false;
         }
     };
 
@@ -90,6 +123,14 @@ export default class DonationForm extends LightningElement {
         return Boolean(this.campaignId);
     }
 
+    get isReviewing() {
+        return this.step === STEP_REVIEW;
+    }
+
+    get showBack() {
+        return !this.isReviewing;
+    }
+
     get campaignLabel() {
         return this.campaignName ? formatMessage(FORM_MESSAGES.campaign, this.campaignName) : '';
     }
@@ -100,11 +141,16 @@ export default class DonationForm extends LightningElement {
 
     @wire(getAmountSettings)
     wiredAmountSettings({ data }) {
-        const amounts = data?.suggestedAmounts?.map(Number).filter((amount) => amount > 0);
+        if (!data) {
+            return;
+        }
+        this.minimumCents = minimumToCents(data.minimumAmount);
+        const amounts = data.suggestedAmounts?.map(Number).filter((amount) => amount > 0);
         if (amounts?.length) {
             this.suggestedAmounts = amounts;
-            if (this.selectedAmount && !amounts.includes(this.selectedAmount)) {
+            if (this.selectedAmount && !amounts.map(String).includes(this.selectedAmount)) {
                 this.selectedAmount = undefined;
+                this.amountMode = '';
             }
         }
     }
@@ -113,8 +159,24 @@ export default class DonationForm extends LightningElement {
         return this.suggestedAmounts.map((amount) => ({
             value: String(amount),
             label: formatMxn(amount),
-            checked: amount === this.selectedAmount
+            checked: this.amountMode === MODE_SUGGESTED && String(amount) === this.selectedAmount
         }));
+    }
+
+    get isCustomAmount() {
+        return this.amountMode === MODE_CUSTOM;
+    }
+
+    get otherAmountValue() {
+        return OTHER_AMOUNT;
+    }
+
+    // The amount that is sent: the suggested one or the text typed, as text. Never converted to Number.
+    get amountText() {
+        if (this.amountMode === MODE_SUGGESTED) {
+            return this.selectedAmount;
+        }
+        return this.isCustomAmount ? this.form.customAmount.trim() : '';
     }
 
     get showPublicName() {
@@ -150,10 +212,38 @@ export default class DonationForm extends LightningElement {
         this.dispatchEvent(new CustomEvent('backtocampaign'));
     }
 
+    // The suggested amounts and "Otro monto" share one radio group, so choosing one leaves the other
+    // without a value: the last choice is the only one that counts (DON-09, AC3).
     handleAmountChange(event) {
-        this.selectedAmount = Number(event.target.value);
+        const value = event.target.value;
         this.amountError = '';
+        if (value === OTHER_AMOUNT) {
+            this.amountMode = MODE_CUSTOM;
+            this.selectedAmount = undefined;
+            this.focusCustomAmount = true;
+        } else {
+            this.amountMode = MODE_SUGGESTED;
+            this.selectedAmount = value;
+            this.form.customAmount = '';
+            this.forgetFields(['customAmount']);
+        }
         this.clearValidationNoticeIfFormIsValid();
+    }
+
+    renderedCallback() {
+        if (this.focusCustomAmount) {
+            this.focusCustomAmount = false;
+            this.template.querySelector('[data-field="customAmount"]')?.focus();
+        }
+        if (this.focusStep) {
+            const step = this.focusStep;
+            this.focusStep = '';
+            if (step === STEP_REVIEW) {
+                this.template.querySelector('c-donation-summary')?.focusTitle();
+            } else {
+                this.template.querySelector('.form__title')?.focus();
+            }
+        }
     }
 
     handleAnonymousToggle(event) {
@@ -225,21 +315,74 @@ export default class DonationForm extends LightningElement {
 
         this.isSubmitting = true;
         try {
-            // Two separate Apex calls: the payment callout cannot follow a save in the same transaction.
-            const attemptId = await startDonation({ request: this.buildRequest() });
-            const checkoutUrl = await openPayment({ attemptId });
+            // The server saves the attempt, gives the token and then returns the summary of what it saved.
+            const started = await startDonation({ request: this.buildRequest() });
+            this.accessToken = started.accessToken;
+            this.summary = await getDonationSummary({ accessToken: this.accessToken });
+            this.reviewError = '';
+            this.confirmBlocked = false;
+            this.step = STEP_REVIEW;
+            this.focusStep = STEP_REVIEW;
+        } catch (error) {
+            this.accessToken = '';
+            this.showServerError(error);
+        } finally {
+            this.isSubmitting = false;
+        }
+    }
+
+    // DON-18. «Editar donación»: the server retires the attempt and its token, and the form comes back with
+    // everything the donor typed. Continuing creates a new attempt and a new summary to confirm.
+    async handleEdit() {
+        if (this.isSubmitting) {
+            return;
+        }
+        this.isSubmitting = true;
+        this.reviewError = '';
+        try {
+            await invalidateDonation({ accessToken: this.accessToken });
+            this.accessToken = '';
+            this.summary = undefined;
+            this.confirmBlocked = false;
+            this.errorMessage = '';
+            this.validationNoticeActive = false;
+            this.step = STEP_FORM;
+            this.focusStep = STEP_FORM;
+        } catch {
+            this.reviewError = FORM_MESSAGES.summary.editError;
+        } finally {
+            this.isSubmitting = false;
+        }
+    }
+
+    // DON-18. «Confirmar y continuar al pago». Two separate Apex calls: the server records the confirmation
+    // and then opens the payment, because the callout to Mercado Pago cannot follow a save in the same
+    // transaction. The page leaves for the checkout and the buttons stay disabled until it does.
+    async handleConfirm() {
+        if (this.isSubmitting || this.confirmBlocked) {
+            return;
+        }
+        this.isSubmitting = true;
+        this.isOpeningPayment = true;
+        this.reviewError = '';
+        try {
+            await confirmDonation({ accessToken: this.accessToken });
+            const checkoutUrl = await openPayment({ accessToken: this.accessToken });
             if (!HTTPS_URL.test(checkoutUrl || '')) {
                 throw new Error('Invalid checkout URL');
             }
             window.location.assign(checkoutUrl);
         } catch (error) {
             this.isSubmitting = false;
-            this.showServerError(error);
+            this.isOpeningPayment = false;
+            const serverError = parseServerError(error);
+            this.confirmBlocked = Boolean(serverError);
+            this.reviewError = serverError?.message ?? FORM_MESSAGES.submit.genericError;
         }
     }
 
     activeFields() {
-        const fields = ['email'];
+        const fields = this.isCustomAmount ? ['customAmount', 'email'] : ['email'];
         if (!this.isAnonymous) {
             fields.push('publicName');
         }
@@ -251,6 +394,8 @@ export default class DonationForm extends LightningElement {
 
     fieldMessage(field) {
         switch (field) {
+            case 'customAmount':
+                return validateCustomAmount(this.form.customAmount, this.minimumCents);
             case 'email':
                 return validateEmail(this.form.email);
             case 'publicName':
@@ -302,7 +447,7 @@ export default class DonationForm extends LightningElement {
 
     isFormValid() {
         return (
-            Boolean(this.selectedAmount) &&
+            Boolean(this.amountMode) &&
             !this.amountError &&
             this.serverMarkedFields.size === 0 &&
             this.activeFields().every((field) => this.fieldMessage(field) === '')
@@ -320,7 +465,7 @@ export default class DonationForm extends LightningElement {
 
     validateAll() {
         let firstInvalid;
-        if (!this.selectedAmount) {
+        if (!this.amountMode) {
             this.amountError = FORM_MESSAGES.amount.required;
             firstInvalid = this.template.querySelector('input[name="amount"]');
         }
@@ -343,7 +488,7 @@ export default class DonationForm extends LightningElement {
         const withInvoice = this.invoiceRequested;
         return {
             campaignId: this.campaignId,
-            amount: this.selectedAmount,
+            amount: this.amountText,
             email: this.form.email.trim(),
             visibility: this.isAnonymous ? VISIBILITY_ANONYMOUS : VISIBILITY_PUBLIC,
             publicName: this.isAnonymous ? null : normalizeText(this.form.publicName),
@@ -373,6 +518,9 @@ export default class DonationForm extends LightningElement {
 
     // Returns false when the field is not on the screen, so its message is not lost.
     markServerField({ field, message }) {
+        if (field === 'amount' && this.isCustomAmount) {
+            return this.markServerField({ field: 'customAmount', message });
+        }
         if (field === 'amount') {
             this.amountError = message;
             this.template.querySelector('input[name="amount"]')?.focus();

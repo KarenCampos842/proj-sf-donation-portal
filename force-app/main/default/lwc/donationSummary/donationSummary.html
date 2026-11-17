@@ -1,0 +1,55 @@
+<template>
+    <section class="summary" aria-labelledby="summary-title">
+        <header class="summary__header">
+            <h1 id="summary-title" class="summary__title" tabindex="-1">{messages.title}</h1>
+            <p class="summary__intro">{messages.intro}</p>
+        </header>
+
+        <dl class="summary__list">
+            <div class="summary__row">
+                <dt class="summary__term">{messages.campaign}</dt>
+                <dd class="summary__value summary__campaign">{summary.campaignName}</dd>
+            </div>
+            <div class="summary__row">
+                <dt class="summary__term">{messages.amount}</dt>
+                <dd class="summary__value summary__amount">{amountLabel}</dd>
+            </div>
+            <div class="summary__row">
+                <dt class="summary__term">{messages.email}</dt>
+                <dd class="summary__value summary__email">{summary.email}</dd>
+            </div>
+            <div class="summary__row">
+                <dt class="summary__term">{messages.visibility}</dt>
+                <dd class="summary__value summary__visibility">{visibilityText}</dd>
+            </div>
+            <div class="summary__row">
+                <dt class="summary__term">{messages.invoice}</dt>
+                <dd class="summary__value summary__invoice">{invoiceText}</dd>
+            </div>
+        </dl>
+
+        <template lwc:if={errorMessage}>
+            <div class="alert" role="alert">
+                <p class="alert__message">{errorMessage}</p>
+            </div>
+        </template>
+
+        <div class="actions">
+            <lightning-button
+                class="actions__edit"
+                variant="neutral"
+                label={messages.edit}
+                disabled={isBusy}
+                onclick={handleEdit}
+            ></lightning-button>
+            <lightning-button
+                class="actions__confirm"
+                variant="brand"
+                label={confirmLabel}
+                disabled={isConfirmDisabled}
+                onclick={handleConfirm}
+            ></lightning-button>
+        </div>
+        <p class="visually-hidden" role="status" aria-live="polite">{statusText}</p>
+    </section>
+</template>

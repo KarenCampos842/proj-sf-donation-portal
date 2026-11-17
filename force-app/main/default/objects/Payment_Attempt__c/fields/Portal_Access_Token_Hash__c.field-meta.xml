@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Portal_Access_Token_Hash__c</fullName>
+    <caseSensitive>true</caseSensitive>
+    <description>DON-18. Hash SHA-256 (64 caracteres hexadecimales) del token de acceso que recibe el navegador al iniciar la donación. El token autoriza revisar, confirmar, editar y pagar solo este intento; nunca se guarda, solo su hash. Es único y External ID para que la búsqueda por hash esté indexada. Se vacía cuando el donante edita la donación. Solo el servidor lo lee y lo escribe: ningún permission set ni el invitado tienen acceso.</description>
+    <externalId>true</externalId>
+    <inlineHelpText>Uso interno del portal. No se muestra ni se edita.</inlineHelpText>
+    <label>Hash del token de acceso del portal</label>
+    <length>64</length>
+    <required>false</required>
+    <type>Text</type>
+    <unique>true</unique>
+</CustomField>

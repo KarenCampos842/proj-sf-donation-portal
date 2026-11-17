@@ -1,10 +1,12 @@
 /**
  * Server side of the donation form (DON-08, DON-10, DON-11, DON-12). Workstream B.
  *
- * This class only validates and cleans what the form sends, then hands the data to the payment
- * code of Workstream A through a PaymentGateway. It never saves records and never makes
- * callouts itself, so there is no DML before a callout in the same transaction. The form must
- * call startDonation and openPayment as two separate Apex calls (docs/payments-api.md).
+ * This class validates and cleans what the form sends, then hands the data to the payment code of
+ * Workstream A through a PaymentGateway. It never saves records and never makes callouts itself:
+ * the review of the donation (summary, confirmation, edit; DON-18) is in DonationReview, and every
+ * step after startDonation needs the access token that startDonation returns. The form calls the
+ * steps as separate Apex calls: startDonation, getDonationSummary, confirmDonation and openPayment
+ * (or invalidateDonation to edit). openPayment only reads before its callout (docs/payments-api.md).
  *
  * PAYMENT CODE. The default gateway, DonationPaymentGateway, delegates to Workstream A's
  * DonationPaymentController (startDonation and openPayment). That controller runs the flows
@@ -51,10 +53,6 @@ public with sharing class DonationIntakeService {
     @TestVisible
     private static final String MSG_CAMPAIGN_CLOSED = 'Esta campaña ya no acepta donaciones.';
     @TestVisible
-    private static final String MSG_AMOUNT_REQUIRED = 'Elige un monto para continuar.';
-    @TestVisible
-    private static final String MSG_AMOUNT_INVALID = 'El monto elegido no es válido.';
-    @TestVisible
     private static final String MSG_EMAIL_INVALID = 'Escribe un correo válido.';
     @TestVisible
     private static final String MSG_VISIBILITY_INVALID = 'Elige si tu donación será anónima o pública.';
@@ -79,9 +77,14 @@ public with sharing class DonationIntakeService {
     @TestVisible
     private static final String MSG_START_FAILED = 'No pudimos registrar tus datos, intenta de nuevo.';
     @TestVisible
-    private static final String MSG_PAYMENT_FAILED = 'No pudimos abrir el pago, intenta de nuevo';
+    // DON-09, AC6. Mercado Pago may refuse an amount; the payment code of A does not say why (it never
+    // keeps the provider answer), so the message names the amount as a possible cause and offers to change it.
+    private static final String MSG_PAYMENT_FAILED =
+        'No pudimos abrir el pago. Puede que Mercado Pago no acepte esta cantidad: edita tu donación y elige otra cantidad.';
+    // The generic text that Payment_Preference_Create and DonationPaymentController return when the payment cannot be opened.
+    private static final String PAYMENT_CODE_GENERIC_MESSAGE = 'No pudimos abrir el pago, intenta de nuevo';
 
-    // ADM-13: the suggested amounts come from the configuration (DonationAmountSettings), not from a fixed list.
+    // ADM-13: the suggested amounts and the minimum come from the configuration (DonationAmountSettings).
     private static final Integer MAX_EMAIL_LENGTH = 80;
     private static final Integer MAX_LEGAL_NAME_LENGTH = 254;
     private static final Integer RFC_LENGTH_COMPANY = 12;
@@ -132,7 +135,9 @@ public with sharing class DonationIntakeService {
         @AuraEnabled
         public String campaignId { get; set; }
         @AuraEnabled
-        public Decimal amount { get; set; }
+        // DON-09. Text, not Decimal: the form sends exactly what the donor chose or typed, so no digit
+        // is lost on the way. DonationAmountValidator checks it and the gateway converts it with Decimal.valueOf.
+        public String amount { get; set; }
         @AuraEnabled
         public String email { get; set; }
         @AuraEnabled
@@ -166,21 +171,20 @@ public with sharing class DonationIntakeService {
     }
 
     /**
-     * Step 1. Validates the form data and asks Workstream A to save the payment attempt. This is
-     * where A's flow Payment_Attempt_Create runs, through DonationPaymentController. It does not
-     * create a donation and does not call Mercado Pago.
+     * Step 1 of 4. Validates the form data, asks Workstream A to save the payment attempt (the flow
+     * Payment_Attempt_Create runs through DonationPaymentController) and gives the browser the access token
+     * of that attempt. The token is shown once; only its hash is kept. It does not create a donation and
+     * does not call Mercado Pago.
      *
      * @param request form data
-     * @return Id of the payment attempt, to pass to openPayment
+     * @return the access token that authorizes the next steps for this attempt only
      * @throws AuraHandledException with a Spanish message that is safe to show to the donor
-     * @example
-     * String attemptId = DonationIntakeService.startDonation(request);
      */
     @AuraEnabled
-    public static String startDonation(DonationFormInputDTO request) {
+    public static DonationStartDTO startDonation(DonationFormInputDTO request) {
         DonationFormInputDTO cleanRequest = validateAndClean(request);
         try {
-            return gateway.createAttempt(cleanRequest);
+            return DonationReview.issueToken(gateway.createAttempt(cleanRequest));
         } catch (AuraHandledException e) {
             throw donorError(null, donorSafeMessage(e.getMessage(), MSG_START_FAILED));
         } catch (Exception e) {
@@ -189,25 +193,44 @@ public with sharing class DonationIntakeService {
     }
 
     /**
-     * Step 2. Asks Workstream A to open the Mercado Pago payment of an attempt. This is where
-     * A's flow Payment_Preference_Create makes the callout, through DonationPaymentController. Call
-     * it only after startDonation has returned, as a separate Apex call.
+     * Step 2 of 4. The summary of the donation, built from the values saved in the server.
      *
-     * @param attemptId value returned by startDonation
-     * @return Mercado Pago checkout URL (always https)
-     * @throws AuraHandledException with a Spanish message that is safe to show to the donor
-     * @example
-     * String checkoutUrl = DonationIntakeService.openPayment(attemptId);
+     * @param accessToken token returned by startDonation
+     * @return what the donor reviews: campaign, exact amount, email, visibility, public name and invoice request
+     * @throws AuraHandledException when the token does not allow a review
      */
     @AuraEnabled
-    public static String openPayment(String attemptId) {
-        Id parsedId = toAttemptId(attemptId);
-        if (parsedId == null) {
-            throw donorError(null, MSG_PAYMENT_FAILED);
-        }
+    public static DonationSummaryDTO getDonationSummary(String accessToken) {
+        return DonationReview.summary(accessToken);
+    }
+
+    /**
+     * Step 3 of 4. Registers, with the date and time of the server, that the donor confirmed the summary.
+     * Without this record the payment cannot be opened, for any amount.
+     *
+     * @param accessToken token returned by startDonation
+     * @throws AuraHandledException when the token does not allow a review
+     */
+    @AuraEnabled
+    public static void confirmDonation(String accessToken) {
+        DonationReview.confirm(accessToken);
+    }
+
+    /**
+     * Step 4 of 4. Asks Workstream A to open the Mercado Pago payment of the confirmed attempt (the flow
+     * Payment_Preference_Create makes the callout through DonationPaymentController). Call it as its own
+     * Apex call, after confirmDonation: it only reads before the callout.
+     *
+     * @param accessToken token returned by startDonation
+     * @return Mercado Pago checkout URL (always https)
+     * @throws AuraHandledException with a Spanish message that is safe to show to the donor
+     */
+    @AuraEnabled
+    public static String openPayment(String accessToken) {
+        Id attemptId = DonationReview.attemptToPay(accessToken);
         String checkoutUrl;
         try {
-            checkoutUrl = gateway.createCheckout(parsedId);
+            checkoutUrl = gateway.createCheckout(attemptId);
         } catch (AuraHandledException e) {
             throw donorError(null, donorSafeMessage(e.getMessage(), MSG_PAYMENT_FAILED));
         } catch (Exception e) {
@@ -217,6 +240,17 @@ public with sharing class DonationIntakeService {
             throw donorError(null, MSG_PAYMENT_FAILED);
         }
         return checkoutUrl;
+    }
+
+    /**
+     * The donor chose «Editar donación»: the token and the confirmation of the attempt stop working, so
+     * the old attempt can never open a payment. Editing then creates a new attempt with a new token.
+     *
+     * @param accessToken token returned by startDonation
+     */
+    @AuraEnabled
+    public static void invalidateDonation(String accessToken) {
+        DonationReview.invalidate(accessToken);
     }
 
     private static DonationFormInputDTO validateAndClean(DonationFormInputDTO request) {
@@ -261,14 +295,14 @@ public with sharing class DonationIntakeService {
         return String.valueOf(campaignId);
     }
 
-    private static Decimal validateAmount(Decimal amount) {
-        if (amount == null) {
-            throw donorError(FIELD_AMOUNT, MSG_AMOUNT_REQUIRED);
+    // DON-09. Any amount that passes DonationAmountValidator is accepted, suggested or not. The result
+    // is the exact amount with two decimals as text; only the gateway turns it into a Decimal.
+    private static String validateAmount(String rawAmount) {
+        try {
+            return DonationAmountValidator.toExactText(DonationAmountValidator.validate(rawAmount));
+        } catch (DonationAmountValidator.AmountException e) {
+            throw donorError(FIELD_AMOUNT, e.getMessage());
         }
-        if (DonationAmountSettings.isSuggested(amount)) {
-            return amount;
-        }
-        throw donorError(FIELD_AMOUNT, MSG_AMOUNT_INVALID);
     }
 
     private static String validateEmail(String rawEmail) {
@@ -361,24 +395,14 @@ public with sharing class DonationIntakeService {
     // Workstream A throws AuraHandledExceptions with Spanish messages made for the donor. A blank
     // message, or the default one of the platform, is replaced by a safe text.
     private static String donorSafeMessage(String message, String fallback) {
-        return String.isBlank(message) || message.equals(PLATFORM_DEFAULT_MESSAGE) ? fallback : message;
+        Boolean useFallback =
+            String.isBlank(message) || message.equals(PLATFORM_DEFAULT_MESSAGE) || message.equals(PAYMENT_CODE_GENERIC_MESSAGE);
+        return useFallback ? fallback : message;
     }
 
     // Removes control characters and collapses spaces.
     private static String normalizeText(String value) {
         return value?.replaceAll('\\p{Cntrl}', ' ')?.normalizeSpace();
-    }
-
-    private static Id toAttemptId(String rawId) {
-        if (String.isBlank(rawId)) {
-            return null;
-        }
-        try {
-            Id parsedId = Id.valueOf(rawId.trim());
-            return parsedId.getSObjectType() == Payment_Attempt__c.SObjectType ? parsedId : null;
-        } catch (StringException e) {
-            return null;
-        }
     }
 
     /**
@@ -391,7 +415,8 @@ public with sharing class DonationIntakeService {
         public String createAttempt(DonationFormInputDTO request) {
             DonationPaymentController.DonationRequest paymentRequest = new DonationPaymentController.DonationRequest();
             paymentRequest.campaignId = request.campaignId;
-            paymentRequest.amount = request.amount;
+            // The text was validated by DonationAmountValidator; the payment code of A keeps its Decimal.
+            paymentRequest.amount = Decimal.valueOf(request.amount);
             paymentRequest.email = request.email;
             paymentRequest.visibility = request.visibility;
             paymentRequest.publicName = request.publicName;

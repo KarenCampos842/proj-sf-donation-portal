@@ -21,17 +21,30 @@ private class DonationIntakeServiceTest {
         public Integer checkoutCalls = 0;
         public DonationIntakeService.DonationFormInputDTO capturedRequest;
         public Id capturedAttemptId;
-        public String attemptIdToReturn = 'placeholder';
         public String urlToReturn = 'https://www.mercadopago.com.mx/checkout/v1/redirect?pref_id=TEST';
         public Exception errorToThrow;
 
+        // Saves a real attempt, as the payment code of Workstream A does, because the service now
+        // needs it to keep the hash of the access token.
         public String createAttempt(DonationIntakeService.DonationFormInputDTO request) {
             attemptCalls++;
             capturedRequest = request;
             if (errorToThrow != null) {
                 throw errorToThrow;
             }
-            return attemptIdToReturn;
+            Payment_Attempt__c attempt = PortalTestDataFactory.buildPaymentAttempt(Id.valueOf(request.campaignId), Decimal.valueOf(request.amount));
+            attempt.Email__c = request.email;
+            attempt.Visibility__c = request.visibility;
+            attempt.Public_Name__c = request.publicName;
+            attempt.Invoice_Requested__c = request.invoiceRequested;
+            // The validation rules of Payment_Attempt__c reject an invoice request without its fiscal data.
+            attempt.Legal_Name__c = request.legalName;
+            attempt.RFC__c = request.rfc;
+            attempt.Tax_Postal_Code__c = request.taxPostalCode;
+            attempt.Tax_Regime__c = request.taxRegime;
+            attempt.Privacy_Notice_Accepted__c = request.privacyNoticeAccepted == true;
+            PortalTestDataFactory.insertRecords(new List<SObject>{ attempt });
+            return String.valueOf(attempt.Id);
         }
 
         public String createCheckout(Id attemptId) {
@@ -65,18 +78,20 @@ private class DonationIntakeServiceTest {
     // startDonation: valid requests and mapping
 
     @IsTest
-    static void shouldReturnAttemptIdFromGateway_WhenAnonymousRequestIsValid() {
+    static void shouldReturnOnlyAnAccessToken_WhenAnonymousRequestIsValid() {
         CapturingGateway gateway = useCapturingGateway();
-        String attemptId;
+        DonationStartDTO started;
 
         Test.startTest();
         System.runAs(PortalTestDataFactory.getUser(PortalTestDataFactory.GUEST_LAST_NAME)) {
-            attemptId = DonationIntakeService.startDonation(validAnonymousRequest());
+            started = DonationIntakeService.startDonation(validAnonymousRequest());
         }
         Test.stopTest();
 
-        Assert.areEqual(validAttemptId(), attemptId, 'The Id comes from the payment code of Workstream A');
+        Assert.isTrue(DonationAccessToken.isWellFormed(started.accessToken), 'The browser receives a token');
         Assert.areEqual(1, gateway.attemptCalls, 'The gateway is called once');
+        Id attemptId = [SELECT Id FROM Payment_Attempt__c WITH SYSTEM_MODE].Id;
+        Assert.isFalse(JSON.serialize(started).contains(String.valueOf(attemptId)), 'The Id of the attempt never reaches the browser');
     }
 
     @IsTest
@@ -112,7 +127,7 @@ private class DonationIntakeServiceTest {
 
         DonationIntakeService.DonationFormInputDTO sent = gateway.capturedRequest;
         Assert.areEqual(request.campaignId, sent.campaignId, 'campaignId');
-        Assert.areEqual(500, sent.amount, 'amount');
+        Assert.areEqual('500.00', sent.amount, 'amount, as exact text with two decimals');
         Assert.areEqual('donante@example.com', sent.email, 'email');
         Assert.areEqual('Public', sent.visibility, 'visibility');
         Assert.areEqual('Familia Pérez', sent.publicName, 'publicName');
@@ -336,16 +351,23 @@ private class DonationIntakeServiceTest {
     }
 
     @IsTest
-    static void shouldNotSaveRecordsOrUseDml_WhenRequestIsValid() {
+    static void shouldKeepOnlyTheHashOfTheToken_WhenTheDonationStarts() {
         useCapturingGateway();
-        Integer dmlBefore = Limits.getDmlStatements();
+        DonationStartDTO started;
 
         Test.startTest();
-        runAsGuestStart(validPublicInvoiceRequest());
+        System.runAs(PortalTestDataFactory.getUser(PortalTestDataFactory.GUEST_LAST_NAME)) {
+            started = DonationIntakeService.startDonation(validPublicInvoiceRequest());
+        }
         Test.stopTest();
 
-        Assert.areEqual(dmlBefore, Limits.getDmlStatements(), 'The service performs no DML');
-        Assert.areEqual(0, [SELECT COUNT() FROM Payment_Attempt__c WITH SYSTEM_MODE], 'No attempt is saved by Workstream B');
+        Payment_Attempt__c attempt = [
+            SELECT Portal_Access_Token_Hash__c, Donor_Confirmed_At__c, Superseded_At__c FROM Payment_Attempt__c WITH SYSTEM_MODE
+        ];
+        Assert.areEqual(DonationAccessToken.hashOf(started.accessToken), attempt.Portal_Access_Token_Hash__c, 'Only the hash is kept');
+        Assert.areNotEqual(started.accessToken, attempt.Portal_Access_Token_Hash__c, 'The token itself is never stored');
+        Assert.isNull(attempt.Donor_Confirmed_At__c, 'Starting is not confirming');
+        Assert.isNull(attempt.Superseded_At__c, 'A new attempt is not replaced');
         Assert.areEqual(0, [SELECT COUNT() FROM Donation__c WITH SYSTEM_MODE], 'No donation is saved by Workstream B');
     }
 
@@ -449,41 +471,68 @@ private class DonationIntakeServiceTest {
         request.amount = null;
 
         Test.startTest();
-        assertStartRejected(request, DonationIntakeService.MSG_AMOUNT_REQUIRED, 'amount null');
+        assertStartRejected(request, DonationAmountValidator.MSG_REQUIRED, 'amount null');
         Test.stopTest();
     }
 
     @IsTest
-    static void shouldAcceptAmount_WhenTheAdministratorAddsItToTheConfiguration() {
-        // ADM-13 AC1: an amount added in the configuration is accepted; one removed is rejected.
+    static void shouldAcceptAnyAmountAboveTheMinimum_WhenItIsNotInTheSuggestedList() {
+        // DON-09: the suggested list only offers options; a custom amount is valid when it reaches the minimum.
         DonationAmountSettings.recordOverride = (Donation_Amount_Setting__mdt) JSON.deserialize(
             '{"Minimum_Amount__c": 50, "Amount_1__c": 150, "Amount_2__c": 2500}', Donation_Amount_Setting__mdt.class);
-        useCapturingGateway();
+        CapturingGateway gateway = useCapturingGateway();
 
         Test.startTest();
-        DonationIntakeService.DonationFormInputDTO request = validAnonymousRequest();
-        request.amount = 150;
-        String attemptId = DonationIntakeService.startDonation(request);
-        DonationIntakeService.DonationFormInputDTO removed = validAnonymousRequest();
-        removed.amount = 100;
-        assertStartRejected(removed, DonationIntakeService.MSG_AMOUNT_INVALID, 'amount removed from the configuration');
+        for (String amount : new List<String>{ '150', '100', '1234.5', '7777.77' }) {
+            DonationIntakeService.DonationFormInputDTO request = validAnonymousRequest();
+            request.amount = amount;
+            runAsGuestStart(request);
+        }
         Test.stopTest();
 
-        Assert.isNotNull(attemptId, 'A configured amount starts the donation');
+        Assert.areEqual(4, gateway.attemptCalls, 'Suggested and custom amounts start the donation');
         Assert.areEqual(new List<Decimal>{ 150.00, 2500.00 }, DonationIntakeService.getAmountSettings().suggestedAmounts);
+        Assert.areEqual('7777.77', gateway.capturedRequest.amount, 'The gateway receives the exact amount as text');
     }
 
     @IsTest
-    static void shouldRejectAmount_WhenItIsNotOneOfTheSuggestedOnes() {
-        useCapturingGateway();
+    static void shouldPassTheAmountWithTwoDecimals_WhenTheDonorTypesFewerDecimals() {
+        CapturingGateway gateway = useCapturingGateway();
+        Map<String, String> expected = new Map<String, String>{
+            '250' => '250.00', '250.5' => '250.50', '250.50' => '250.50', ' 0050.25 ' => '50.25', '99999999999999.99' => '99999999999999.99'
+        };
 
         Test.startTest();
-        for (Decimal amount : new List<Decimal>{ 0, -100, 49, 50, 150, 2500, 20001, 100000 }) {
+        for (String typed : expected.keySet()) {
             DonationIntakeService.DonationFormInputDTO request = validAnonymousRequest();
-            request.amount = amount;
-            assertStartRejected(request, DonationIntakeService.MSG_AMOUNT_INVALID, 'amount ' + amount);
+            request.amount = typed;
+            runAsGuestStart(request);
+            Assert.areEqual(expected.get(typed), gateway.capturedRequest.amount, 'Amount typed as "' + typed + '"');
         }
         Test.stopTest();
+    }
+
+    @IsTest
+    static void shouldRejectAmount_WhenItIsNotAValidAmount() {
+        // AC5 of DON-09 on the server, whatever the browser did. The exact messages are in DonationAmountValidatorTest.
+        CapturingGateway gateway = useCapturingGateway();
+
+        Test.startTest();
+        for (String amount : new List<String>{ '', '   ', '0', '0.00', '-100', '49.99', 'abc', '1e3', '1,000', '$250', '250.555', '100000000000000' }) {
+            DonationIntakeService.DonationFormInputDTO request = validAnonymousRequest();
+            request.amount = amount;
+            System.runAs(PortalTestDataFactory.getUser(PortalTestDataFactory.GUEST_LAST_NAME)) {
+                try {
+                    DonationIntakeService.startDonation(request);
+                    Assert.fail('Expected a rejection for amount "' + amount + '"');
+                } catch (AuraHandledException e) {
+                    Assert.areEqual(DonationIntakeService.FIELD_AMOUNT, fieldOf(e), 'The error belongs to the amount: "' + amount + '"');
+                }
+            }
+        }
+        Test.stopTest();
+
+        Assert.areEqual(0, gateway.attemptCalls, 'The payment code is never called with an invalid amount');
     }
 
     @IsTest
@@ -491,7 +540,7 @@ private class DonationIntakeServiceTest {
         CapturingGateway gateway = useCapturingGateway();
 
         Test.startTest();
-        for (Integer amount : new List<Integer>{ 100, 250, 500, 1000, 2000, 5000, 10000, 20000 }) {
+        for (String amount : new List<String>{ '100', '250', '500', '1000', '2000', '5000', '10000', '20000' }) {
             DonationIntakeService.DonationFormInputDTO request = validAnonymousRequest();
             request.amount = amount;
             runAsGuestStart(request);
@@ -769,6 +818,7 @@ private class DonationIntakeServiceTest {
     @IsTest
     static void shouldReplaceMessage_WhenWorkstreamAThrowsBlankOrDefaultPlatformMessage() {
         CapturingGateway gateway = useCapturingGateway();
+        String token = confirmedToken();
 
         Test.startTest();
         for (AuraHandledException unsafe : new List<AuraHandledException>{
@@ -778,7 +828,7 @@ private class DonationIntakeServiceTest {
             gateway.errorToThrow = unsafe;
             assertStartRejected(validAnonymousRequest(), '', DonationIntakeService.MSG_START_FAILED, 'unsafe message at startDonation');
             System.runAs(PortalTestDataFactory.getUser(PortalTestDataFactory.GUEST_LAST_NAME)) {
-                assertPaymentRejected(validAttemptId(), DonationIntakeService.MSG_PAYMENT_FAILED, 'unsafe message at openPayment');
+                assertPaymentRejected(token, DonationIntakeService.MSG_PAYMENT_FAILED, 'unsafe message at openPayment');
             }
         }
         Test.stopTest();
@@ -787,6 +837,7 @@ private class DonationIntakeServiceTest {
     @IsTest
     static void shouldNotLeakDonorDataOrTechnicalDetail_WhenGatewayThrowsUnexpectedError() {
         CapturingGateway gateway = useCapturingGateway();
+        String token = confirmedToken();
         gateway.errorToThrow = new DmlException(
             'FIELD_CUSTOM_VALIDATION_EXCEPTION at Class.DonationPaymentController: donante@example.com Familia Pérez ' + PERSON_RFC
         );
@@ -799,7 +850,7 @@ private class DonationIntakeServiceTest {
         assertStartRejected(request, '', DonationIntakeService.MSG_START_FAILED, 'unexpected error at startDonation');
         System.runAs(PortalTestDataFactory.getUser(PortalTestDataFactory.GUEST_LAST_NAME)) {
             try {
-                DonationIntakeService.openPayment(validAttemptId());
+                DonationIntakeService.openPayment(token);
                 Assert.fail('Expected a friendly error');
             } catch (AuraHandledException e) {
                 Assert.areEqual(DonationIntakeService.MSG_PAYMENT_FAILED, textOf(e), 'Safe text at openPayment');
@@ -811,16 +862,17 @@ private class DonationIntakeServiceTest {
         Test.stopTest();
     }
 
-    // openPayment
+    // openPayment (with the double of the gateway)
 
     @IsTest
-    static void shouldReturnCheckoutUrlFromGateway_WhenAttemptIdIsValid() {
+    static void shouldReturnCheckoutUrlFromGateway_WhenTheDonationWasConfirmed() {
         CapturingGateway gateway = useCapturingGateway();
+        String token = confirmedToken();
         String url;
 
         Test.startTest();
         System.runAs(PortalTestDataFactory.getUser(PortalTestDataFactory.GUEST_LAST_NAME)) {
-            url = DonationIntakeService.openPayment(validAttemptId());
+            url = DonationIntakeService.openPayment(token);
         }
         Test.stopTest();
 
@@ -829,44 +881,48 @@ private class DonationIntakeServiceTest {
     }
 
     @IsTest
-    static void shouldPassAttemptIdToGateway_WhenOpeningPayment() {
+    static void shouldPassTheIdOfTheAttemptOfTheToken_WhenOpeningPayment() {
         CapturingGateway gateway = useCapturingGateway();
-        String attemptId = Payment_Attempt__c.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).getKeyPrefix() + '000000000007';
-        gateway.attemptIdToReturn = attemptId;
+        String token = confirmedToken();
+        Id attemptId = [SELECT Id FROM Payment_Attempt__c WITH SYSTEM_MODE].Id;
 
         Test.startTest();
         System.runAs(PortalTestDataFactory.getUser(PortalTestDataFactory.GUEST_LAST_NAME)) {
-            DonationIntakeService.openPayment(attemptId);
+            DonationIntakeService.openPayment(token);
         }
         Test.stopTest();
 
-        Assert.areEqual(Id.valueOf(attemptId), gateway.capturedAttemptId, 'The same Id reaches Workstream A');
+        Assert.areEqual(attemptId, gateway.capturedAttemptId, 'The server finds the attempt by the token; the browser never sends an Id');
     }
 
     @IsTest
-    static void shouldRejectAttemptId_WhenItIsMissingMalformedOrFromAnotherObject() {
+    static void shouldNeverCallThePaymentCode_WhenTheTokenIsMissingMalformedOrNotATokenAtAll() {
         CapturingGateway gateway = useCapturingGateway();
+        confirmedToken();
+        String unknownToken = DonationAccessToken.newToken();
+        Id attemptId = [SELECT Id FROM Payment_Attempt__c WITH SYSTEM_MODE].Id;
 
         Test.startTest();
         System.runAs(PortalTestDataFactory.getUser(PortalTestDataFactory.GUEST_LAST_NAME)) {
-            for (String attemptId : new List<String>{ null, '', '   ', 'no-es-un-id', idOf(OPEN_CAMPAIGN) }) {
-                assertPaymentRejected(attemptId, DonationIntakeService.MSG_PAYMENT_FAILED, 'attemptId ' + attemptId);
+            for (String token : new List<String>{ null, '', '   ', 'no-es-un-token', String.valueOf(attemptId), idOf(OPEN_CAMPAIGN), unknownToken }) {
+                assertPaymentRejected(token, DonationReview.MSG_NOT_AVAILABLE, 'token ' + token);
             }
         }
         Test.stopTest();
 
-        Assert.areEqual(0, gateway.checkoutCalls, 'The gateway is never called with an invalid attempt');
+        Assert.areEqual(0, gateway.checkoutCalls, 'The gateway is never called without a valid token');
     }
 
     @IsTest
     static void shouldRejectUrl_WhenGatewayReturnsSomethingThatIsNotHttps() {
         CapturingGateway gateway = useCapturingGateway();
+        String token = confirmedToken();
 
         Test.startTest();
         System.runAs(PortalTestDataFactory.getUser(PortalTestDataFactory.GUEST_LAST_NAME)) {
             for (String url : new List<String>{ null, '', 'http://www.mercadopago.com.mx', 'javascript:alert(1)', '//evil.example' }) {
                 gateway.urlToReturn = url;
-                assertPaymentRejected(validAttemptId(), DonationIntakeService.MSG_PAYMENT_FAILED, 'url ' + url);
+                assertPaymentRejected(token, DonationIntakeService.MSG_PAYMENT_FAILED, 'url ' + url);
             }
         }
         Test.stopTest();
@@ -875,23 +931,41 @@ private class DonationIntakeServiceTest {
     @IsTest
     static void shouldPassThroughMessage_WhenGatewayThrowsFriendlyErrorOnPayment() {
         CapturingGateway gateway = useCapturingGateway();
+        String token = confirmedToken();
         gateway.errorToThrow = CampaignPortalController.userFacingError('Esta campaña ya no acepta donaciones.');
 
         Test.startTest();
         System.runAs(PortalTestDataFactory.getUser(PortalTestDataFactory.GUEST_LAST_NAME)) {
-            assertPaymentRejected(validAttemptId(), 'Esta campaña ya no acepta donaciones.', 'friendly error from A');
+            assertPaymentRejected(token, 'Esta campaña ya no acepta donaciones.', 'friendly error from A');
         }
         Test.stopTest();
     }
 
     @IsTest
+    static void shouldOfferAnotherAmount_WhenWorkstreamAReportsItsGenericPaymentFailure() {
+        // Payment_Preference_Create answers with this generic text when Mercado Pago refuses the payment.
+        CapturingGateway gateway = useCapturingGateway();
+        String token = confirmedToken();
+        gateway.errorToThrow = CampaignPortalController.userFacingError('No pudimos abrir el pago, intenta de nuevo');
+
+        Test.startTest();
+        System.runAs(PortalTestDataFactory.getUser(PortalTestDataFactory.GUEST_LAST_NAME)) {
+            assertPaymentRejected(token, DonationIntakeService.MSG_PAYMENT_FAILED, 'generic failure of A');
+        }
+        Test.stopTest();
+
+        Assert.isTrue(DonationIntakeService.MSG_PAYMENT_FAILED.contains('elige otra'), 'The donor is told to choose another amount');
+    }
+
+    @IsTest
     static void shouldHideTechnicalDetail_WhenGatewayThrowsUnexpectedErrorOnPayment() {
         CapturingGateway gateway = useCapturingGateway();
+        String token = confirmedToken();
         gateway.errorToThrow = new CalloutException('Unauthorized endpoint: detalle técnico');
 
         Test.startTest();
         System.runAs(PortalTestDataFactory.getUser(PortalTestDataFactory.GUEST_LAST_NAME)) {
-            assertPaymentRejected(validAttemptId(), DonationIntakeService.MSG_PAYMENT_FAILED, 'technical error');
+            assertPaymentRejected(token, DonationIntakeService.MSG_PAYMENT_FAILED, 'technical error');
         }
         Test.stopTest();
     }
@@ -921,10 +995,24 @@ private class DonationIntakeServiceTest {
     private static final String PROVIDER_CHECKOUT_URL = 'https://www.mercadopago.com.mx/checkout/v1/redirect?pref_id=123-pref';
     private static final String PROVIDER_APPROVED_BODY = '{"id":"123-pref","init_point":"' + PROVIDER_CHECKOUT_URL + '"}';
 
+    // The token of the last donation started through the real gateway. The browser never sends an Id.
+    private static String lastToken;
+
+    // Starts the donation as the guest and returns the Id of the saved attempt, to read it back.
     private static String startWithRealGateway(DonationIntakeService.DonationFormInputDTO request) {
-        String attemptId;
         System.runAs(PortalTestDataFactory.getUser(PortalTestDataFactory.GUEST_LAST_NAME)) {
-            attemptId = DonationIntakeService.startDonation(request);
+            lastToken = DonationIntakeService.startDonation(request).accessToken;
+        }
+        return [
+            SELECT Id FROM Payment_Attempt__c WHERE Portal_Access_Token_Hash__c = :DonationAccessToken.hashOf(lastToken) WITH SYSTEM_MODE
+        ].Id;
+    }
+
+    // Starts and confirms, both before Test.startTest, so the payment can be opened with a callout afterwards.
+    private static String startConfirmedWithRealGateway(DonationIntakeService.DonationFormInputDTO request) {
+        String attemptId = startWithRealGateway(request);
+        System.runAs(PortalTestDataFactory.getUser(PortalTestDataFactory.GUEST_LAST_NAME)) {
+            DonationIntakeService.confirmDonation(lastToken);
         }
         return attemptId;
     }
@@ -1024,12 +1112,12 @@ private class DonationIntakeServiceTest {
 
     @IsTest
     static void shouldReturnCheckoutUrlAndKeepAttemptUnconfirmed_WhenProviderApprovesThePreference() {
-        String attemptId = startWithRealGateway(validAnonymousRequest());
+        String attemptId = startConfirmedWithRealGateway(validAnonymousRequest());
         ProviderMock provider = new ProviderMock(201, PROVIDER_APPROVED_BODY);
         Test.setMock(HttpCalloutMock.class, provider);
 
         Test.startTest();
-        String url = DonationIntakeService.openPayment(attemptId);
+        String url = DonationIntakeService.openPayment(lastToken);
         Test.stopTest();
 
         Assert.areEqual(PROVIDER_CHECKOUT_URL, url, 'The Checkout URL comes from Mercado Pago');
@@ -1042,35 +1130,35 @@ private class DonationIntakeServiceTest {
 
     @IsTest
     static void shouldDeleteAttemptAndShowFriendlyMessage_WhenProviderFails() {
-        String attemptId = startWithRealGateway(validAnonymousRequest());
+        startConfirmedWithRealGateway(validAnonymousRequest());
         Test.setMock(HttpCalloutMock.class, new ProviderMock(500, '{}'));
 
         Test.startTest();
         try {
-            DonationIntakeService.openPayment(attemptId);
+            DonationIntakeService.openPayment(lastToken);
             Assert.fail('Expected a friendly error');
         } catch (AuraHandledException e) {
-            Assert.areEqual(DonationIntakeService.MSG_PAYMENT_FAILED, textOf(e), 'Message from Workstream A');
+            Assert.areEqual(DonationIntakeService.MSG_PAYMENT_FAILED, textOf(e), 'Message for the donor');
         }
         Test.stopTest();
 
-        Assert.areEqual(0, [SELECT COUNT() FROM Payment_Attempt__c WITH SYSTEM_MODE], 'A failed attempt is deleted so the donor can try again');
+        Assert.areEqual(0, [SELECT COUNT() FROM Payment_Attempt__c WITH SYSTEM_MODE], 'A failed attempt is deleted: the donor edits the donation and starts a new attempt');
         Assert.areEqual(0, [SELECT COUNT() FROM Donation__c WITH SYSTEM_MODE], 'No donation');
     }
 
     @IsTest
-    static void shouldNotOpenThePaymentTwice_WhenTheSameAttemptIsOpenedAgain() {
-        String attemptId = startWithRealGateway(validAnonymousRequest());
+    static void shouldNotOpenThePaymentTwice_WhenTheSameTokenIsUsedAgain() {
+        startConfirmedWithRealGateway(validAnonymousRequest());
         ProviderMock provider = new ProviderMock(201, PROVIDER_APPROVED_BODY);
         Test.setMock(HttpCalloutMock.class, provider);
 
         Test.startTest();
-        DonationIntakeService.openPayment(attemptId);
+        DonationIntakeService.openPayment(lastToken);
         try {
-            DonationIntakeService.openPayment(attemptId);
+            DonationIntakeService.openPayment(lastToken);
             Assert.fail('Expected the second opening to be rejected');
         } catch (AuraHandledException e) {
-            Assert.isFalse(String.isBlank(e.getMessage()), 'The donor receives a message');
+            Assert.areEqual(DonationReview.MSG_NOT_AVAILABLE, textOf(e), 'An attempt with a payment already opened cannot be reviewed or opened again');
         }
         Test.stopTest();
 
@@ -1079,14 +1167,19 @@ private class DonationIntakeServiceTest {
 
     // Helpers
 
-    private static String validAttemptId() {
-        String keyPrefix = Payment_Attempt__c.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).getKeyPrefix();
-        return keyPrefix + '000000000001';
+    // Starts a donation with the double of the gateway and confirms it. The attempt is saved here, before
+    // the test that opens the payment calls Test.startTest.
+    private static String confirmedToken() {
+        String token;
+        System.runAs(PortalTestDataFactory.getUser(PortalTestDataFactory.GUEST_LAST_NAME)) {
+            token = DonationIntakeService.startDonation(validAnonymousRequest()).accessToken;
+            DonationIntakeService.confirmDonation(token);
+        }
+        return token;
     }
 
     private static CapturingGateway useCapturingGateway() {
         CapturingGateway gateway = new CapturingGateway();
-        gateway.attemptIdToReturn = validAttemptId();
         DonationIntakeService.gateway = gateway;
         return gateway;
     }
@@ -1098,7 +1191,7 @@ private class DonationIntakeServiceTest {
     private static DonationIntakeService.DonationFormInputDTO validAnonymousRequest() {
         DonationIntakeService.DonationFormInputDTO request = new DonationIntakeService.DonationFormInputDTO();
         request.campaignId = idOf(OPEN_CAMPAIGN);
-        request.amount = 500;
+        request.amount = '500';
         request.email = 'donante@example.com';
         request.visibility = 'Anonymous';
         request.invoiceRequested = false;
@@ -1215,7 +1308,7 @@ private class DonationIntakeServiceTest {
 
         DonationIntakeService.DonationFormInputDTO noAmount = validAnonymousRequest();
         noAmount.amount = null;
-        cases.add(new FieldCase('amount missing', noAmount, 'amount', DonationIntakeService.MSG_AMOUNT_REQUIRED));
+        cases.add(new FieldCase('amount missing', noAmount, 'amount', DonationAmountValidator.MSG_REQUIRED));
 
         DonationIntakeService.DonationFormInputDTO badEmail = validAnonymousRequest();
         badEmail.email = 'sin-arroba';

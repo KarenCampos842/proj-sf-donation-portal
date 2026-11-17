@@ -1,0 +1,94 @@
+@import 'c/portalTheme';
+
+.summary {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    min-width: 0;
+    padding: 1.25rem;
+    border: 1px solid var(--portal-border);
+    border-radius: var(--portal-radius);
+    background: var(--portal-surface);
+    box-shadow: var(--portal-shadow);
+}
+
+.summary__title {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.summary__title:focus-visible {
+    outline: 3px solid var(--portal-focus);
+    outline-offset: 2px;
+}
+
+.summary__intro {
+    margin: 0.25rem 0 0;
+    color: var(--portal-text-muted);
+}
+
+.summary__list {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    border: 1px solid var(--portal-border);
+    border-radius: var(--portal-radius);
+}
+
+.summary__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.25rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--portal-border);
+}
+
+.summary__row:last-child {
+    border-bottom: 0;
+}
+
+.summary__term {
+    font-size: 0.875rem;
+    color: var(--portal-text-muted);
+}
+
+.summary__value {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.summary__amount {
+    font-size: 1.5rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--portal-accent);
+}
+
+.alert {
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--portal-error);
+    border-inline-start-width: 6px;
+    border-radius: var(--portal-radius);
+    background: var(--portal-error-bg);
+    color: var(--portal-error-text);
+}
+
+.alert__message {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+@media (min-width: 40rem) {
+    .summary__row {
+        grid-template-columns: 12rem minmax(0, 1fr);
+        align-items: baseline;
+    }
+}
