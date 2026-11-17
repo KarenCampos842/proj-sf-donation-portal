@@ -104,6 +104,7 @@ The Definition of Done establishes the minimum quality and completion requiremen
 - Payment attempts separated from confirmed donations.
 - Payment return handling through the portal: the donation is registered when the donor returns to `/portal/gracias` (Delivery 1).
 - Signed Mercado Pago webhook (Delivery 2): the donation is also registered when the donor never returns (PAY-06), only after the `x-signature` check (PAY-01), once per payment (PAY-03), even if the campaign closed while paying (DON-24). Rejected notices are listed in the **Avisos rechazados** tab (ADM-12). Details in [`docs/payments-api.md`](docs/payments-api.md), section 5.
+- Hourly reconciliation (PAY-08): approved payments whose notice never arrived and whose donor never returned are registered by a scheduled Batch Apex, in chunks of 20. Details in [`docs/payments-api.md`](docs/payments-api.md), section 6.
 
 ### Internal operation
 
