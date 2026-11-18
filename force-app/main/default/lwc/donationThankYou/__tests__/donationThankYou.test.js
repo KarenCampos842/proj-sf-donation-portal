@@ -56,7 +56,7 @@ describe('c-donation-thank-you', () => {
         getPaymentResult.mockResolvedValue('Rejected');
         const element = await openWith({ payment_id: '123456', status: 'approved' });
 
-        expect(message(element)).toBe('Tu pago fue rechazado y no se registró tu donación.');
+        expect(message(element)).toBe('Tu pago fue rechazado y no se registró tu donación. Puedes intentarlo de nuevo cuando quieras.');
         expect(element.shadowRoot.textContent).not.toContain('Recibimos tu aportación');
     });
 
@@ -64,15 +64,15 @@ describe('c-donation-thank-you', () => {
         getPaymentResult.mockResolvedValue('Confirmed');
         const element = await openWith({ payment_id: '123456' });
 
-        expect(message(element)).toBe('¡Gracias! Recibimos tu aportación.');
-        expect(buttons(element)).toEqual(['Volver a las campañas']);
+        expect(message(element)).toBe('¡Gracias por donar! Recibimos tu aportación y ya cuenta para la campaña. Tu apoyo nos impulsa a seguir aprendiendo y construyendo.');
+        expect(buttons(element)).toEqual(['Ver más campañas']);
     });
 
     it('shows the texts agreed with Workstream A for every state', async () => {
         const expected = {
-            Pending: 'Estamos confirmando tu pago. No necesitas pagar otra vez.',
-            Rejected: 'Tu pago fue rechazado y no se registró tu donación.',
-            Cancelled: 'Tu pago se canceló y no se registró tu donación.',
+            Pending: 'Estamos confirmando tu pago. No necesitas pagar otra vez; revisa de nuevo en unos minutos.',
+            Rejected: 'Tu pago fue rechazado y no se registró tu donación. Puedes intentarlo de nuevo cuando quieras.',
+            Cancelled: 'Cancelaste el pago y no se registró tu donación. Si cambiaste de opinión, puedes intentarlo de nuevo.',
             NoPayment: 'No se completó el pago; no se registró tu donación.',
             Unknown: 'Aún no podemos confirmar tu pago.'
         };
@@ -117,7 +117,7 @@ describe('c-donation-thank-you', () => {
         await flushPromises();
 
         expect(getPaymentResult).toHaveBeenCalledTimes(2);
-        expect(message(element)).toBe('¡Gracias! Recibimos tu aportación.');
+        expect(message(element)).toBe('¡Gracias por donar! Recibimos tu aportación y ya cuenta para la campaña. Tu apoyo nos impulsa a seguir aprendiendo y construyendo.');
     });
 
     it('shows the unknown state when the server fails, without technical detail', async () => {
