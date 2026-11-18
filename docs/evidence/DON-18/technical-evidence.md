@@ -32,3 +32,10 @@ Same as DON-09: merge `1ba02f3`; check-only `0AfVC00000PJGST0A5` and real deploy
 - **Double payment of one attempt:** accepted risk of `docs/security.md`; not tested.
 - **`getPaymentResult`:** anonymous and pre-existing, outside DON-18.
 - **Observation:** a real provider failure left the attempt alive, while `docs/payments-api.md` says the flow deletes it (see DON-09). Not investigated.
+
+## Recheck with field permission (added later the same day)
+
+Read again at 19:54 hora de México with `Payment_Attempt_Viewer` and `Donation_Admin` assigned temporarily and removed afterwards (`DON-13/records-recheck-2026-11-17.txt`):
+
+- Attempt `a1dVC00000Gr2thYAB` (confirmed in the summary, then paid): `Status__c` = `Confirmed`, `Preference_Id__c` set, public name «Donante de Prueba», invoice requested and privacy accepted. This backs AC3.
+- The two attempts of the edit flow: `a1dVC00000Gr2ldYAB` ($90, replaced by the edit) and `a1dVC00000Gr2nFYAR` ($95) are both `Started` with no preference, so neither opened a payment. Whether the first one was marked as replaced (`Superseded_At__c`) and whether its hash is empty are still **not read**: those fields are in no permission set.

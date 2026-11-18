@@ -44,3 +44,10 @@ Technical criteria: the amount travels as text and is stored exactly (the reques
 - **Observation, not a DON-09 defect:** after this real rejection the attempt still exists (not deleted), while `docs/payments-api.md` says the payment flow deletes it. The cause was not investigated (a rollback of the failed call is a hypothesis, not verified). The donor sees the right message either way.
 - **Double payment of one attempt:** accepted risk documented in `docs/security.md`; not tested.
 - **Amounts read with the CLI:** it prints 16-digit amounts one cent low; see the method in `records-check.txt`.
+
+## Recheck with field permission (added later the same day)
+
+Read again at 19:54 hora de México with `Payment_Attempt_Viewer` and `Donation_Admin` assigned temporarily and removed afterwards (`DON-13/records-recheck-2026-11-17.txt`, `DON-13/revalidation-2026-11-17.md`):
+
+- Attempt `a1dVC00000Gr2thYAB` (the 250.50 payment): `Status__c` = `Confirmed`, amount $250.50, `Preference_Id__c` set; the donation `DON-000026` is `Confirmed` with $250.50. This backs AC4.
+- Attempt `a1dVC00000Gr47VYAR` (the real AC6 rejection, 99999999999999.99 read exactly): `Status__c` = `Started` and `Preference_Id__c` **not set**. After the provider failed, the attempt was not deleted and no preference was saved.
