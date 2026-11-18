@@ -69,7 +69,7 @@ describe('c-closed-campaign-history', () => {
         const headings = element.shadowRoot.querySelectorAll('h1');
         expect(headings).toHaveLength(1);
         expect(headings[0].textContent).toBe('Historial de campañas');
-        expect(element.shadowRoot.querySelector('.history__subtitle').textContent).toContain('ya concluyeron');
+        expect(element.shadowRoot.querySelector('.history__subtitle').textContent).toContain('Gracias a quienes donaron');
         expect(element.shadowRoot.querySelector('.history__back lightning-button').label).toBe('Volver a las campañas');
     });
 

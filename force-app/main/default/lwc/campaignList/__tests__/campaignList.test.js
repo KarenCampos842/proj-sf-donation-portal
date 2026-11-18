@@ -190,12 +190,12 @@ describe('c-campaign-list', () => {
         getAvailableCampaigns.mockReturnValue(new Promise(() => {}));
         const loading = createComponent();
         await Promise.resolve();
-        expect(loading.shadowRoot.querySelector('.catalog__history lightning-button').label).toBe('Ver campañas cerradas');
+        expect(loading.shadowRoot.querySelector('.catalog__history lightning-button').label).toBe('Ver historial de campañas');
 
         getAvailableCampaigns.mockResolvedValue([]);
         const empty = createComponent();
         await flushPromises();
-        expect(empty.shadowRoot.querySelector('.catalog__history lightning-button').label).toBe('Ver campañas cerradas');
+        expect(empty.shadowRoot.querySelector('.catalog__history lightning-button').label).toBe('Ver historial de campañas');
     });
 
     it('asks the portal to show the history when the visitor chooses it, and keeps closed campaigns out of the catalog', async () => {
