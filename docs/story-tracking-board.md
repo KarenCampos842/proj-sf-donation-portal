@@ -31,7 +31,7 @@ Tracking of the user stories of **proj-sf-donation-portal** (SF Vibe Lab, UADY x
 | No milestone | A | 1 | 0 | 0 | 0 | 0 | 1 | 1 | 0 |
 | **Total in scope** | | **44** | 2 | 1 | 0 | 0 | **41** | **41** | **3** |
 
-- **Progress (Done in Project 13 over stories in scope):** Delivery 1 **21 of 22 (95.5 %)**; Delivery 2 **19 of 21 (90.5 %)**; PAY-08 is Done; overall **41 of 44 (93.2 %)**. The three stories that are not Done: SEG-01 (Ready, Delivery 1) and the two Backlog stories of Workstream C in Delivery 2 (DON-23 and ADM-13).
+- **Progress (Done in Project 13 over stories in scope):** Delivery 1 **21 of 22 (95.5 %)**; Delivery 2 **19 of 21 (90.5 %)**; PAY-08 is Done; overall **41 of 44 (93.2 %)**. Missing in Delivery 1: SEG-01 (Ready). Missing in Delivery 2: DON-23 and ADM-13 (both Backlog; ADM-13 counts as not done). Project 13 has 46 cards: 42 Done, 3 not Done and DON-26 out of scope; the 42 Done cards are these 41 stories plus bug #54, which is not a story and is not counted.
 - **Of those 41, how many have every AC box ticked in the issue and the evidence section filled:** 25 (all of Workstreams A and B: 6 + 8 in E1, 5 + 5 in E2 and PAY-08). The 16 Done stories of Workstream C have unticked boxes (see “Inconsistencies”).
 - **Delivery 1 split by workstream:** A = 6, B = 8, C = 8 stories. **Delivery 2 split:** A = 5, B = 5, C = 11 stories.
 - **Out of scope, not counted:** DON-26 ([#20](https://github.com/KarenCampos842/proj-sf-donation-portal/issues/20), Backlog, issue still open) and the bug [#54](https://github.com/KarenCampos842/proj-sf-donation-portal/issues/54) (Done, closed).

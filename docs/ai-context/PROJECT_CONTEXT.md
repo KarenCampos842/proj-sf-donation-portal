@@ -4,7 +4,7 @@ Base context to give any AI assistant at the start of a session (paste it as the
 
 ## Project
 
-Public donation portal on Salesforce Developer Edition + **Mercado Pago (test mode, Checkout Pro)** to fund student trips to Mexico Dreamin 2026. All data is fictitious. Nothing goes to production.
+Public donation portal on a Salesforce sandbox (`donations-dev`) + **Mercado Pago (test mode, Checkout Pro)** to fund student trips to Mexico Dreamin 2026. All data is fictitious. Nothing goes to production.
 
 ## Hard rules
 

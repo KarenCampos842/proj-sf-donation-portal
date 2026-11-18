@@ -1,6 +1,6 @@
 # proj-sf-donation-portal
 
-A public, login-free donation portal built on **Salesforce Developer Edition** with **Mercado Pago (test mode, Checkout Pro)** to help SF Vibe Lab students fund their participation in Mexico Dreamin 2026. Staff and treasury manage campaigns and track donations inside Salesforce.
+A public, login-free donation portal built on a **Salesforce sandbox** (`donations-dev`) with **Mercado Pago (test mode, Checkout Pro)** to help SF Vibe Lab students fund their participation in Mexico Dreamin 2026. Staff and treasury manage campaigns and track donations inside Salesforce.
 
 > **Academic project (SF Vibe Lab, UADY x Salesforce, Mérida, Mexico).** This project is for academic demonstration only. All donor data and campaign contributions are fictitious or test data. Mercado Pago runs exclusively in test mode. No real money is collected, no production credentials are used, and no production transactions are processed.
 
@@ -14,7 +14,13 @@ Figures verified on 2026-11-17 (Delivery 2 due date) against GitHub Issues, [Pro
 | Delivery 2 | 2026-11-17 | `entrega-2` (not created yet) | 21 | 19 | 19 Done · 2 Backlog (DON-23, ADM-13) |
 | No milestone | — | — | 1 (PAY-08) | 1 | Done |
 
-The backlog has **44 user stories in scope**: 22 for Delivery 1, 21 for Delivery 2 and PAY-08, which was added later and has no milestone. **41 are Done in Project 13 (93.2 %)**: Delivery 1 21 of 22 (95.5 %), Delivery 2 19 of 21 (90.5 %) and PAY-08. The three that are not Done are SEG-01, DON-23 and ADM-13; their issues are open.
+The backlog has **44 user stories in scope**: 22 for Delivery 1, 21 for Delivery 2 and PAY-08, which was added later and has no milestone. **41 are Done in Project 13 (93.2 %)**. Count per delivery:
+
+- **Delivery 1:** 21 of 22 (95.5 %). Missing: SEG-01 (Ready).
+- **Delivery 2:** 19 of 21 (90.5 %). Missing: DON-23 and ADM-13 (both Backlog). ADM-13 counts as **not done** because its card is in Backlog and its issue is open.
+- **No milestone:** PAY-08 is Done (1 of 1).
+
+Project 13 has 46 cards: 42 are in Done, 3 are not (SEG-01, DON-23, ADM-13) and 1 is out of scope (DON-26). The 42 Done cards are the 41 stories above plus issue [#54](https://github.com/KarenCampos842/proj-sf-donation-portal/issues/54), which has the `bug` label and is not a story, so it is not counted as progress. The three stories that are not Done have their issues open.
 
 **DON-26 (view the portal in another language) is out of scope:** the team decided it will not be built, so it is not counted. Its issue ([#20](https://github.com/KarenCampos842/proj-sf-donation-portal/issues/20)) is still open and its Project 13 card is still in Backlog. Issue #54 is a bug found while collecting the Delivery 1 evidence; it is not a story and is not counted either. The full per-story table is in [`docs/story-tracking-board.md`](docs/story-tracking-board.md).
 
