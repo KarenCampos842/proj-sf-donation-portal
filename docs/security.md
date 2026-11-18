@@ -14,7 +14,8 @@ Goal: show that a visitor without login cannot **read** or **modify** other dono
 - Org alias: `donations-dev`
 - Site URL: `https://uady--class2026b.sandbox.my.site.com/portal/` (published Sandbox site, prefix `portal`; academic demonstration, not a production website)
 - Seed data: the Sandbox already holds the fictitious demo data: five campaigns and six confirmed donations loaded by an administrator (public, anonymous, with invoice for a company and for an individual, and anonymous with invoice), plus donations and payment attempts created later through the portal with test-mode payments. Describe in the evidence which of them each test used. Do not re-import the demo data: it would create duplicates.
-- Tester: Alan Pérez, 2026-11-17, 22:15–22:20 (Mérida time). A second team member still has to repeat the steps (RF-V2 CA3).
+- Tester: Alan Pérez, 2026-11-17, 22:15–22:20 (Mérida time), Windows PowerShell.
+- Second tester (RF-V2 CA3): Rodrigo Colli repeated R4 and M1–M3 on 2026-11-17, 23:02–23:03, with `curl` on macOS, and got the same four `401 INVALID_SESSION_ID` responses (`evidence/SEG-01/CA3_rodrigo_1.png`, `CA3_rodrigo_2.png`).
 - Donation used: `DON-000001` (fictitious demo data), Id `a1cVC00000ABJHhYAP`. Any other donation Id gives the same result.
 
 ### 1.2 Read attempts
@@ -43,7 +44,7 @@ Goal: show that a visitor without login cannot **read** or **modify** other dono
 - **Result:** a visitor without login could not read or modify donations through the site (R1, R2) or through the REST API (R4, M1–M3). This covers reading and modifying, by the site and by one more route (RF-V2 CA1, CA2).
 - **Not covered:** R3, R5, R6 and M4 were not run. The REST tests use no session at all; they do not test the site's guest session through the site domain.
 - **Org-wide warning:** Setup → "Estado y uso de organización" reported on 2026-11-17 that guest users in the shared sandbox can reach 4 objects, 75 records and 14 potentially sensitive fields. It was not yet checked which sites and objects that refers to (`evidence/SEG-01/org_guest_exposure.png`). To review before the final presentation.
-- **To repeat (CA3):** run the commands above with any donation Id; Windows PowerShell needs `curl.exe`, not `curl`.
+- **To repeat (CA3):** run the commands above with any donation Id; Windows PowerShell needs `curl.exe`, macOS and Linux use `curl`. Repeated by a second team member with the same result (section 1.1).
 
 ## 2. Guest user permissions
 
