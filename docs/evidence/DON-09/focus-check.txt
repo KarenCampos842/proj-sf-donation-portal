@@ -1,0 +1,6 @@
+# Keyboard focus and layout checks on the published site (DON-09), 2026-11-17
+# Chrome driven by Playwright, new context without session. «document.activeElement» followed through shadow roots.
+
+Foco al elegir «Otro monto»: input#input.slds-input ""
+Foco al fallar la validación del monto («abc»): input#input.slds-input "abc"
+  llamadas a startDonation en ese intento: 0

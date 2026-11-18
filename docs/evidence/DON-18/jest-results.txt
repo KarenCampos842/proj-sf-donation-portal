@@ -1,0 +1,434 @@
+# Jest, whole project, run locally on 2026-11-17 (branch karen at 906dc0c, same code as main at 1ba02f3 for force-app)
+# Command: npx jest --verbose --colors=false. No file was modified by the run.
+# Result: 9 suites passed, 376 of 376 tests passed.
+
+PASS force-app/main/default/lwc/campaignProgress/__tests__/campaignProgress.test.js
+  c-campaign-progress
+    √ shows the raised amount and the goal in MXN (235 ms)
+    √ shows the real percentage below the goal without the goal-reached text (21 ms)
+    √ shows 100 % and the goal-reached text when the goal is met exactly (13 ms)
+    √ shows the real percentage above 100 % while the bar stops at its track (14 ms)
+    √ exposes the progress bar to assistive technology with a Spanish label (7 ms)
+    √ hides the donation count when there are no donations (7 ms)
+    √ uses the singular for one donation and the plural for several (17 ms)
+    √ applies the compact style when requested (8 ms)
+    √ shows the final amount at once when the visitor prefers reduced motion (12 ms)
+    √ counts up to the final amount when motion is allowed (10 ms)
+    √ keeps the full amount available to screen readers while the counter runs (9 ms)
+
+PASS force-app/main/default/lwc/donorRecognitionList/__tests__/donorRecognitionList.test.js
+  c-donor-recognition-list
+    √ lists the public donors with their name and amount in MXN (164 ms)
+    √ shows a donor name that contains HTML as harmless text (12 ms)
+    √ shows a message when there are no public donors (13 ms)
+    √ shows a Spanish error and retries on request (27 ms)
+    √ does not call the server without a campaign (12 ms)
+    √ reloads when the campaign changes (10 ms)
+    √ ignores a slow answer for a campaign that is no longer shown (22 ms)
+    √ shows ten donors first and the rest on request (29 ms)
+    √ is not in demo mode by default (8 ms)
+    √ shows clearly labeled fictitious donors in demo mode without calling the server (28 ms)
+
+PASS force-app/main/default/lwc/donationThankYou/__tests__/donationThankYou.test.js
+  c-donation-thank-you
+    √ asks the server about the payment using only payment_id (80 ms)
+    √ shows the server result and ignores the status written in the URL (14 ms)
+    √ thanks the donor only when the server confirms the payment (5 ms)
+    √ shows the texts agreed with Workstream A for every state (36 ms)
+    √ never says rejected, cancelled or confirmed for Pending and Unknown (14 ms)
+    √ offers a new attempt only when the payment was rejected, cancelled or not completed (26 ms)
+    √ lets the donor check again while the payment is pending, without paying twice (11 ms)
+    √ shows the unknown state when the server fails, without technical detail (5 ms)
+    √ treats a state it does not know as unknown (5 ms)
+    √ asks the server with the text "null" when Mercado Pago sends it, so the answer is NoPayment (6 ms)
+    √ asks the server with an empty value when the URL has no payment_id, so the answer is Unknown (#54) (4 ms)
+    √ does not ask twice when the page reference is delivered again (8 ms)
+    √ goes back to the portal page through the router (6 ms)
+
+PASS force-app/main/default/lwc/donationSummary/__tests__/donationSummary.test.js
+  c-donation-summary (DON-18)
+    √ shows the title, the campaign, the exact amount in MXN and the email (92 ms)
+    √ writes a whole amount without decimals and keeps every digit of a long one (19 ms)
+    √ says that the name will not be visible when the donation is anonymous (6 ms)
+    √ does not show a public name when the donation is anonymous, even if one arrives (9 ms)
+    √ shows the name that will appear when the donation is public, as plain text (6 ms)
+    √ shows the invoice request independently from the visibility (11 ms)
+    √ does not show any fiscal data, Id or token: only the six values of the review (10 ms)
+    √ offers «Editar donación» and «Confirmar y continuar al pago» (19 ms)
+    √ tells the form that the donor wants to edit, and does nothing else (12 ms)
+    √ tells the form that the donor confirmed, and does nothing else (10 ms)
+    √ disables both buttons while the form waits for the server (8 ms)
+    √ announces, politely, that the payment is opening, and changes the label of the button (8 ms)
+    √ announces that the donor is going back while editing (7 ms)
+    √ shows an error as an alert, as text, and nothing when there is none (13 ms)
+    √ disables only the confirm button when the server refused the attempt (5 ms)
+    √ moves the focus to the title so a screen reader announces the new step (6 ms)
+    √ has one h1 and labels the section with it (3 ms)
+
+PASS force-app/main/default/lwc/closedCampaignHistory/__tests__/closedCampaignHistory.test.js
+  c-closed-campaign-history
+    √ shows the page title, the explanation and the way back, with a single h1 (153 ms)
+    √ shows the loading state, announced to assistive technology, before the data arrives (6 ms)
+    √ shows the name, the final total, the goal and the closed badge of a single campaign (17 ms)
+    √ shows several campaigns in the order received, with the count announced politely (25 ms)
+    √ shows the real percentage of the goal, even above 100 %, and says the goal was reached (29 ms)
+    √ formats amounts with cents when the final total has them (11 ms)
+    √ shows the number of donations and the closing date only when they exist (18 ms)
+    √ never offers a donation action on the cards (16 ms)
+    √ shows the image with its alt text and a described placeholder when there is none (15 ms)
+    √ falls back to the placeholder when an image cannot be loaded (12 ms)
+    √ shows the empty message, and no invented cards, when there are no closed campaigns (5 ms)
+    √ shows a Spanish error without technical detail and retries on request (16 ms)
+    √ ignores a slow answer that arrives after a newer request (14 ms)
+    √ opens the detail of a campaign through an event with its Id (13 ms)
+    √ gives each campaign button an accessible name that says what it opens (7 ms)
+    √ asks the portal to go back to the catalog (3 ms)
+
+PASS force-app/main/default/lwc/campaignList/__tests__/campaignList.test.js
+  c-campaign-list
+    √ shows the loading state before the campaigns arrive (81 ms)
+    √ shows one consistent card per campaign (87 ms)
+    √ passes the progress data to the progress indicator of each card (22 ms)
+    √ marks a paused campaign with text and explains it cannot receive donations (20 ms)
+    √ marks an open campaign as active and shows its closing date (14 ms)
+    √ shows the general campaign tag only for the general campaign (16 ms)
+    √ shows the image with its alt text (22 ms)
+    √ uses a neutral placeholder with descriptive text when there is no image (12 ms)
+    √ falls back to the placeholder when the image cannot be loaded (18 ms)
+    √ shows the exact empty message when there are no campaigns (6 ms)
+    √ shows a Spanish error without technical detail and retries on request (18 ms)
+    √ offers a visible way to the history of closed campaigns, even while loading or when the catalog is empty (10 ms)
+    √ asks the portal to show the history when the visitor chooses it, and keeps closed campaigns out of the catalog (12 ms)
+    √ opens the detail of a campaign through an event with its Id (17 ms)
+    √ gives every card button an accessible name that includes the campaign name (7 ms)
+    √ refreshes on demand (4 ms)
+
+PASS force-app/main/default/lwc/campaignDetail/__tests__/campaignDetail.test.js
+  c-campaign-detail
+    √ requests the campaign by its Id and shows its public information (169 ms)
+    √ does not show a closing date when the campaign has none (14 ms)
+    √ shows the progress and the donor recognition of the campaign (21 ms)
+    √ does not enable the recognition demo mode by default (11 ms)
+    √ shows the description as text and never as HTML (21 ms)
+    √ lets the visitor start a donation on an open campaign (21 ms)
+    √ shows a paused campaign as «Pausada» and blocks the donation (11 ms)
+    √ shows a closed campaign as informative only (12 ms)
+    √ shows an expired active campaign as «Campaña finalizada» with the agreed texts (16 ms)
+    √ blocks the donation when the server says an open campaign cannot receive donations (10 ms)
+    √ keeps showing the real progress above 100 % without disabling an open campaign (11 ms)
+    √ shows the general campaign tag (10 ms)
+    √ uses a placeholder with descriptive text when the campaign has no image (10 ms)
+    √ shows a not-found message when the campaign is not publicly available (4 ms)
+    √ does not call the server when there is no campaign Id (9 ms)
+    √ asks to go back from the back button with backtolist, which keeps the origin of the navigation (17 ms)
+    √ asks for the catalog with its own event from the not-found button, never with backtolist (5 ms)
+    √ shows a Spanish error without technical detail and retries on request (11 ms)
+    √ loads the new campaign when the Id changes (19 ms)
+    √ ignores a slow answer for a campaign that is no longer shown (23 ms)
+
+PASS force-app/main/default/lwc/donationPortal/__tests__/donationPortal.test.js (5.428 s)
+  c-donation-portal
+    initial view from the URL
+      √ shows nothing until the page reference arrives, so there is no flash of the wrong view (51 ms)
+      √ shows the catalog when the URL has no parameters (22 ms)
+      √ opens the detail of the campaign in ?campana=<Id> without loading the catalog (67 ms)
+      √ opens a closed campaign by direct link like any other detail (11 ms)
+      √ opens the donation form with ?campana=<Id>&donar=1 (25 ms)
+      √ ignores donar=1 when there is no campaign and shows the catalog (4 ms)
+      √ ignores a donar value other than 1 (10 ms)
+      √ trims the campaign Id and accepts a list of values (17 ms)
+      √ shows the catalog when the campaign parameter is empty (2 ms)
+    invalid campaign Id in the URL
+      √ shows the not-found message of the detail instead of failing (4 ms)
+      √ shows the not-found message for a well formed Id that does not resolve (3 ms)
+      √ returns to the catalog from the not-found message (8 ms)
+      √ shows a friendly error when the campaign cannot be loaded (3 ms)
+    navigation by events
+      √ goes from the catalog to the detail on campaignselect, updating the URL state (11 ms)
+      √ goes back to the catalog on backtolist and clears the parameters (9 ms)
+      √ opens the form inside the campaign context on donationstart (16 ms)
+      √ goes back from the form to the detail of the same campaign (20 ms)
+      √ does not know the campaign name when the form is opened by a direct link (10 ms)
+      √ does not reuse the name of another campaign in the form (18 ms)
+      √ uses the configured page name when navigating (7 ms)
+      √ falls back to the Home page when the page name is empty (8 ms)
+      √ navigates through the router and never reloads the page (7 ms)
+    history of closed campaigns (DON-05)
+      √ shows the history at ?vista=historial without loading the catalog or any detail (13 ms)
+      √ goes from the catalog to the history on showhistory, updating the URL state (5 ms)
+      √ opens the detail of a closed campaign from the history and keeps donating impossible (11 ms)
+      √ returns to the catalog from the history (3 ms)
+      √ follows Back and Forward between catalog, history and detail (22 ms)
+      √ lets a campaign in the URL win over the history parameter (6 ms)
+      √ shows the catalog for any other value of the view parameter and accepts a list of values (5 ms)
+      √ scrolls to the top when the view changes to the history (8 ms)
+    back button of the detail respects where it was opened from (DON-05)
+      √ opens a campaign from the history with the history context and goes back to the history (21 ms)
+      √ opens a campaign from the catalog without the history context and goes back to the catalog (11 ms)
+      √ goes back to the catalog from a direct link without context (9 ms)
+      √ goes back to the history from a direct link that carries the history context (13 ms)
+      √ lets the campaign win over the view parameter when both are present (7 ms)
+      √ keeps the origin of each opening when the visitor goes back and opens another campaign (33 ms)
+      √ follows browser Back and Forward through history, detail and catalog keeping the context (31 ms)
+      √ never sends repeated or unexpected parameters in a full round trip (20 ms)
+      √ keeps the history context through the donation form of a campaign opened with it (27 ms)
+    "Ver campañas disponibles" of the not-found state always leads to the catalog (DON-05)
+      √ goes to the catalog when the campaign does not exist and the URL carries the history context (6 ms)
+      √ goes to the catalog when the campaign does not exist and there is no history context (4 ms)
+      √ leaves neither campana nor vista in the state when it returns to the catalog (4 ms)
+      √ keeps "Volver a las campañas" going back to the history from a detail opened in the history (14 ms)
+      √ keeps "Volver a las campañas" going back to the catalog from a detail opened in the catalog (9 ms)
+      √ keeps the generic back button on the history for a not-found campaign with the history context (4 ms)
+    browser Back and Forward
+      √ follows the page reference when the history moves between views (23 ms)
+      √ shows the other campaign when Back leads to a different detail (14 ms)
+    scroll
+      √ does not scroll on the first render (6 ms)
+      √ scrolls to the top when the view changes and not when only the campaign changes (9 ms)
+    safety of the public site
+      √ never turns on the recognition demo mode (5 ms)
+
+PASS force-app/main/default/lwc/donationForm/__tests__/donationForm.test.js (9.035 s)
+  c-donation-form
+    configurable amounts (ADM-13)
+      √ shows the amounts of the configuration, in their order (88 ms)
+      √ keeps the amounts of Delivery 1 when the configuration cannot be read (26 ms)
+      √ clears a selected amount that the configuration no longer offers (23 ms)
+    amount (DON-08)
+      √ shows the eight suggested amounts and the other-amount option as independent options, none selected (13 ms)
+      √ does not offer $2,500 and groups the options in a labeled fieldset (13 ms)
+      √ marks only the chosen amount (16 ms)
+      √ blocks the payment and asks for an amount when none was chosen (30 ms)
+      √ clears the amount message once an amount is chosen (18 ms)
+    email and visibility (DON-10, DON-11)
+      √ starts anonymous, without public name and without invoice fields (12 ms)
+      √ labels the invoice option exactly «Solicitar factura» without mentioning CFDI (16 ms)
+      √ blocks the payment when the email is empty or malformed (23 ms)
+      √ only asks for the email when the donation is anonymous without invoice (20 ms)
+      √ shows the public name field only when the donor chooses recognition (12 ms)
+      √ blocks the payment when the public name is empty, only spaces or too long (22 ms)
+      √ sends a public name with normalized spaces and the Public visibility (19 ms)
+      √ sends HTML typed in the name as plain text, untouched (19 ms)
+      √ does not send the name when the donor goes back to anonymous (23 ms)
+    invoice (DON-12)
+      √ shows the four fiscal fields only after activating the option (21 ms)
+      √ does not ask for the taxpayer type as an independent field (12 ms)
+      √ turns the RFC into uppercase without spaces while typing (13 ms)
+      √ marks a valid RFC as valid and an invalid one with the agreed message (17 ms)
+      √ accepts the two RFC examples of the story (28 ms)
+      √ blocks RFCs with month 13, wrong length, letters in the date or special characters (55 ms)
+      √ blocks a postal code that is not exactly five digits (43 ms)
+      √ blocks the payment when a fiscal field is missing (15 ms)
+      √ shows the whole catalog before the RFC says the taxpayer type (10 ms)
+      √ shows only person regimes for a 13 character RFC and names the type (14 ms)
+      √ shows only company regimes for a 12 character RFC and names the type (12 ms)
+      √ keeps regimes 610 and 626 for both taxpayer types (18 ms)
+      √ clears the chosen regime when it no longer matches the taxpayer type (14 ms)
+      √ sends the fiscal data of an anonymous donation: invoice is independent from visibility (20 ms)
+      √ sends public name and fiscal data together when the donor wants both (25 ms)
+      √ does not send fiscal data after the donor turns the invoice off again (20 ms)
+      √ does not claim that the portal issues an invoice (9 ms)
+    payment flow
+      √ starts the donation, shows the summary, and only after the confirmation opens the payment and redirects (17 ms)
+      √ locks the button while the summary is being prepared and ignores a second click (12 ms)
+      √ shows the Spanish message of startDonation and keeps what the donor typed (12 ms)
+      √ shows the Spanish message of openPayment next to the summary and does not redirect (12 ms)
+      √ lets the donor try again after an error (13 ms)
+      √ shows a friendly text when the error has no message (11 ms)
+      √ shows the server message as text and never as HTML (10 ms)
+      √ does not redirect to a URL that is not https (17 ms)
+      √ unlocks the summary when the donor comes back with the browser back button (16 ms)
+    review and confirmation of the donation (DON-18)
+      √ shows campaign, exact amount in MXN, email, visibility and invoice request (12 ms)
+      √ builds the summary from what the server returns, not from what the form holds (12 ms)
+      √ shows the name that will appear when the donation is public (11 ms)
+      √ says that the name will not be visible when the donation is anonymous, even if it asks for an invoice (10 ms)
+      √ shows a public name that contains HTML as plain text (12 ms)
+      √ shows every digit of a 16-digit amount (17 ms)
+      √ hides the form and the back link while the summary is shown, and has a single h1 (13 ms)
+      √ does not open the payment until the donor confirms, for suggested and custom amounts (30 ms)
+      √ keeps the token out of the page: it is not in the DOM (12 ms)
+      √ goes back to the form with everything the donor typed when the donor edits (41 ms)
+      √ keeps the custom amount when the donor edits (24 ms)
+      √ asks for a new confirmation after editing: a new attempt, a new token and a new summary (38 ms)
+      √ stays on the summary and says so when the server cannot take the donor back to the form (15 ms)
+      √ disables both buttons and announces the state while the payment is opening (14 ms)
+      √ opens the payment only once when the confirm button is clicked twice (12 ms)
+      √ shows only a friendly text, never a technical one, when confirming fails (20 ms)
+      √ leaves only «Editar donación» after the server refuses the payment, and confirms again after editing (40 ms)
+      √ keeps «Confirmar» available when the failure is not a message of the server, so the donor can retry (12 ms)
+      √ moves the focus to the title of the summary when the donor reaches the review step (12 ms)
+      √ moves the focus back to the title of the form when the donor chooses «Editar donación» (17 ms)
+      √ makes no Apex call while the donor only reads the summary (29 ms)
+      √ forgets the token when the summary cannot be read, so nothing can be confirmed (18 ms)
+    invalid data: fields marked and nothing lost (DON-17)
+      √ marks every empty required field with its own message before calling the server (17 ms)
+      √ marks every field with an invalid format and says what to correct (24 ms)
+      √ marks the email field with the message that the server returns for it (23 ms)
+      √ marks the publicName field with the message that the server returns for it (28 ms)
+      √ marks the legalName field with the message that the server returns for it (24 ms)
+      √ marks the rfc field with the message that the server returns for it (22 ms)
+      √ marks the taxPostalCode field with the message that the server returns for it (25 ms)
+      √ marks the taxRegime field with the message that the server returns for it (34 ms)
+      √ shows the amount message that the server returns next to the amount options (15 ms)
+      √ keeps an error that belongs to no field in the general notice and marks no field (20 ms)
+      √ shows the message in the general notice when its field is not on the screen (10 ms)
+      √ keeps everything the donor typed after the server marks one field (25 ms)
+      √ lets the donor correct only the marked field and then pay with the same data (41 ms)
+      √ shows only a friendly text for an Apex exception and keeps the data (16 ms)
+      √ shows only a friendly text for an access error of the platform and keeps the data (11 ms)
+      √ shows only a friendly text for a message that carries the donor email and keeps the data (14 ms)
+      √ shows only a friendly text for a Spanish text without the shape of the server and keeps the data (12 ms)
+      √ shows only a friendly text for a field name that the form does not have and keeps the data (12 ms)
+      √ shows only a friendly text when openPayment fails with a technical error (13 ms)
+    errors update while the donor edits (DON-17)
+      √ shows the general notice after trying to continue with invalid fields (9 ms)
+      √ clears the error of a field as soon as its value is corrected, without a blur (14 ms)
+      √ keeps the error of a field while its value is still invalid (9 ms)
+      √ does not show an error for a field that was never validated (15 ms)
+      √ keeps the general notice while another field or the amount is still invalid (12 ms)
+      √ removes the general notice when every active field and the amount are valid (18 ms)
+      √ removes the notice when the donor turns off the option whose fields were invalid (13 ms)
+      √ clears the error that Apex returned for a field when the donor corrects that field (23 ms)
+      √ keeps the notice while the field that Apex marked has not been edited (13 ms)
+      √ does not remove an error of the server that belongs to no field when a field is edited (15 ms)
+      √ does not remove a general failure of the server when a field is edited (12 ms)
+      √ makes no Apex call while the donor types, corrects or changes options (30 ms)
+      √ keeps the flow: after the corrections, one startDonation, the summary and then one openPayment after confirming (31 ms)
+      regime after the RFC changes
+        √ drops the regime that no longer fits and wipes its error state by creating the field again (19 ms)
+        √ does not show a regime error while the donor keeps typing the RFC (29 ms)
+        √ shows the regime error when the donor leaves the empty regime field (19 ms)
+        √ flags the empty regime when the donor tries to continue, without calling Apex (24 ms)
+        √ removes the regime error and the notice when a valid regime is chosen for the new RFC (21 ms)
+        √ keeps the general notice while the dropped regime or another field is still pending (22 ms)
+        √ makes no Apex call while the donor changes the RFC or the regime (24 ms)
+    privacy notice when an invoice is requested (DON-13)
+      √ shows the checkbox "Acepto el aviso de privacidad" only when the invoice is requested, unchecked and with no extra text or link (10 ms)
+      √ hides the checkbox again, and asks for nothing, when the invoice is turned off (14 ms)
+      √ does not require the acceptance and sends it as false when there is no invoice (24 ms)
+      √ blocks the payment and marks the checkbox when the invoice data is complete but the notice is not accepted (19 ms)
+      √ clears the checkbox error and lets the donor continue once the notice is accepted, keeping the other data (20 ms)
+      √ marks the checkbox again if the donor unchecks it (31 ms)
+      √ sends only the acceptance: no date or time ever comes from the browser (20 ms)
+      √ sends false when the notice was accepted but the invoice was later turned off (19 ms)
+      √ marks the checkbox with the message the server returns for it and shows no technical text (19 ms)
+      √ keeps the accepted notice while the donor corrects another field (26 ms)
+    custom amount (DON-09)
+      √ moves the focus to the custom amount field when its amount is not valid (18 ms)
+      √ moves the focus to the amount options when no amount was chosen (8 ms)
+      √ shows «Otro monto» in the same step as the suggested amounts and reveals the field only when chosen (10 ms)
+      √ sends the amount "250" exactly as typed ("250"), as text (18 ms)
+      √ sends the amount "250.5" exactly as typed ("250.5"), as text (15 ms)
+      √ sends the amount "250.50" exactly as typed ("250.50"), as text (13 ms)
+      √ sends the amount "  333.33 " exactly as typed ("333.33"), as text (10 ms)
+      √ sends the amount "0050" exactly as typed ("0050"), as text (11 ms)
+      √ sends the amount "99999999999999.99" exactly as typed ("99999999999999.99"), as text (17 ms)
+      √ accepts an amount that is not suggested when it reaches the current minimum (27 ms)
+      √ blocks an amount below the minimum of the configuration and names that minimum (14 ms)
+      √ follows a minimum with decimals (30 ms)
+      √ blocks the amount "" with the reason, next to the field and without calling Apex (12 ms)
+      √ blocks the amount "   " with the reason, next to the field and without calling Apex (10 ms)
+      √ blocks the amount "abc" with the reason, next to the field and without calling Apex (9 ms)
+      √ blocks the amount "1,000" with the reason, next to the field and without calling Apex (14 ms)
+      √ blocks the amount "1e3" with the reason, next to the field and without calling Apex (13 ms)
+      √ blocks the amount "$250" with the reason, next to the field and without calling Apex (16 ms)
+      √ blocks the amount ".5" with the reason, next to the field and without calling Apex (45 ms)
+      √ blocks the amount "5." with the reason, next to the field and without calling Apex (1185 ms)
+      √ blocks the amount "0" with the reason, next to the field and without calling Apex (17 ms)
+      √ blocks the amount "0.00" with the reason, next to the field and without calling Apex (19 ms)
+      √ blocks the amount "-5" with the reason, next to the field and without calling Apex (12 ms)
+      √ blocks the amount "-250.50" with the reason, next to the field and without calling Apex (16 ms)
+      √ blocks the amount "250.555" with the reason, next to the field and without calling Apex (10 ms)
+      √ blocks the amount "100000000000000" with the reason, next to the field and without calling Apex (26 ms)
+      √ blocks the amount "49.99" with the reason, next to the field and without calling Apex (25 ms)
+      √ does not guess the minimum when the configuration has not arrived: the suggested amounts still work (28 ms)
+      √ keeps a single active amount: choosing «Otro monto» leaves no suggested amount selected (15 ms)
+      √ clears the typed amount when a suggested amount is chosen afterwards, so only the last choice counts (19 ms)
+      √ sends one amount only (14 ms)
+      √ removes the error of the amount as soon as it is corrected, without leaving the field (10 ms)
+      √ keeps every other piece of data when the amount is invalid, and lets the donor correct only the amount (26 ms)
+      √ marks the custom field when the server rejects the amount (11 ms)
+      √ shows the message that lets the donor choose another amount when Mercado Pago cannot process it (37 ms)
+      √ makes no Apex call while the donor types or changes the amount (9 ms)
+      √ continues to the payment with the same flow when the amount is custom (11 ms)
+    amount rules in cents (DON-09)
+      √ compares 16-digit amounts exactly, where a Number would lose a cent (1 ms)
+      √ compares "9.99" with "10.00" as -1, by length first and then by string order
+      √ compares "10.00" with "9.99" as 1, by length first and then by string order
+      √ compares "10.01" with "10.10" as -1, by length first and then by string order
+      √ compares "10.10" with "10.01" as 1, by length first and then by string order (1 ms)
+      √ compares "50" with "50.00" as 0, by length first and then by string order
+      √ compares "0050.25" with "50.25" as 0, by length first and then by string order
+      √ compares "0.01" with "0.10" as -1, by length first and then by string order
+      √ compares "99999999999999.99" with "100000000000000" as -1, by length first and then by string order
+      √ turns "50" into "5000" cents
+      √ turns "50.5" into "5050" cents (1 ms)
+      √ turns "50.05" into "5005" cents
+      √ turns "0.1" into "10" cents
+      √ turns "0.01" into "1" cents
+      √ turns "0" into "0" cents
+      √ turns "0.00" into "0" cents
+      √ turns "007.25" into "725" cents (1 ms)
+      √ turns "0050.25" into "5025" cents
+      √ writes "5000" cents as "50"
+      √ writes "7550" cents as "75.5"
+      √ writes "7505" cents as "75.05" (1 ms)
+      √ writes "7555" cents as "75.55"
+      √ writes "10" cents as "0.1"
+      √ writes "1" cents as "0.01"
+      √ writes "9999999999999999" cents as "99999999999999.99"
+      √ reads the configured minimum 50 as "5000" (1 ms)
+      √ reads the configured minimum "75.50" as "7550"
+      √ reads the configured minimum 75.5 as "7550"
+      √ reads the configured minimum "50.50" as "5050"
+      √ reads the configured minimum null as null
+      √ reads the configured minimum undefined as null (1 ms)
+      √ reads the configured minimum "" as null
+      √ reads the configured minimum "abc" as null
+      √ reads the configured minimum "1.234" as null
+      √ classifies "" as "empty" with a minimum of $50
+      √ classifies "abc" as "format" with a minimum of $50
+      √ classifies "-3" as "positive" with a minimum of $50 (1 ms)
+      √ classifies "0" as "positive" with a minimum of $50
+      √ classifies "1.234" as "decimals" with a minimum of $50
+      √ classifies "100000000000000" as "digits" with a minimum of $50
+      √ classifies "0000000000000000100" as null with a minimum of $50
+      √ classifies "49.99" as "belowMinimum" with a minimum of $50
+      √ classifies "50" as null with a minimum of $50
+      √ classifies "99999999999999.99" as null with a minimum of $50 (1 ms)
+      √ classifies "0.1" as "belowMinimum" with a minimum of $50
+      √ classifies "0.01" as "belowMinimum" with a minimum of $50
+      √ classifies "0.001" as "decimals" with a minimum of $50
+      √ classifies "0.00" as "positive" with a minimum of $50
+      √ classifies "0050.25" as null with a minimum of $50
+      √ classifies "0050" as null with a minimum of $50 (1 ms)
+      √ classifies " 50 " as null with a minimum of $50
+      √ classifies "1,000" as "format" with a minimum of $50
+      √ classifies "1e3" as "format" with a minimum of $50
+      √ classifies ".5" as "format" with a minimum of $50
+      √ classifies "5." as "format" with a minimum of $50
+      √ classifies "50.50" as null with a minimum of $50.50: the same amount passes and one cent less does not
+      √ classifies "50.5" as null with a minimum of $50.50: the same amount passes and one cent less does not (1 ms)
+      √ classifies "50.51" as null with a minimum of $50.50: the same amount passes and one cent less does not
+      √ classifies "50.49" as "belowMinimum" with a minimum of $50.50: the same amount passes and one cent less does not
+      √ classifies "50" as "belowMinimum" with a minimum of $50.50: the same amount passes and one cent less does not
+      √ classifies "100" as null with a minimum of $50.50: the same amount passes and one cent less does not
+      √ accepts the minimum when it has a different number of digits than the amount typed
+      √ writes the exact amount "500.00" for the donor as "$500", without going through Number (1 ms)
+      √ writes the exact amount "500" for the donor as "$500", without going through Number
+      √ writes the exact amount "1234.50" for the donor as "$1,234.50", without going through Number
+      √ writes the exact amount "0.50" for the donor as "$0.50", without going through Number
+      √ writes the exact amount "1000000.05" for the donor as "$1,000,000.05", without going through Number
+      √ writes the exact amount "99999999999999.99" for the donor as "$99,999,999,999,999.99", without going through Number
+      √ cannot judge the minimum when it is unknown (1 ms)
+    campaign and navigation
+      √ shows the campaign name (5 ms)
+      √ explains that a campaign is needed and does not show the form without one (2 ms)
+      √ goes back to the campaign through an event (6 ms)
+
+Test Suites: 9 passed, 9 total
+Tests:       376 passed, 376 total
+Snapshots:   0 total
+Time:        40.169 s
+Ran all test suites.

@@ -1,0 +1,46 @@
+# Re-reading of the real records with field permission (read only), 2026-11-17 (UTC times are 2026-11-18)
+# SELECT statements only with "sf data query --all-rows". No record was created, changed or deleted by these queries.
+# Read at about 01:54 UTC (19:54 hora de México), while the two permission sets below were temporarily assigned to the verifier user.
+# Not printed on purpose: the value of Preference_Id__c (only whether it is set), the hash, any email. Amounts were read as text with
+# FORMAT(Amount__c) because the Salesforce CLI prints 16-digit numbers one cent low.
+
+== Temporary field permission (authorized by the owner for this check only) ==
+Assigned with "sf org assign permset" to the verifier user (the owner's own user), server time:
+  Payment_Attempt_Viewer   assignment 0PaVC00000buR3S0AU   01:53:42Z (19:53 hora de México)
+  Donation_Admin           assignment 0PaVC00000buoPr0AI   01:53:43Z (19:53 hora de México)
+Removed by the AI by deleting exactly those two PermissionSetAssignment records by Id ("sf data delete record"):
+  0PaVC00000buR3S0AU and 0PaVC00000buoPr0AI   success true, between 01:55:16 and 01:55:24 GMT (19:55 hora de México)
+The two assignments of another person that already existed (Donation_Admin 0PaVC00000bYaAE0A0, Payment_Attempt_Viewer 0PaVC00000bYVL50AO,
+both from 2026-11-11) were not touched.
+Check after the removal (SELECT, 01:55:36 GMT): assignments of these two sets in the org: 2, both of the other person; assignments of the
+verifier user: 0; records with the two Ids created today: 0. The fields became unreadable again ("No such column"):
+  Payment_Attempt__c: Status__c, Preference_Id__c, Invoice_Requested__c, Privacy_Notice_Accepted__c, Privacy_Notice_Accepted_At__c
+  Donation__c: Privacy_Notice_Accepted__c, Privacy_Notice_Accepted_At__c
+No other permission, profile or permission set was changed.
+
+== Still not readable, by design (not in any permission set, also while the sets were assigned) ==
+Portal_Access_Token_Hash__c, Donor_Confirmed_At__c, Superseded_At__c. They were not read; the value of the hash was never read or printed.
+
+== Attempts of this evening (7) ==
+Id                  | created (UTC) | Status__c | Amount (FORMAT)         | visibility | invoice | public name        | privacy accepted (at, UTC) | Preference_Id__c
+a1dVC00000Gr2bxYAB  | 01:02:18      | Started   | $500.00                 | Anonymous  | false   | null               | false (null)               | not set
+a1dVC00000Gr2gnYAB  | 01:03:37      | Started   | $100.00                 | Anonymous  | true    | null               | true (01:03:37)            | not set
+a1dVC00000Gr2ldYAB  | 01:04:43      | Started   | $90.00                  | Anonymous  | false   | null               | false (null)               | not set
+a1dVC00000Gr2nFYAR  | 01:04:47      | Started   | $95.00                  | Anonymous  | false   | null               | false (null)               | not set
+a1dVC00000GqvAgYAJ  | 01:05:02      | Started   | $100.00                 | Anonymous  | false   | null               | false (null)               | not set
+a1dVC00000Gr2thYAB  | 01:07:17      | Confirmed | $250.50                 | Public     | true    | Donante de Prueba  | true (01:07:17)            | set
+a1dVC00000Gr47VYAR  | 01:27:40      | Started   | $99,999,999,999,999.99  | Anonymous  | false   | null               | false (null)               | not set
+Only the payment attempt has a payment preference. The two attempts of the edit flow (90 replaced by 95) and the attempt of the real
+Mercado Pago rejection (AC6) are Started and have no preference. Whether the first one was marked as replaced (Superseded_At__c) was not read.
+
+== Donation of the real payment ==
+Donation a1cVC00000AJ9WTYA1 (DON-000026): Amount $250.50 | Payment_Status__c Confirmed | Provider_Payment_Id__c 189169112107
+  Confirmed_At__c 2026-11-18T01:23:18Z | created 01:23:23Z | Attempt_Id__c a1dVC00000Gr2thYAB
+  Privacy_Notice_Accepted__c true | Privacy_Notice_Accepted_At__c 2026-11-18T01:07:17Z
+Donations linked to the seven attempts: 1 (only this one).
+
+== Comparison (attempt a1dVC00000Gr2thYAB against donation a1cVC00000AJ9WTYA1) ==
+Amount: $250.50 = $250.50 (and the Mercado Pago page showed $ 250.50 before the payment).
+Privacy acceptance: true = true. Date and time: 2026-11-18T01:07:17Z = 2026-11-18T01:07:17Z (the server date generated when the attempt was
+created, copied unchanged to the donation about 16 minutes later, when the payment was registered).
+Status: attempt Confirmed, donation Confirmed. Exactly one donation for the attempt.

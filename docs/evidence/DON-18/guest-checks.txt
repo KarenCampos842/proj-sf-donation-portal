@@ -1,0 +1,16 @@
+# Guest checks on the published site, 2026-11-17 (Chrome driven by Playwright, new context without session)
+# No payments, no record changes; calls use invented tokens or ids and are rejected.
+
+PASS  control: DonationPaymentController.getPaymentResult (sigue expuesto) responde por la misma ruta  -> HTTP 200 {"returnValue":"NoPayment","cacheable":false}
+PASS  visitante: DonationPaymentController.startDonation ya no se puede llamar desde el navegador  -> HTTP 400 {"error":[{"message":"The Apex request is invalid."}]}
+PASS  visitante: DonationPaymentController.openPayment con un Id de intento ya no se puede llamar desde el navegador  -> HTTP 400 {"error":[{"message":"The Apex request is invalid."}]}
+PASS  visitante: DonationIntakeService.openPayment con un token inventado se rechaza y no abre el pago  -> HTTP 400 {"error":[{"message":"|Tu donación ya no está disponible. Edítala para volver a capturar tus datos."}]}
+PASS  visitante: openPayment con un Id de intento en lugar de token se rechaza  -> HTTP 400 {"error":[{"message":"|Tu donación ya no está disponible. Edítala para volver a capturar tus datos."}]}
+PASS  visitante: confirmDonation con un token inventado se rechaza  -> HTTP 400 {"error":[{"message":"|Tu donación ya no está disponible. Edítala para volver a capturar tus datos."}]}
+PASS  visitante: REST Payment_Attempt__c en uady--class2026b.sandbox.my.site.com sin sesión  -> HTTP 401 [{"message":"Authorization required","errorCode":"INVALID_SESSION_ID"}]
+PASS  visitante: REST Payment_Attempt__c en uady--class2026b.sandbox.my.salesforce.com sin sesión  -> HTTP 401 [{"message":"Session expired or invalid","errorCode":"INVALID_SESSION_ID"}]
+PASS  visitante: REST Donation__c en uady--class2026b.sandbox.my.site.com sin sesión  -> HTTP 401 [{"message":"Authorization required","errorCode":"INVALID_SESSION_ID"}]
+PASS  visitante: REST Donation__c en uady--class2026b.sandbox.my.salesforce.com sin sesión  -> HTTP 401 [{"message":"Session expired or invalid","errorCode":"INVALID_SESSION_ID"}]
+PASS  visitante: la página pública de campañas no muestra el correo de los intentos creados
+
+TOTAL 11  PASS 11  FAIL 0
