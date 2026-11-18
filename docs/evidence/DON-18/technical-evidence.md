@@ -31,7 +31,7 @@ Same as DON-09: merge `1ba02f3`; check-only `0AfVC00000PJGST0A5` and real deploy
 - **Stored fields:** `Donor_Confirmed_At__c`, `Superseded_At__c` and the hash were not read (see the method in `DON-09/records-check.txt`). The value of the hash was never read or printed.
 - **Double payment of one attempt:** accepted risk of `docs/security.md`; not tested.
 - **`getPaymentResult`:** anonymous and pre-existing, outside DON-18.
-- **Observation:** a real provider failure left the attempt alive, while `docs/payments-api.md` says the flow deletes it (see DON-09). Not investigated.
+- **Observation:** a real provider failure left the attempt alive (`Started`, no preference), although the documentation said the flow deletes it. `docs/payments-api.md` and Entry 18 of `docs/ai-log.md` were corrected on 2026-11-17 (see DON-09). The cause was not investigated.
 
 ## Recheck with field permission (added later the same day)
 

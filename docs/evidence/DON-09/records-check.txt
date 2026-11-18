@@ -47,5 +47,6 @@ No Donation__c exists for the other six attempts (none was paid).
 
 == AC6 attempt of the owner ==
 Attempt a1dVC00000Gr47VYAR: Amount__c exactly 99999999999999.99 (FORMAT: $99,999,999,999,999.99; filter = .99 returns 1, = .98 returns 0).
-It still exists (IsDeleted = false), last modified 01:28:20Z, 40 seconds after it was created. The documentation says the payment flow
-deletes the attempt when the provider fails; for this real failure it was not deleted. The cause was not investigated.
+It still exists (IsDeleted = false), last modified 01:28:20Z, 40 seconds after it was created. The documentation said the payment flow
+deletes the attempt when the provider fails; for this real failure it was not deleted (docs corrected on 2026-11-17; the recheck in
+DON-13/records-recheck-2026-11-17.txt shows Status__c = Started and no Preference_Id__c). The cause was not investigated.

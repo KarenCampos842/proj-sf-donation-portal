@@ -41,7 +41,7 @@ Technical criteria: the amount travels as text and is stored exactly (the reques
 - **Screen reader:** not tested. Keyboard focus was checked by program only.
 - **Maximum of the test account (TEC-02):** the real rejection shows that 99999999999999.99 is refused, but the portal hides the reason and the limit of the test account was not found. Nothing is claimed about it.
 - **Edit after the rejection:** the owner's capture shows the enabled «Editar donación» button; the click itself was not captured on the real site. The behavior is covered by Jest (`shows the message that lets the donor choose another amount when Mercado Pago cannot process it`).
-- **Observation, not a DON-09 defect:** after this real rejection the attempt still exists (not deleted), while `docs/payments-api.md` says the payment flow deletes it. The cause was not investigated (a rollback of the failed call is a hypothesis, not verified). The donor sees the right message either way.
+- **Observation, not a DON-09 defect:** after this real rejection the attempt still exists (not deleted; `Status__c` = `Started`, no `Preference_Id__c`, see the recheck below), although the documentation said the payment flow deletes it. `docs/payments-api.md` and Entry 18 of `docs/ai-log.md` were corrected on 2026-11-17. The cause was not investigated (a rollback of the failed call is a hypothesis, not verified). The donor sees the right message either way.
 - **Double payment of one attempt:** accepted risk documented in `docs/security.md`; not tested.
 - **Amounts read with the CLI:** it prints 16-digit amounts one cent low; see the method in `records-check.txt`.
 
