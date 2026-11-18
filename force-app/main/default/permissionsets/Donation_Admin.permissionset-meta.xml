@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
-    <description>Consulta campañas, todas las donaciones y las solicitudes de factura, sin editar. Sin acceso a intentos de pago. Puede asignar conjuntos de permisos a los usuarios (ADM-01).</description>
+    <description>Lee campañas, donaciones y solicitudes de factura sin poder editarlas; sin acceso a intentos de pago. También administra accesos: puede asignar conjuntos de permisos a otros usuarios (ADM-01). Dar solo al responsable del sistema.</description>
     <fieldPermissions>
         <editable>false</editable>
         <field>Donation__c.Amount__c</field>
