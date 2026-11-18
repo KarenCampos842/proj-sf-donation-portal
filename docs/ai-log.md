@@ -24,7 +24,10 @@ This log keeps the most useful **best-prompt** and **worst-result** examples. Ea
 | 14 | 2026-11-16 | Karen Elizabeth Campos | Claude Code, VS Code | DON-13 (privacy notice with invoice) | Best | Server check in the controller and the flow, server-side timestamp and copy to the donation, with Jest and Apex tests; check-only validation passed (115/115 tests); a real paid sandbox payment confirmed the copy of the acceptance to the donation. Time not measured. |
 | 15 | 2026-11-17 | Rodrigo Colli | Claude Code (Opus 5.5), VS Code | PAY-08 (#60) | Worst | A teammate's review of PR #61 found two problems the AI missed: an amount mismatch would log the same rejected notice every hour, and more than ~50 pending payments would exceed Apex limits and fail the whole run. Fixed with Batch Apex (chunks of 20) and a filter on existing mismatch notices; 61 tests passed. Time not measured. |
 | 16 | 2026-11-17 | Rodrigo Colli | Claude Code (Opus 5.5), VS Code | ADM-13 (#39) | Best | Configurable amounts built from the data-model design; the AI changed the planned comma-separated field to eight number fields so AC3 can be enforced by a validation rule. The first Apex validation failed 56 tests: amounts read from custom metadata (150.0) did not match the form's amounts (150) in List.contains; fixed by normalizing to two decimals. Then 242/242 Apex tests and 231 Jest tests passed. Time not measured. |
-| 17 | 2026-11-17 | Alan Pérez | Claude (Opus 5.5) | GES-10/11/12/15, MOD-01/03/06, ADM-01/04; DON-23 | Worst | Workstream C Delivery 2 metadata deployed (15 components). The dry run caught a missing permission dependency; the AI also prepared ADM-13 while a teammate had already built it, and suggested the wrong evidence-folder naming. ~2 h vs. ~5 h, estimate. |
+| 17 | 2026-11-17 | Karen Elizabeth Campos | Claude Code, VS Code | DON-09 (#8), DON-18 (#14) | Best | Custom amount as exact text and a review step with a server-side token; the AI found that an Id alone could open a payment and closed it. Jest 336/336 and a check-only with 177/177 Apex tests before any deployment. Time impact not measured. |
+| 18 | 2026-11-17 | Karen Elizabeth Campos | Claude Code, VS Code | DON-09 (#8), DON-18 (#14) | Worst | An independent read-only review found five problems in the first pass: `BigInt` untested under Lightning Web Security, a payment error message that offered a retry that no longer exists, `invalidate` acting on an attempt that already opened a payment, no focus tests, and gaps in this log. All were corrected. Final check-only `0AfVC00000PJ0h40AD` is **Failed**: 459/465 tests, and the 6 failures belong to org code outside the repository. Time impact not measured. |
+| 19 | 2026-11-17 | Rodrigo Colli | Claude Code (Opus 5.5), VS Code | DON-18 (#14), ADM-13 (#39) | Best | Workstream A review of PR #72. The AI noticed that the minimum-amount rule ran on every save of an attempt, so raising the minimum could revert the donation of a payment already charged; the rule now runs only on create or amount change. The generic payment message was copied in two classes; it is now one constant, checked against the flow by tests. Double-payment mitigation decided: not applied. Time not measured. |
+| 20 | 2026-11-17 | Alan Pérez | Claude (Opus 5.5) | GES-10/11/12/15, MOD-01/03/06, ADM-01/04; DON-23 | Worst | Workstream C Delivery 2 metadata deployed (15 components). The dry run caught a missing permission dependency; the AI also prepared ADM-13 while a teammate had already built it, and suggested the wrong evidence-folder naming. ~2 h vs. ~5 h, estimate. |
 
 ---
 
@@ -598,9 +601,107 @@ or change the org until I review what was done.
 - The first Apex validation failed 56 tests, 51 of them existing Workstream B tests: custom metadata returns 150.0, the form sends 150, and `List.contains` treats Decimals with different scale as different values, so every donation was rejected as "monto no válido". Amounts are now normalized to two decimals before comparing. The bug was caught by the check-only run, before anything was deployed.
 - The form and `DonationIntakeService` belong to Workstream B; those changes are in a separate commit for its owner to review.
 
+### Entry 17 — Custom amount and review before paying (DON-09, DON-18)
+
+- **Date:** 2026-11-17
+- **Author:** Karen Elizabeth Campos
+- **Tool / model:** Claude Code, VS Code
+- **Related stories:** DON-09 (#8), DON-18 (#14); touches DON-08, DON-13 and DON-17
+- **Result type:** Best prompt
+- **Verification:** First pass: Jest 336/336 (9 suites). Targeted check-only against `donations-dev` (`0AfVC00000PIpNS0A1`, 22/22 components, 177/177 Apex tests, no deployment). Code Analyzer on the new and changed files. Nothing was deployed, committed or published when this entry was written. The final figures after the corrections are in Entry 18.
+- **Estimated speed-up:** Not measured.
+
+**Prompt / decision summary**
+
+```text
+Let the donor type another amount (exact decimal, minimum from ADM-13) and review a summary before paying.
+The server is the only source of truth: nobody can read or confirm another donor's attempt, and an Id must never authorize a payment.
+```
+
+**What happened**
+
+- The AI read the form, the services and the flows of Workstream A first and found that `openPayment(attemptId)` was callable by the guest with only an Id. The review step would have been decoration, because the browser could skip it. The fix was a random token whose hash is the only thing stored, the confirmation recorded with the server clock, and removing `@AuraEnabled` from the two methods of A that the portal does not call directly.
+- The amount travels as text and is checked by `DonationAmountValidator`; the form compares amounts as strings of digits normalized to cents (by length first, then in lexicographic order) because a JavaScript `Number` turns `99999999999999.99` into `...98`. A test shows it. The first version of this entry used `BigInt` for that comparison; it was replaced in Entry 18.
+- The AI did not invent a Mercado Pago limit or an idempotency key: the page it could reach mentions neither. The duplicate opening is documented as a risk that is not completely prevented.
+
+**What we verified and corrected**
+
+- The first check-only failed to compile: a local variable named `json` hid the `JSON` class (Apex ignores case), and the old `DonationPrivacyNoticeTest` still built the DTO with a number. The second run found tests that updated fields in user mode, an invoice without fiscal data in a test double, and a callout after a DML in the same test. All were test problems and none weakened an assertion.
+- Mutation checks: five deliberate defects in the form (open without confirming, amount sent as a number, suggested amount not clearing the typed one, edit without retiring the old attempt, summary built from form values) were all caught by tests. The scripts that applied those mutations are not in the repository, so the result cannot be reproduced from it.
+- Code Analyzer reported a constructor with six parameters in the summary DTO and missing ApexDoc; both were fixed. The complexity of `DonationIntakeService` went from 83 (origin/main) to 77.
+- Not verified: the real Experience Cloud site (the amount comparison under Lightning Web Security, keyboard and screen reader), and the Guest user of the site; the tests simulate the guest with a minimum-access profile.
+
 ---
 
-### Entry 17 — Workstream C, Delivery 2: closing campaigns, moderation views and role assignment
+### Entry 18 — Corrections after the independent review (DON-09, DON-18)
+
+- **Date:** 2026-11-17
+- **Author:** Karen Elizabeth Campos
+- **Tool / model:** Claude Code, VS Code
+- **Related stories:** DON-09 (#8), DON-18 (#14)
+- **Result type:** Worst result (of the first pass)
+- **Verification:** Jest (whole project, `npx jest`, run on the final code after the four focus tests of H7 were added): 9 suites, 376/376 tests passed, 0 failed, 0 skipped. Check-only `0AfVC00000PJ0h40AD` (`--dry-run --test-level RunLocalTests`, `donations-dev`, nothing saved in the org): status **Failed**; 201/201 components with 0 component errors; 465 tests run, 459 passed, 6 failed. Against the previous reference (457/463) the difference is the 2 new Apex tests of H6. None of the 6 failures is in a class of DON-09 or DON-18. Nothing was deployed, pushed or published.
+- **Estimated speed-up:** Not measured.
+
+**Prompt / decision summary**
+
+```text
+Act as an independent reviewer and try to break the implementation; then apply only the corrections that belong to this branch.
+```
+
+**What happened**
+
+- A separate read-only pass over the finished work (also run with Claude Code, at the author's request) found five points that the author's own checks had not shown (H3, H5, H6, H7 and H10). H3 to H7 are corrected in code and tests below; H10 is the gaps of this log (no `RunLocalTests` result and mutation scripts outside the repository), corrected in Entries 17 and 18. The known risks H2, H8 and `getPaymentResult` are written in `docs/security.md`.
+- **H3, no `BigInt`.** `donationFormRules.js` no longer uses `BigInt`, `Number` or `parseFloat` in the rules of the custom amount. An amount is normalized to a string of digits in cents and two amounts are compared by length first and then in lexicographic order. Reason: `Currency(16, 2)` holds 16 digits in cents, more than `Number.MAX_SAFE_INTEGER`, and `BigInt` was not tested under Lightning Web Security. Tests: `compares 16-digit amounts exactly, where a Number would lose a cent`, `compares %p with %p as %p, by length first and then by string order`, `classifies %p as %p with a minimum of $50.50: the same amount passes and one cent less does not` and `accepts the minimum when it has a different number of digits than the amount typed`.
+- **H5, payment error message.** `MSG_PAYMENT_FAILED` no longer says «o inténtalo de nuevo»: Workstream A's flow deletes the attempt when the provider fails, so the only way forward is to edit the donation. After a message from the server the form disables «Confirmar y continuar al pago» (`confirmBlocked`, `confirmDisabled` in `donationSummary`); a failure that is not a server message keeps it available. Tests: `leaves only «Editar donación» after the server refuses the payment, and confirms again after editing`, `keeps «Confirmar» available when the failure is not a message of the server, so the donor can retry` and `disables only the confirm button when the server refused the attempt`. **Assertions changed on purpose** (authorized behavior change): the existing test `shows the Spanish message of openPayment next to the summary and does not redirect` now expects the confirm button disabled, and `shows the message that lets the donor choose another amount when Mercado Pago cannot process it` now compares the new message, checks that it does not offer to retry and expects the confirm button disabled. The text of one assertion message in `DonationIntakeServiceTest` was also reworded.
+- **H6, `invalidate`.** `DonationReview.invalidate` uses the same `canBeReviewed` check as the other operations: with `Preference_Id__c` filled, with a status other than `Started` or with an expired attempt it changes nothing. Apex tests: `shouldNotRetireTheAttempt_WhenEditingAnAttemptThatAlreadyOpenedAPayment` and `shouldNotRetireTheAttempt_WhenEditingAnAttemptThatIsNotStartedOrIsExpired`.
+- **H7, focus.** Four Jest tests: `moves the focus to the title of the summary when the donor reaches the review step`, `moves the focus back to the title of the form when the donor chooses «Editar donación»`, `moves the focus to the custom amount field when its amount is not valid` and `moves the focus to the amount options when no amount was chosen`.
+
+**What we verified and corrected**
+
+- The four focus tests fail when the focus code is broken on purpose; the code was restored afterwards. That check was done by hand and is not a script in the repository.
+- **The 6 failed tests are inherited debt outside this branch.** None of their classes (nor `OpportunityTrigger`) is in the repository: they exist only in `donations-dev`. The same 6 test names failed in validation `0AfVC00000PI9EX0A1`, which ran code based on `main`; no new direct comparison against `main` was made in this session.
+  - `AccountExplorerControllerTest` (4): `getAccountsReturnsAllAccountsSortedByName`, `getContactsReturnsChildrenOfTheGivenAccount`, `getOpportunitiesReturnsChildrenOfTheGivenAccount` and `relatedListsAreEmptyNotNullForAnAccountWithoutChildren`. Cause investigated and checked in the org with read-only queries: `makeData()` inserts an `Opportunity`; the chain of errors ends in `OpportunityTrigger` (a trigger of the org), which queries a single `Campaign` named `FONDOS SDU` (`List has no rows for assignment to SObject`, line 22). That campaign does not exist in the org and the test does not create it. **Not verified:** why NPSP (`npsp.TDTM_Opportunity`) triggers the update that reaches the trigger.
+  - `CancelSuscriptionEmailTest.sendEmail` and `testRecordatorioFormularios.probarEnviarCorreo` (2): `NO_MASS_MAIL_PERMISSION` («Single email is not enabled for your organization or profile»). Both use `Messaging.SingleEmailMessage`; the name of the error is only a label. The hypothesis is a mail setting of the org (Setup > Email > Deliverability); that setting could not be read, so the cause is **not confirmed**.
+- Not verified: the real Experience Cloud site (the amount comparison under Lightning Web Security, keyboard and screen reader), a real payment with the Comprador account, and the Guest user of the site.
+
+**Pending**
+
+- Evidence on the published site and a real payment with the Comprador account.
+- Review by Rodrigo of `DonationPaymentController` (two methods lost `@AuraEnabled`) and of the `Donation_Register` flow (risk H2 in `docs/security.md`).
+- Deployment and publication in one window, then a smoke test.
+
+---
+
+### Entry 19 — Workstream A review of DON-09 / DON-18 (PR #72)
+
+- **Date:** 2026-11-17
+- **Author:** Rodrigo Colli
+- **Tool / model:** Claude Code (Opus 5.5), VS Code
+- **Related stories:** DON-18 (#14), DON-09 (#8), ADM-13 (#39)
+- **Result type:** Best prompt
+
+**Prompt / decision summary**
+
+```text
+Review Karen's new PR. Then, in another branch, fix what you reported and open the PR.
+```
+
+**What happened**
+
+- The AI read the payment changes of PR #72 (the token, `PaymentAttemptAccess`, `DonationReview`, and `startDonation` / `openPayment` losing `@AuraEnabled`). It approved removing `@AuraEnabled`: no other caller exists, `getPaymentResult` is unchanged and `Payment_Preference_Create` still checks `Started` and an empty `Preference_Id__c`.
+- **Minimum rule (bug found by the AI, not reported in PR #72).** `Payment_Attempt__c.Minimum_Amount` ran on every save. If the administrator raises the minimum (ADM-13) while a donation is in progress, saving the confirmation, the preference or the `Confirmed` status fails, and in `Donation_Register` that failure reverts the donation of a payment already charged. The rule now runs only with `ISNEW()` or `ISCHANGED(Amount__c)`. It is not covered by an Apex test: tests read the custom metadata of the org and cannot raise the minimum.
+- **Generic payment message.** `DonationIntakeService` kept its own copy of «No pudimos abrir el pago, intenta de nuevo» to recognize it. It now reads `DonationPaymentController.GENERIC_ERROR` (made public), and the five `MercadoPagoPreferenceActionTest` assertions compare the flow output with that constant, so a change of the text in the flow fails a test instead of silently showing another message.
+- **Double payment (risk H2).** Decision of Workstream A: the mitigation is not applied; registering both charged payments keeps Salesforce equal to Mercado Pago. Written in `docs/security.md`.
+
+**What we verified**
+
+- Before the fixes, on PR #72 as it is: Jest 9 suites, 376/376; check-only `0AfVC00000PJ8Uv0AL` with `RunSpecifiedTests` (the 32 test classes of the repository, which avoids the 6 org-only failures): Succeeded, 201/201 components, 320/320 tests.
+- After the fixes: Jest 376/376; check-only `0AfVC00000PJAEz0AP` with the same `RunSpecifiedTests`: Succeeded, 201/201 components, 320/320 tests. The first check-only of the fixes failed because a validation rule description cannot pass 255 characters; the description was shortened. Nothing was deployed or published.
+
+---
+
+### Entry 20 — Workstream C, Delivery 2: closing campaigns, moderation views and role assignment
 
 - **Date:** 2026-11-17
 - **Author:** Alan Pérez

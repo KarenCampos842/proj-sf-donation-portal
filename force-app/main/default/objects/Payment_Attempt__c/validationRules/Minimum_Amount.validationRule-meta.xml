@@ -2,7 +2,10 @@
 <ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>Minimum_Amount</fullName>
     <active>true</active>
-    <description>Impide intentos de pago menores al monto mínimo vigente (DON-08, DON-09). ADM-13: el mínimo se lee de la configuración Donation_Amount_Setting__mdt (registro Default); su valor inicial es $50 MXN.</description>
-    <errorConditionFormula><![CDATA[Amount__c < $CustomMetadata.Donation_Amount_Setting__mdt.Default.Minimum_Amount__c]]></errorConditionFormula>
+    <description>Impide intentos menores al mínimo vigente (DON-08, DON-09). ADM-13: el mínimo viene de Donation_Amount_Setting__mdt (Default). Solo al crear o cambiar el monto: subir el mínimo no bloquea intentos ya creados.</description>
+    <errorConditionFormula><![CDATA[AND(
+    OR(ISNEW(), ISCHANGED(Amount__c)),
+    Amount__c < $CustomMetadata.Donation_Amount_Setting__mdt.Default.Minimum_Amount__c
+)]]></errorConditionFormula>
     <errorMessage>El monto es menor al mínimo permitido.</errorMessage>
 </ValidationRule>

@@ -7,7 +7,20 @@ export const FORM_MESSAGES = {
     noCampaign: 'No encontramos la campaña a la que quieres donar. Regresa y elige una campaña.',
     amount: {
         legend: 'Elige un monto',
-        required: 'Elige un monto para continuar.'
+        required: 'Elige un monto para continuar.',
+        other: 'Otro monto',
+        customLabel: 'Otro monto (MXN)',
+        customHint: 'Escribe solo números. Puedes usar hasta dos decimales, por ejemplo 250 o 250.50.',
+        // Keys of validateAmountText. Same wording as DonationAmountValidator on the server.
+        errors: {
+            empty: 'Escribe el monto que quieres donar.',
+            format: 'Escribe solo números, con punto decimal. Por ejemplo: 250 o 250.50.',
+            decimals: 'Usa como máximo dos decimales.',
+            positive: 'El monto debe ser mayor a cero.',
+            digits: 'Escribe un monto con menos dígitos.',
+            belowMinimum: 'El monto mínimo es de {0}.',
+            configuration: 'No pudimos revisar el monto mínimo ahora. Elige un monto sugerido o inténtalo más tarde.'
+        }
     },
     email: {
         label: 'Correo electrónico',
@@ -52,10 +65,30 @@ export const FORM_MESSAGES = {
         privacyNotice: 'Acepto el aviso de privacidad',
         privacyNoticeRequired: 'Acepta el aviso de privacidad para solicitar factura.'
     },
+    // DON-18. Review step, shown after the data of the form is valid and before the payment.
+    summary: {
+        title: 'Revisa tu donación',
+        intro: 'Confirma que estos datos son correctos. Después te llevaremos a Mercado Pago para pagar.',
+        campaign: 'Campaña',
+        amount: 'Monto',
+        email: 'Correo electrónico',
+        visibility: 'Visibilidad',
+        invoice: 'Factura',
+        anonymous: 'Anónima. Tu nombre no será visible en el portal.',
+        public: 'Pública. Aparecerá como: {0}',
+        invoiceYes: 'Sí, solicitaste factura.',
+        invoiceNo: 'No solicitaste factura.',
+        edit: 'Editar donación',
+        confirm: 'Confirmar y continuar al pago',
+        editing: 'Volviendo a tu donación…',
+        confirming: 'Abriendo el pago…',
+        editError: 'No pudimos regresar a tu donación, intenta de nuevo.',
+        currency: 'MXN'
+    },
     submit: {
-        label: 'Continuar al pago',
-        busy: 'Abriendo el pago…',
-        note: 'Te llevaremos a Mercado Pago para completar tu pago.',
+        label: 'Revisar donación',
+        busy: 'Preparando el resumen…',
+        note: 'Antes de pagar revisarás un resumen de tu donación.',
         errorTitle: 'No pudimos continuar',
         genericError: 'No pudimos abrir el pago, intenta de nuevo',
         fixFields: 'Revisa los campos marcados para continuar.'

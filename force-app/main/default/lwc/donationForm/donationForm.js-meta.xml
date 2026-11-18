@@ -3,7 +3,7 @@
     <apiVersion>67.0</apiVersion>
     <isExposed>true</isExposed>
     <masterLabel>Formulario de donación</masterLabel>
-    <description>Formulario para elegir un monto, indicar el correo, la visibilidad y los datos de factura, y continuar al pago.</description>
+    <description>Formulario para elegir un monto o escribir otro, indicar el correo, la visibilidad y los datos de factura, revisar el resumen y continuar al pago.</description>
     <targets>
         <target>lightningCommunity__Page</target>
         <target>lightningCommunity__Default</target>

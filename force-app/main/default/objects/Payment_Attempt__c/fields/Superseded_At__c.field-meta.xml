@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Superseded_At__c</fullName>
+    <description>DON-18. Marca de auditoría: fecha y hora en que el donante eligió «Editar donación» y este intento quedó reemplazado por otro. Un intento reemplazado ya no tiene token (se vacía el hash) y no puede abrir el pago. No cambia Status__c: PAY-07 lo borra a los 7 días como cualquier intento sin confirmar.</description>
+    <inlineHelpText>Fecha y hora en que el donante editó la donación y este intento dejó de valer.</inlineHelpText>
+    <label>Fecha de reemplazo</label>
+    <required>false</required>
+    <type>DateTime</type>
+</CustomField>

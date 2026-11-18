@@ -18,6 +18,9 @@
     --portal-closed-bg: #e8eaed;
     --portal-closed-text: #2f353b;
     --portal-focus: #0b5cab;
+    --portal-error: #8a1c1c;
+    --portal-error-bg: #fdecec;
+    --portal-error-text: #5c1010;
 
     display: block;
     color: var(--portal-text);

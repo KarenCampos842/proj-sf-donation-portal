@@ -2,10 +2,24 @@ import { createElement } from 'lwc';
 import DonationForm from 'c/donationForm';
 import startDonation from '@salesforce/apex/DonationIntakeService.startDonation';
 import openPayment from '@salesforce/apex/DonationIntakeService.openPayment';
+import getDonationSummary from '@salesforce/apex/DonationIntakeService.getDonationSummary';
+import confirmDonation from '@salesforce/apex/DonationIntakeService.confirmDonation';
+import invalidateDonation from '@salesforce/apex/DonationIntakeService.invalidateDonation';
 import getAmountSettings from '@salesforce/apex/DonationIntakeService.getAmountSettings';
+import {
+    centsToText,
+    compareCents,
+    formatAmountText,
+    minimumToCents,
+    toCents,
+    validateAmountText
+} from 'c/donationFormRules';
 
 jest.mock('@salesforce/apex/DonationIntakeService.startDonation', () => ({ default: jest.fn() }), { virtual: true });
 jest.mock('@salesforce/apex/DonationIntakeService.openPayment', () => ({ default: jest.fn() }), { virtual: true });
+jest.mock('@salesforce/apex/DonationIntakeService.getDonationSummary', () => ({ default: jest.fn() }), { virtual: true });
+jest.mock('@salesforce/apex/DonationIntakeService.confirmDonation', () => ({ default: jest.fn() }), { virtual: true });
+jest.mock('@salesforce/apex/DonationIntakeService.invalidateDonation', () => ({ default: jest.fn() }), { virtual: true });
 jest.mock(
     '@salesforce/apex/DonationIntakeService.getAmountSettings',
     () => {
@@ -16,7 +30,16 @@ jest.mock(
 );
 
 const CAMPAIGN_ID = 'a00000000000001AAA';
-const ATTEMPT_ID = 'a01000000000001AAA';
+// DON-18. The browser only ever holds the access token of the attempt, never its Id.
+const ACCESS_TOKEN = 'f'.repeat(64);
+const SUMMARY = {
+    campaignName: 'Viaje a Mexico Dreamin´',
+    amount: '500.00',
+    email: 'donante@example.com',
+    visibility: 'Anonymous',
+    publicName: null,
+    invoiceRequested: false
+};
 const CHECKOUT_URL = 'https://www.mercadopago.com.mx/checkout/v1/redirect?pref_id=TEST';
 const PERSON_RFC = 'GODE561231GR8';
 const COMPANY_RFC = 'ABC010203XY1';
@@ -37,6 +60,10 @@ const radios = (element) => Array.from(element.shadowRoot.querySelectorAll('inpu
 const field = (element, name) => element.shadowRoot.querySelector(`[data-field="${name}"]`);
 const toggle = (element, name) => element.shadowRoot.querySelector(`[data-name="${name}"]`);
 const submitButton = (element) => element.shadowRoot.querySelector('.actions__submit');
+// DON-18. The summary is a child component; its buttons are the way to confirm or to edit.
+const summaryElement = (element) => element.shadowRoot.querySelector('c-donation-summary');
+const summaryButton = (element, name) => summaryElement(element).shadowRoot.querySelector(`.actions__${name}`);
+const summaryError = (element) => summaryElement(element).shadowRoot.querySelector('.alert')?.textContent.trim();
 const errorBanner = (element) => element.shadowRoot.querySelector('.alert[role="alert"]');
 
 async function selectAmount(element, amount) {
@@ -97,12 +124,36 @@ async function submit(element) {
     await flushPromises();
 }
 
+async function confirmSummary(element) {
+    summaryButton(element, 'confirm').click();
+    await flushPromises();
+}
+
+async function submitAndConfirm(element) {
+    await submit(element);
+    await confirmSummary(element);
+}
+
+async function openForCustomAmount() {
+    const element = createComponent();
+    getAmountSettings.emit({ minimumAmount: 50, suggestedAmounts: [100, 250, 500, 1000] });
+    await flushPromises();
+    const radio = radios(element).find((item) => item.value === 'other');
+    radio.checked = true;
+    radio.dispatchEvent(new CustomEvent('change'));
+    await Promise.resolve();
+    return element;
+}
+
 describe('c-donation-form', () => {
     beforeEach(() => {
         originalLocation = window.location;
         delete window.location;
         window.location = { assign: jest.fn() };
-        startDonation.mockResolvedValue(ATTEMPT_ID);
+        startDonation.mockResolvedValue({ accessToken: ACCESS_TOKEN });
+        getDonationSummary.mockResolvedValue(SUMMARY);
+        confirmDonation.mockResolvedValue(undefined);
+        invalidateDonation.mockResolvedValue(undefined);
         openPayment.mockResolvedValue(CHECKOUT_URL);
     });
 
@@ -123,7 +174,7 @@ describe('c-donation-form', () => {
             getAmountSettings.emit({ minimumAmount: 80, suggestedAmounts: [150, 300, 900] });
             await flushPromises();
 
-            expect(pillLabels(element)).toEqual(['$150 MXN', '$300 MXN', '$900 MXN']);
+            expect(pillLabels(element)).toEqual(['$150 MXN', '$300 MXN', '$900 MXN', 'Otro monto']);
         });
 
         it('keeps the amounts of Delivery 1 when the configuration cannot be read', async () => {
@@ -131,8 +182,9 @@ describe('c-donation-form', () => {
             getAmountSettings.error();
             await flushPromises();
 
-            expect(pillLabels(element)).toHaveLength(8);
+            expect(pillLabels(element)).toHaveLength(9);
             expect(pillLabels(element)[0]).toBe('$100 MXN');
+            expect(pillLabels(element)[8]).toBe('Otro monto');
         });
 
         it('clears a selected amount that the configuration no longer offers', async () => {
@@ -146,7 +198,7 @@ describe('c-donation-form', () => {
     });
 
     describe('amount (DON-08)', () => {
-        it('shows the eight fixed amounts as independent options, none selected', () => {
+        it('shows the eight suggested amounts and the other-amount option as independent options, none selected', () => {
             const element = createComponent();
 
             const labels = Array.from(element.shadowRoot.querySelectorAll('.pill__label')).map((node) =>
@@ -160,7 +212,8 @@ describe('c-donation-form', () => {
                 '$2,000 MXN',
                 '$5,000 MXN',
                 '$10,000 MXN',
-                '$20,000 MXN'
+                '$20,000 MXN',
+                'Otro monto'
             ]);
             expect(radios(element).every((radio) => !radio.checked)).toBe(true);
             expect(element.shadowRoot.querySelector('select')).toBeNull();
@@ -240,7 +293,7 @@ describe('c-donation-form', () => {
             expect(startDonation).toHaveBeenCalledTimes(1);
             expect(startDonation.mock.calls[0][0].request).toEqual({
                 campaignId: CAMPAIGN_ID,
-                amount: 500,
+                amount: '500',
                 email: 'donante@example.com',
                 visibility: 'Anonymous',
                 publicName: null,
@@ -468,7 +521,7 @@ describe('c-donation-form', () => {
 
             expect(startDonation.mock.calls[0][0].request).toEqual({
                 campaignId: CAMPAIGN_ID,
-                amount: 500,
+                amount: '500',
                 email: 'donante@example.com',
                 visibility: 'Anonymous',
                 publicName: null,
@@ -519,17 +572,28 @@ describe('c-donation-form', () => {
     });
 
     describe('payment flow', () => {
-        it('calls startDonation first, then openPayment with the attempt Id, then redirects', async () => {
+        it('starts the donation, shows the summary, and only after the confirmation opens the payment and redirects', async () => {
             const element = createComponent();
             await fillAnonymousDonation(element);
             await submit(element);
 
-            expect(openPayment).toHaveBeenCalledWith({ attemptId: ATTEMPT_ID });
-            expect(startDonation.mock.invocationCallOrder[0]).toBeLessThan(openPayment.mock.invocationCallOrder[0]);
+            expect(startDonation).toHaveBeenCalledTimes(1);
+            expect(getDonationSummary).toHaveBeenCalledWith({ accessToken: ACCESS_TOKEN });
+            expect(summaryElement(element)).not.toBeNull();
+            expect(confirmDonation).not.toHaveBeenCalled();
+            expect(openPayment).not.toHaveBeenCalled();
+            expect(window.location.assign).not.toHaveBeenCalled();
+
+            await confirmSummary(element);
+
+            expect(confirmDonation).toHaveBeenCalledWith({ accessToken: ACCESS_TOKEN });
+            expect(openPayment).toHaveBeenCalledWith({ accessToken: ACCESS_TOKEN });
+            expect(confirmDonation.mock.invocationCallOrder[0]).toBeLessThan(openPayment.mock.invocationCallOrder[0]);
+            expect(startDonation.mock.invocationCallOrder[0]).toBeLessThan(confirmDonation.mock.invocationCallOrder[0]);
             expect(window.location.assign).toHaveBeenCalledWith(CHECKOUT_URL);
         });
 
-        it('locks the button while the payment is being opened and ignores a second click', async () => {
+        it('locks the button while the summary is being prepared and ignores a second click', async () => {
             let finishStart;
             startDonation.mockReturnValue(new Promise((resolve) => (finishStart = resolve)));
             const element = createComponent();
@@ -541,12 +605,13 @@ describe('c-donation-form', () => {
             await Promise.resolve();
 
             expect(submitButton(element).disabled).toBe(true);
-            expect(submitButton(element).label).toBe('Abriendo el pago…');
+            expect(submitButton(element).label).toBe('Preparando el resumen…');
             expect(startDonation).toHaveBeenCalledTimes(1);
 
-            finishStart(ATTEMPT_ID);
+            finishStart({ accessToken: ACCESS_TOKEN });
             await flushPromises();
-            expect(openPayment).toHaveBeenCalledTimes(1);
+            expect(getDonationSummary).toHaveBeenCalledTimes(1);
+            expect(openPayment).not.toHaveBeenCalled();
         });
 
         it('shows the Spanish message of startDonation and keeps what the donor typed', async () => {
@@ -556,6 +621,7 @@ describe('c-donation-form', () => {
             await submit(element);
 
             expect(errorBanner(element).textContent).toContain('Esta campaña ya no acepta donaciones.');
+            expect(summaryElement(element)).toBeNull();
             expect(openPayment).not.toHaveBeenCalled();
             expect(window.location.assign).not.toHaveBeenCalled();
             expect(field(element, 'email').value).toBe('donante@example.com');
@@ -563,15 +629,17 @@ describe('c-donation-form', () => {
             expect(submitButton(element).disabled).toBe(false);
         });
 
-        it('shows the Spanish message of openPayment and does not redirect', async () => {
+        it('shows the Spanish message of openPayment next to the summary and does not redirect', async () => {
             openPayment.mockRejectedValue({ body: { message: '|No pudimos abrir el pago, intenta de nuevo' } });
             const element = createComponent();
             await fillAnonymousDonation(element);
             await submit(element);
+            await confirmSummary(element);
 
-            expect(errorBanner(element).textContent).toContain('No pudimos abrir el pago, intenta de nuevo');
+            expect(summaryError(element)).toContain('No pudimos abrir el pago, intenta de nuevo');
             expect(window.location.assign).not.toHaveBeenCalled();
-            expect(submitButton(element).disabled).toBe(false);
+            expect(summaryButton(element, 'confirm').disabled).toBe(true);
+            expect(summaryButton(element, 'edit').disabled).toBe(false);
         });
 
         it('lets the donor try again after an error', async () => {
@@ -582,6 +650,7 @@ describe('c-donation-form', () => {
             expect(errorBanner(element)).not.toBeNull();
 
             await submit(element);
+            await confirmSummary(element);
 
             expect(window.location.assign).toHaveBeenCalledWith(CHECKOUT_URL);
             expect(errorBanner(element)).toBeNull();
@@ -612,23 +681,335 @@ describe('c-donation-form', () => {
             const element = createComponent();
             await fillAnonymousDonation(element);
             await submit(element);
+            await confirmSummary(element);
 
             expect(window.location.assign).not.toHaveBeenCalled();
-            expect(errorBanner(element).textContent).toContain('No pudimos abrir el pago, intenta de nuevo');
+            expect(summaryError(element)).toContain('No pudimos abrir el pago, intenta de nuevo');
         });
 
-        it('unlocks the form when the donor comes back with the browser back button', async () => {
+        it('unlocks the summary when the donor comes back with the browser back button', async () => {
             const element = createComponent();
             await fillAnonymousDonation(element);
             await submit(element);
-            expect(submitButton(element).disabled).toBe(true);
+            await confirmSummary(element);
+            expect(summaryButton(element, 'confirm').disabled).toBe(true);
 
             const event = new CustomEvent('pageshow');
             event.persisted = true;
             window.dispatchEvent(event);
             await Promise.resolve();
 
-            expect(submitButton(element).disabled).toBe(false);
+            expect(summaryButton(element, 'confirm').disabled).toBe(false);
+            expect(summaryButton(element, 'edit').disabled).toBe(false);
+        });
+    });
+
+    describe('review and confirmation of the donation (DON-18)', () => {
+        const rows = (element) => {
+            const root = summaryElement(element).shadowRoot;
+            return {
+                campaign: normalize(root.querySelector('.summary__campaign').textContent),
+                amount: normalize(root.querySelector('.summary__amount').textContent),
+                email: normalize(root.querySelector('.summary__email').textContent),
+                visibility: normalize(root.querySelector('.summary__visibility').textContent),
+                invoice: normalize(root.querySelector('.summary__invoice').textContent)
+            };
+        };
+
+        it('shows campaign, exact amount in MXN, email, visibility and invoice request', async () => {
+            const element = createComponent();
+            await fillAnonymousDonation(element);
+            await submit(element);
+
+            expect(rows(element)).toEqual({
+                campaign: 'Viaje a Mexico Dreamin´',
+                amount: '$500 MXN',
+                email: 'donante@example.com',
+                visibility: 'Anónima. Tu nombre no será visible en el portal.',
+                invoice: 'No solicitaste factura.'
+            });
+        });
+
+        it('builds the summary from what the server returns, not from what the form holds', async () => {
+            getDonationSummary.mockResolvedValue({ ...SUMMARY, amount: '1234.50', email: 'del-servidor@example.com' });
+            const element = createComponent();
+            await fillAnonymousDonation(element);
+            await submit(element);
+
+            expect(rows(element).amount).toBe('$1,234.50 MXN');
+            expect(rows(element).email).toBe('del-servidor@example.com');
+        });
+
+        it('shows the name that will appear when the donation is public', async () => {
+            getDonationSummary.mockResolvedValue({ ...SUMMARY, visibility: 'Public', publicName: 'Familia Pérez' });
+            const element = createComponent();
+            await fillAnonymousDonation(element);
+            await submit(element);
+
+            expect(rows(element).visibility).toBe('Pública. Aparecerá como: Familia Pérez');
+        });
+
+        it('says that the name will not be visible when the donation is anonymous, even if it asks for an invoice', async () => {
+            getDonationSummary.mockResolvedValue({ ...SUMMARY, invoiceRequested: true });
+            const element = createComponent();
+            await fillAnonymousDonation(element);
+            await submit(element);
+
+            expect(rows(element).visibility).toContain('Tu nombre no será visible');
+            expect(rows(element).invoice).toBe('Sí, solicitaste factura.');
+        });
+
+        it('shows a public name that contains HTML as plain text', async () => {
+            getDonationSummary.mockResolvedValue({ ...SUMMARY, visibility: 'Public', publicName: '<img src=x onerror=alert(1)>' });
+            const element = createComponent();
+            await fillAnonymousDonation(element);
+            await submit(element);
+
+            expect(summaryElement(element).shadowRoot.querySelector('img')).toBeNull();
+            expect(rows(element).visibility).toContain('<img src=x onerror=alert(1)>');
+        });
+
+        it('shows every digit of a 16-digit amount', async () => {
+            getDonationSummary.mockResolvedValue({ ...SUMMARY, amount: '99999999999999.99' });
+            const element = createComponent();
+            await fillAnonymousDonation(element);
+            await submit(element);
+
+            expect(rows(element).amount).toBe('$99,999,999,999,999.99 MXN');
+        });
+
+        it('hides the form and the back link while the summary is shown, and has a single h1', async () => {
+            const element = createComponent();
+            await fillAnonymousDonation(element);
+            await submit(element);
+
+            expect(field(element, 'email')).toBeNull();
+            expect(element.shadowRoot.querySelector('.donation__back')).toBeNull();
+            expect(element.shadowRoot.querySelectorAll('h1')).toHaveLength(0);
+            expect(summaryElement(element).shadowRoot.querySelectorAll('h1')).toHaveLength(1);
+        });
+
+        it('does not open the payment until the donor confirms, for suggested and custom amounts', async () => {
+            const element = await openForCustomAmount();
+            await typeInto(element, 'customAmount', '333.33');
+            await typeInto(element, 'email', 'donante@example.com');
+            await submit(element);
+
+            expect(summaryElement(element)).not.toBeNull();
+            expect(confirmDonation).not.toHaveBeenCalled();
+            expect(openPayment).not.toHaveBeenCalled();
+        });
+
+        it('keeps the token out of the page: it is not in the DOM', async () => {
+            const element = createComponent();
+            await fillAnonymousDonation(element);
+            await submit(element);
+
+            expect(element.shadowRoot.innerHTML).not.toContain(ACCESS_TOKEN);
+            expect(summaryElement(element).shadowRoot.innerHTML).not.toContain(ACCESS_TOKEN);
+        });
+
+        it('goes back to the form with everything the donor typed when the donor edits', async () => {
+            const element = createComponent();
+            await setToggle(element, 'anonymous', false);
+            await typeInto(element, 'publicName', 'Familia Pérez');
+            await fillInvoice(element);
+            await fillAnonymousDonation(element);
+            await submit(element);
+            expect(summaryElement(element)).not.toBeNull();
+
+            summaryButton(element, 'edit').click();
+            await flushPromises();
+
+            expect(invalidateDonation).toHaveBeenCalledWith({ accessToken: ACCESS_TOKEN });
+            expect(summaryElement(element)).toBeNull();
+            expect(radios(element).find((radio) => radio.checked).value).toBe('500');
+            expect(field(element, 'email').value).toBe('donante@example.com');
+            expect(field(element, 'publicName').value).toBe('Familia Pérez');
+            expect(field(element, 'legalName').value).toBe('Familia Pérez S.A. de C.V.');
+            expect(field(element, 'rfc').value).toBe(COMPANY_RFC);
+            expect(field(element, 'taxPostalCode').value).toBe('97000');
+            expect(field(element, 'taxRegime').value).toBe('601');
+            expect(field(element, 'privacyNoticeAccepted').checked).toBe(true);
+            expect(toggle(element, 'invoice').checked).toBe(true);
+            expect(toggle(element, 'anonymous').checked).toBe(false);
+            expect(window.location.assign).not.toHaveBeenCalled();
+        });
+
+        it('keeps the custom amount when the donor edits', async () => {
+            const element = await openForCustomAmount();
+            await typeInto(element, 'customAmount', '75.5');
+            await typeInto(element, 'email', 'donante@example.com');
+            await submit(element);
+
+            summaryButton(element, 'edit').click();
+            await flushPromises();
+
+            expect(field(element, 'customAmount').value).toBe('75.5');
+        });
+
+        it('asks for a new confirmation after editing: a new attempt, a new token and a new summary', async () => {
+            startDonation.mockResolvedValueOnce({ accessToken: 'a'.repeat(64) }).mockResolvedValueOnce({ accessToken: 'b'.repeat(64) });
+            const element = createComponent();
+            await fillAnonymousDonation(element);
+            await submit(element);
+            summaryButton(element, 'edit').click();
+            await flushPromises();
+            await selectAmount(element, 250);
+
+            await submit(element);
+
+            expect(startDonation).toHaveBeenCalledTimes(2);
+            expect(startDonation.mock.calls[1][0].request.amount).toBe('250');
+            expect(getDonationSummary).toHaveBeenLastCalledWith({ accessToken: 'b'.repeat(64) });
+            expect(confirmDonation).not.toHaveBeenCalled();
+            expect(openPayment).not.toHaveBeenCalled();
+
+            await confirmSummary(element);
+
+            expect(confirmDonation).toHaveBeenCalledWith({ accessToken: 'b'.repeat(64) });
+            expect(openPayment).toHaveBeenCalledWith({ accessToken: 'b'.repeat(64) });
+            expect(openPayment).not.toHaveBeenCalledWith({ accessToken: 'a'.repeat(64) });
+        });
+
+        it('stays on the summary and says so when the server cannot take the donor back to the form', async () => {
+            invalidateDonation.mockRejectedValue(new Error('network'));
+            const element = createComponent();
+            await fillAnonymousDonation(element);
+            await submit(element);
+
+            summaryButton(element, 'edit').click();
+            await flushPromises();
+
+            expect(summaryElement(element)).not.toBeNull();
+            expect(summaryError(element)).toBe('No pudimos regresar a tu donación, intenta de nuevo.');
+            expect(summaryButton(element, 'edit').disabled).toBe(false);
+        });
+
+        it('disables both buttons and announces the state while the payment is opening', async () => {
+            let finishOpen;
+            openPayment.mockReturnValue(new Promise((resolve) => (finishOpen = resolve)));
+            const element = createComponent();
+            await fillAnonymousDonation(element);
+            await submit(element);
+
+            summaryButton(element, 'confirm').click();
+            await Promise.resolve();
+            await Promise.resolve();
+
+            expect(summaryButton(element, 'confirm').disabled).toBe(true);
+            expect(summaryButton(element, 'edit').disabled).toBe(true);
+            expect(summaryButton(element, 'confirm').label).toBe('Abriendo el pago…');
+            expect(summaryElement(element).shadowRoot.querySelector('[role="status"]').textContent).toBe('Abriendo el pago…');
+
+            finishOpen(CHECKOUT_URL);
+            await flushPromises();
+            expect(window.location.assign).toHaveBeenCalledTimes(1);
+        });
+
+        it('opens the payment only once when the confirm button is clicked twice', async () => {
+            const element = createComponent();
+            await fillAnonymousDonation(element);
+            await submit(element);
+
+            summaryButton(element, 'confirm').click();
+            summaryButton(element, 'confirm').click();
+            await flushPromises();
+
+            expect(confirmDonation).toHaveBeenCalledTimes(1);
+            expect(openPayment).toHaveBeenCalledTimes(1);
+        });
+
+        it('shows only a friendly text, never a technical one, when confirming fails', async () => {
+            confirmDonation.mockRejectedValue({ body: { message: 'System.DmlException: UNABLE_TO_LOCK_ROW at Class.DonationReview' } });
+            const element = createComponent();
+            await fillAnonymousDonation(element);
+            await submit(element);
+            await confirmSummary(element);
+
+            expect(summaryError(element)).toBe('No pudimos abrir el pago, intenta de nuevo');
+            expect(openPayment).not.toHaveBeenCalled();
+        });
+
+        it('leaves only «Editar donación» after the server refuses the payment, and confirms again after editing', async () => {
+            openPayment.mockRejectedValueOnce({
+                body: { message: '|No pudimos abrir el pago. Puede que Mercado Pago no acepte esta cantidad: edita tu donación y elige otra cantidad.' }
+            });
+            const element = createComponent();
+            await fillAnonymousDonation(element);
+            await submit(element);
+            await confirmSummary(element);
+
+            expect(summaryButton(element, 'confirm').disabled).toBe(true);
+            expect(summaryButton(element, 'edit').disabled).toBe(false);
+            summaryButton(element, 'confirm').click();
+            await flushPromises();
+            expect(confirmDonation).toHaveBeenCalledTimes(1);
+
+            summaryButton(element, 'edit').click();
+            await flushPromises();
+            await submit(element);
+
+            expect(summaryButton(element, 'confirm').disabled).toBe(false);
+        });
+
+        it('keeps «Confirmar» available when the failure is not a message of the server, so the donor can retry', async () => {
+            confirmDonation.mockRejectedValueOnce({ body: { message: 'System.CalloutException: Read timed out' } });
+            const element = createComponent();
+            await fillAnonymousDonation(element);
+            await submit(element);
+            await confirmSummary(element);
+
+            expect(summaryButton(element, 'confirm').disabled).toBe(false);
+            expect(summaryButton(element, 'edit').disabled).toBe(false);
+        });
+
+        it('moves the focus to the title of the summary when the donor reaches the review step', async () => {
+            const element = createComponent();
+            await fillAnonymousDonation(element);
+
+            await submit(element);
+
+            const title = summaryElement(element).shadowRoot.querySelector('h1');
+            expect(summaryElement(element).shadowRoot.activeElement).toBe(title);
+        });
+
+        it('moves the focus back to the title of the form when the donor chooses «Editar donación»', async () => {
+            const element = createComponent();
+            await fillAnonymousDonation(element);
+            await submit(element);
+
+            summaryButton(element, 'edit').click();
+            await flushPromises();
+
+            expect(summaryElement(element)).toBeNull();
+            expect(element.shadowRoot.activeElement).toBe(element.shadowRoot.querySelector('.form__title'));
+        });
+
+        it('makes no Apex call while the donor only reads the summary', async () => {
+            const element = createComponent();
+            await fillAnonymousDonation(element);
+            await submit(element);
+            jest.clearAllMocks();
+
+            await flushPromises();
+
+            expect(startDonation).not.toHaveBeenCalled();
+            expect(getDonationSummary).not.toHaveBeenCalled();
+            expect(confirmDonation).not.toHaveBeenCalled();
+            expect(invalidateDonation).not.toHaveBeenCalled();
+            expect(openPayment).not.toHaveBeenCalled();
+        });
+
+        it('forgets the token when the summary cannot be read, so nothing can be confirmed', async () => {
+            getDonationSummary.mockRejectedValue({ body: { message: '|Tu donación ya no está disponible. Edítala para volver a capturar tus datos.' } });
+            const element = createComponent();
+            await fillAnonymousDonation(element);
+            await submit(element);
+
+            expect(summaryElement(element)).toBeNull();
+            expect(errorBanner(element).textContent).toContain('ya no está disponible');
+            expect(confirmDonation).not.toHaveBeenCalled();
         });
     });
 
@@ -784,12 +1165,12 @@ describe('c-donation-form', () => {
             await typeInto(element, 'taxPostalCode', '97010');
             expect(markValidity).toHaveBeenLastCalledWith('');
 
-            await submit(element);
+            await submitAndConfirm(element);
 
             expect(startDonation).toHaveBeenCalledTimes(2);
             expect(startDonation.mock.calls[1][0].request).toEqual({
                 campaignId: CAMPAIGN_ID,
-                amount: 500,
+                amount: '500',
                 email: 'donante@example.com',
                 visibility: 'Public',
                 publicName: 'Familia Pérez',
@@ -837,14 +1218,12 @@ describe('c-donation-form', () => {
             const element = createComponent();
             await fillAnonymousDonation(element);
 
-            await submit(element);
+            await submitAndConfirm(element);
 
-            expect(errorBanner(element).querySelector('.alert__message').textContent).toBe(
-                'No pudimos abrir el pago, intenta de nuevo'
-            );
-            expect(element.shadowRoot.textContent).not.toContain('mercadopago.com');
+            expect(summaryError(element)).toBe('No pudimos abrir el pago, intenta de nuevo');
+            expect(summaryElement(element).shadowRoot.textContent).not.toContain('mercadopago.com');
             expect(window.location.assign).not.toHaveBeenCalled();
-            expect(submitButton(element).disabled).toBe(false);
+            expect(summaryButton(element, 'confirm').disabled).toBe(false);
         });
     });
 
@@ -1009,15 +1388,15 @@ describe('c-donation-form', () => {
             expect(noticeText(element)).toContain('Esta campaña ya no acepta donaciones.');
         });
 
-        it('does not remove a failure to open the payment when a field is edited', async () => {
-            openPayment.mockRejectedValueOnce({ body: { message: '|No pudimos abrir el pago, intenta de nuevo' } });
+        it('does not remove a general failure of the server when a field is edited', async () => {
+            startDonation.mockRejectedValueOnce({ body: { message: '|No pudimos registrar tus datos, intenta de nuevo.' } });
             const element = createComponent();
             await fillAnonymousDonation(element);
             await submit(element);
 
             await typeInto(element, 'email', 'otro@example.com');
 
-            expect(noticeText(element)).toContain('No pudimos abrir el pago, intenta de nuevo');
+            expect(noticeText(element)).toContain('No pudimos registrar tus datos, intenta de nuevo.');
         });
 
         describe('regime after the RFC changes', () => {
@@ -1157,7 +1536,7 @@ describe('c-donation-form', () => {
             expect(openPayment).not.toHaveBeenCalled();
         });
 
-        it('keeps the payment flow: after the corrections, one startDonation and then one openPayment', async () => {
+        it('keeps the flow: after the corrections, one startDonation, the summary and then one openPayment after confirming', async () => {
             const element = createComponent();
             await selectAmount(element, 500);
             await submit(element);
@@ -1165,10 +1544,12 @@ describe('c-donation-form', () => {
             expect(errorBanner(element)).toBeNull();
 
             await submit(element);
+            expect(openPayment).not.toHaveBeenCalled();
+            await confirmSummary(element);
 
             expect(startDonation).toHaveBeenCalledTimes(1);
             expect(openPayment).toHaveBeenCalledTimes(1);
-            expect(openPayment).toHaveBeenCalledWith({ attemptId: ATTEMPT_ID });
+            expect(openPayment).toHaveBeenCalledWith({ accessToken: ACCESS_TOKEN });
             expect(startDonation.mock.invocationCallOrder[0]).toBeLessThan(openPayment.mock.invocationCallOrder[0]);
             expect(window.location.assign).toHaveBeenCalledWith(CHECKOUT_URL);
         });
@@ -1210,7 +1591,7 @@ describe('c-donation-form', () => {
             const element = createComponent();
             await fillAnonymousDonation(element);
 
-            await submit(element);
+            await submitAndConfirm(element);
 
             const request = startDonation.mock.calls[0][0].request;
             expect(request.invoiceRequested).toBe(false);
@@ -1316,10 +1697,443 @@ describe('c-donation-form', () => {
             expect(startDonation).not.toHaveBeenCalled();
 
             await typeInto(element, 'taxPostalCode', '97010');
+            expect(field(element, 'privacyNoticeAccepted').checked).toBe(true);
             await submit(element);
 
-            expect(field(element, 'privacyNoticeAccepted').checked).toBe(true);
             expect(startDonation.mock.calls[0][0].request.privacyNoticeAccepted).toBe(true);
+        });
+    });
+
+    describe('custom amount (DON-09)', () => {
+        const SUGGESTED = [100, 250, 500, 1000];
+        const otherRadio = (element) => radios(element).find((radio) => radio.value === 'other');
+        const customField = (element) => field(element, 'customAmount');
+        const checkedValues = (element) => radios(element).filter((radio) => radio.checked).map((radio) => radio.value);
+
+        async function chooseOther(element) {
+            const radio = otherRadio(element);
+            radio.checked = true;
+            radio.dispatchEvent(new CustomEvent('change'));
+            await Promise.resolve();
+        }
+
+        async function openWithSettings(minimumAmount = 50) {
+            const element = createComponent();
+            getAmountSettings.emit({ minimumAmount, suggestedAmounts: SUGGESTED });
+            await flushPromises();
+            return element;
+        }
+
+        async function startWithCustomAmount(element, text) {
+            await chooseOther(element);
+            await typeInto(element, 'customAmount', text);
+            await typeInto(element, 'email', 'donante@example.com');
+            await submit(element);
+        }
+
+        it('moves the focus to the custom amount field when its amount is not valid', async () => {
+            const element = await openWithSettings();
+            await chooseOther(element);
+            await typeInto(element, 'email', 'donante@example.com');
+            await typeInto(element, 'customAmount', '0.001');
+            const focus = jest.spyOn(customField(element), 'focus');
+
+            await submit(element);
+
+            expect(focus).toHaveBeenCalledTimes(1);
+            expect(startDonation).not.toHaveBeenCalled();
+        });
+
+        it('moves the focus to the amount options when no amount was chosen', async () => {
+            const element = await openWithSettings();
+            await typeInto(element, 'email', 'donante@example.com');
+
+            await submit(element);
+
+            expect(element.shadowRoot.activeElement).toBe(radios(element)[0]);
+            expect(startDonation).not.toHaveBeenCalled();
+        });
+
+        it('shows «Otro monto» in the same step as the suggested amounts and reveals the field only when chosen', async () => {
+            const element = await openWithSettings();
+
+            expect(element.shadowRoot.querySelector('fieldset').contains(otherRadio(element))).toBe(true);
+            expect(customField(element)).toBeNull();
+
+            await chooseOther(element);
+
+            expect(customField(element)).not.toBeNull();
+            expect(customField(element).label).toBe('Otro monto (MXN)');
+            expect(customField(element).fieldLevelHelp).toContain('hasta dos decimales');
+        });
+
+        it.each([
+            ['250', '250'],
+            ['250.5', '250.5'],
+            ['250.50', '250.50'],
+            ['  333.33 ', '333.33'],
+            ['0050', '0050'],
+            ['99999999999999.99', '99999999999999.99']
+        ])('sends the amount %p exactly as typed (%p), as text', async (typed, expected) => {
+            const element = await openWithSettings();
+
+            await startWithCustomAmount(element, typed);
+
+            expect(startDonation).toHaveBeenCalledTimes(1);
+            const { amount } = startDonation.mock.calls[0][0].request;
+            expect(amount).toBe(expected);
+            expect(typeof amount).toBe('string');
+        });
+
+        it('accepts an amount that is not suggested when it reaches the current minimum', async () => {
+            const element = await openWithSettings(80);
+
+            await startWithCustomAmount(element, '80');
+
+            expect(startDonation).toHaveBeenCalledTimes(1);
+            expect(startDonation.mock.calls[0][0].request.amount).toBe('80');
+        });
+
+        it('blocks an amount below the minimum of the configuration and names that minimum', async () => {
+            const element = await openWithSettings(80);
+            await chooseOther(element);
+            await typeInto(element, 'customAmount', '79.99');
+            await typeInto(element, 'email', 'donante@example.com');
+            const markValidity = jest.spyOn(customField(element), 'setCustomValidity');
+
+            await submit(element);
+
+            expect(startDonation).not.toHaveBeenCalled();
+            expect(markValidity).toHaveBeenLastCalledWith('El monto mínimo es de $80 MXN.');
+        });
+
+        it('follows a minimum with decimals', async () => {
+            const element = await openWithSettings(75.5);
+            await chooseOther(element);
+            const input = await typeInto(element, 'customAmount', '75.49');
+            await typeInto(element, 'email', 'donante@example.com');
+            await submit(element);
+            expect(startDonation).not.toHaveBeenCalled();
+
+            await typeInto(element, 'customAmount', '75.50');
+            await submit(element);
+
+            expect(input).toBeDefined();
+            expect(startDonation).toHaveBeenCalledTimes(1);
+        });
+
+        it.each([
+            ['', 'Escribe el monto que quieres donar.'],
+            ['   ', 'Escribe el monto que quieres donar.'],
+            ['abc', 'Escribe solo números, con punto decimal. Por ejemplo: 250 o 250.50.'],
+            ['1,000', 'Escribe solo números, con punto decimal. Por ejemplo: 250 o 250.50.'],
+            ['1e3', 'Escribe solo números, con punto decimal. Por ejemplo: 250 o 250.50.'],
+            ['$250', 'Escribe solo números, con punto decimal. Por ejemplo: 250 o 250.50.'],
+            ['.5', 'Escribe solo números, con punto decimal. Por ejemplo: 250 o 250.50.'],
+            ['5.', 'Escribe solo números, con punto decimal. Por ejemplo: 250 o 250.50.'],
+            ['0', 'El monto debe ser mayor a cero.'],
+            ['0.00', 'El monto debe ser mayor a cero.'],
+            ['-5', 'El monto debe ser mayor a cero.'],
+            ['-250.50', 'El monto debe ser mayor a cero.'],
+            ['250.555', 'Usa como máximo dos decimales.'],
+            ['100000000000000', 'Escribe un monto con menos dígitos.'],
+            ['49.99', 'El monto mínimo es de $50 MXN.']
+        ])('blocks the amount %p with the reason, next to the field and without calling Apex', async (typed, message) => {
+            const element = await openWithSettings();
+            await chooseOther(element);
+            await typeInto(element, 'customAmount', typed);
+            await typeInto(element, 'email', 'donante@example.com');
+            const markValidity = jest.spyOn(customField(element), 'setCustomValidity');
+
+            await submit(element);
+
+            expect(startDonation).not.toHaveBeenCalled();
+            expect(openPayment).not.toHaveBeenCalled();
+            expect(markValidity).toHaveBeenLastCalledWith(message);
+        });
+
+        it('does not guess the minimum when the configuration has not arrived: the suggested amounts still work', async () => {
+            const element = createComponent();
+            await chooseOther(element);
+            await typeInto(element, 'customAmount', '250');
+            await typeInto(element, 'email', 'donante@example.com');
+            const markValidity = jest.spyOn(customField(element), 'setCustomValidity');
+
+            await submit(element);
+
+            expect(startDonation).not.toHaveBeenCalled();
+            expect(markValidity).toHaveBeenLastCalledWith(expect.stringContaining('Elige un monto sugerido'));
+
+            await selectAmount(element, 500);
+            await submit(element);
+            expect(startDonation).toHaveBeenCalledTimes(1);
+        });
+
+        it('keeps a single active amount: choosing «Otro monto» leaves no suggested amount selected', async () => {
+            const element = await openWithSettings();
+            await selectAmount(element, 250);
+            expect(checkedValues(element)).toEqual(['250']);
+
+            await chooseOther(element);
+
+            expect(checkedValues(element)).toEqual(['other']);
+            await typeInto(element, 'customAmount', '75');
+            await typeInto(element, 'email', 'donante@example.com');
+            await submit(element);
+            expect(startDonation.mock.calls[0][0].request.amount).toBe('75');
+        });
+
+        it('clears the typed amount when a suggested amount is chosen afterwards, so only the last choice counts', async () => {
+            const element = await openWithSettings();
+            await chooseOther(element);
+            await typeInto(element, 'customAmount', '75');
+
+            await selectAmount(element, 500);
+
+            expect(customField(element)).toBeNull();
+            expect(checkedValues(element)).toEqual(['500']);
+            await typeInto(element, 'email', 'donante@example.com');
+            await submit(element);
+            expect(startDonation.mock.calls[0][0].request.amount).toBe('500');
+
+            summaryButton(element, 'edit').click();
+            await flushPromises();
+            await chooseOther(element);
+            expect(customField(element).value).toBe('');
+        });
+
+        it('sends one amount only', async () => {
+            const element = await openWithSettings();
+            await selectAmount(element, 100);
+            await chooseOther(element);
+            await typeInto(element, 'customAmount', '120.5');
+            await typeInto(element, 'email', 'donante@example.com');
+            await submit(element);
+
+            const { request } = startDonation.mock.calls[0][0];
+            expect(Object.keys(request).filter((key) => key.toLowerCase().includes('amount'))).toEqual(['amount']);
+            expect(request.amount).toBe('120.5');
+        });
+
+        it('removes the error of the amount as soon as it is corrected, without leaving the field', async () => {
+            const element = await openWithSettings();
+            await chooseOther(element);
+            await typeInto(element, 'customAmount', '10.555');
+            await typeInto(element, 'email', 'donante@example.com');
+            await submit(element);
+            const markValidity = jest.spyOn(customField(element), 'setCustomValidity');
+            expect(errorBanner(element).textContent).toContain('Revisa los campos marcados');
+
+            await typeInto(element, 'customAmount', '100.55');
+
+            expect(markValidity).toHaveBeenLastCalledWith('');
+            expect(errorBanner(element)).toBeNull();
+        });
+
+        it('keeps every other piece of data when the amount is invalid, and lets the donor correct only the amount', async () => {
+            const element = await openWithSettings();
+            await setToggle(element, 'anonymous', false);
+            await typeInto(element, 'publicName', 'Familia Pérez');
+            await chooseOther(element);
+            await typeInto(element, 'customAmount', '10');
+            await typeInto(element, 'email', 'donante@example.com');
+            await submit(element);
+            expect(startDonation).not.toHaveBeenCalled();
+
+            await typeInto(element, 'customAmount', '60');
+            await submit(element);
+
+            const { request } = startDonation.mock.calls[0][0];
+            expect(request).toMatchObject({
+                amount: '60',
+                email: 'donante@example.com',
+                visibility: 'Public',
+                publicName: 'Familia Pérez'
+            });
+        });
+
+        it('marks the custom field when the server rejects the amount', async () => {
+            const element = await openWithSettings();
+            await chooseOther(element);
+            await typeInto(element, 'customAmount', '60');
+            await typeInto(element, 'email', 'donante@example.com');
+            const markValidity = jest.spyOn(customField(element), 'setCustomValidity');
+            startDonation.mockRejectedValue({ body: { message: 'amount|El monto mínimo es de $100 MXN.' } });
+
+            await submit(element);
+
+            expect(markValidity).toHaveBeenLastCalledWith('El monto mínimo es de $100 MXN.');
+            expect(element.shadowRoot.querySelector('.field-error')).toBeNull();
+            expect(submitButton(element).disabled).toBe(false);
+        });
+
+        it('shows the message that lets the donor choose another amount when Mercado Pago cannot process it', async () => {
+            const element = await openWithSettings();
+            openPayment.mockRejectedValueOnce({
+                body: { message: '|No pudimos abrir el pago. Puede que Mercado Pago no acepte esta cantidad: edita tu donación y elige otra cantidad.' }
+            });
+
+            await startWithCustomAmount(element, '99999999999999.99');
+            await confirmSummary(element);
+
+            expect(openPayment).toHaveBeenCalledTimes(1);
+            expect(summaryError(element)).toContain('elige otra');
+            expect(summaryError(element)).not.toContain('inténtalo de nuevo');
+            expect(summaryError(element)).not.toContain('|');
+            expect(summaryButton(element, 'edit').disabled).toBe(false);
+            expect(summaryButton(element, 'confirm').disabled).toBe(true);
+
+            summaryButton(element, 'edit').click();
+            await flushPromises();
+
+            expect(customField(element).value).toBe('99999999999999.99');
+            expect(submitButton(element).disabled).toBe(false);
+        });
+
+        it('makes no Apex call while the donor types or changes the amount', async () => {
+            const element = await openWithSettings();
+
+            await selectAmount(element, 100);
+            await chooseOther(element);
+            await typeInto(element, 'customAmount', '1');
+            await typeInto(element, 'customAmount', '12.345');
+            await typeInto(element, 'customAmount', '120');
+            await selectAmount(element, 250);
+
+            expect(startDonation).not.toHaveBeenCalled();
+            expect(openPayment).not.toHaveBeenCalled();
+        });
+
+        it('continues to the payment with the same flow when the amount is custom', async () => {
+            const element = await openWithSettings();
+
+            await startWithCustomAmount(element, '1234.56');
+            await confirmSummary(element);
+
+            expect(startDonation).toHaveBeenCalledTimes(1);
+            expect(openPayment).toHaveBeenCalledWith({ accessToken: ACCESS_TOKEN });
+            expect(window.location.assign).toHaveBeenCalledWith(CHECKOUT_URL);
+        });
+    });
+
+    describe('amount rules in cents (DON-09)', () => {
+        it('compares 16-digit amounts exactly, where a Number would lose a cent', () => {
+            expect(String(Number('99999999999999.99'))).not.toBe('99999999999999.99');
+            expect(toCents('99999999999999.99')).toBe('9999999999999999');
+            expect(compareCents(toCents('99999999999999.98'), toCents('99999999999999.99'))).toBeLessThan(0);
+            expect(compareCents(toCents('99999999999999.99'), toCents('99999999999999.98'))).toBeGreaterThan(0);
+            expect(compareCents(toCents('99999999999999.99'), toCents('99999999999999.99'))).toBe(0);
+        });
+
+        it.each([
+            ['9.99', '10.00', -1],
+            ['10.00', '9.99', 1],
+            ['10.01', '10.10', -1],
+            ['10.10', '10.01', 1],
+            ['50', '50.00', 0],
+            ['0050.25', '50.25', 0],
+            ['0.01', '0.10', -1],
+            ['99999999999999.99', '100000000000000', -1]
+        ])('compares %p with %p as %p, by length first and then by string order', (left, right, sign) => {
+            expect(Math.sign(compareCents(toCents(left), toCents(right)))).toBe(sign);
+        });
+
+        it.each([
+            ['50', '5000'],
+            ['50.5', '5050'],
+            ['50.05', '5005'],
+            ['0.1', '10'],
+            ['0.01', '1'],
+            ['0', '0'],
+            ['0.00', '0'],
+            ['007.25', '725'],
+            ['0050.25', '5025']
+        ])('turns %p into %p cents', (text, cents) => {
+            expect(toCents(text)).toBe(cents);
+        });
+
+        it.each([
+            ['5000', '50'],
+            ['7550', '75.5'],
+            ['7505', '75.05'],
+            ['7555', '75.55'],
+            ['10', '0.1'],
+            ['1', '0.01'],
+            ['9999999999999999', '99999999999999.99']
+        ])('writes %p cents as %p', (cents, text) => {
+            expect(centsToText(cents)).toBe(text);
+        });
+
+        it.each([
+            [50, '5000'],
+            ['75.50', '7550'],
+            [75.5, '7550'],
+            ['50.50', '5050'],
+            [null, null],
+            [undefined, null],
+            ['', null],
+            ['abc', null],
+            ['1.234', null]
+        ])('reads the configured minimum %p as %p', (minimum, cents) => {
+            expect(minimumToCents(minimum)).toBe(cents);
+        });
+
+        it.each([
+            ['', 'empty'],
+            ['abc', 'format'],
+            ['-3', 'positive'],
+            ['0', 'positive'],
+            ['1.234', 'decimals'],
+            ['100000000000000', 'digits'],
+            ['0000000000000000100', null],
+            ['49.99', 'belowMinimum'],
+            ['50', null],
+            ['99999999999999.99', null],
+            ['0.1', 'belowMinimum'],
+            ['0.01', 'belowMinimum'],
+            ['0.001', 'decimals'],
+            ['0.00', 'positive'],
+            ['0050.25', null],
+            ['0050', null],
+            [' 50 ', null],
+            ['1,000', 'format'],
+            ['1e3', 'format'],
+            ['.5', 'format'],
+            ['5.', 'format']
+        ])('classifies %p as %p with a minimum of $50', (text, key) => {
+            expect(validateAmountText(text, '5000')).toBe(key);
+        });
+
+        it.each([
+            ['50.50', null],
+            ['50.5', null],
+            ['50.51', null],
+            ['50.49', 'belowMinimum'],
+            ['50', 'belowMinimum'],
+            ['100', null]
+        ])('classifies %p as %p with a minimum of $50.50: the same amount passes and one cent less does not', (text, key) => {
+            expect(validateAmountText(text, minimumToCents('50.50'))).toBe(key);
+        });
+
+        it('accepts the minimum when it has a different number of digits than the amount typed', () => {
+            expect(validateAmountText('10', minimumToCents(9.99))).toBeNull();
+            expect(validateAmountText('9.99', minimumToCents(10))).toBe('belowMinimum');
+        });
+
+        it.each([
+            ['500.00', '$500'],
+            ['500', '$500'],
+            ['1234.50', '$1,234.50'],
+            ['0.50', '$0.50'],
+            ['1000000.05', '$1,000,000.05'],
+            ['99999999999999.99', '$99,999,999,999,999.99']
+        ])('writes the exact amount %p for the donor as %p, without going through Number', (text, written) => {
+            expect(formatAmountText(text)).toBe(written);
+        });
+
+        it('cannot judge the minimum when it is unknown', () => {
+            expect(validateAmountText('100', null)).toBe('configuration');
+            expect(validateAmountText('', null)).toBe('empty');
         });
     });
 
