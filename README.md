@@ -97,7 +97,7 @@ The Definition of Done establishes the minimum quality and completion requiremen
 
 **Public site notice:** the portal link points to a published Salesforce Sandbox for demonstration. It is not a production donation website.
 
-**Demo video:** to be added when the final recording is available.
+**Demo video:** [Watch the Delivery 2 demo (5 min, Google Drive)](https://drive.google.com/file/d/1l9H3lqvBqMTrpLONE6m4GQ4ej-qDUajU/view?usp=sharing)
 
 ## Main features
 
