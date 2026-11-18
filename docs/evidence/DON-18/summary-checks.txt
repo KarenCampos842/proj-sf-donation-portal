@@ -1,0 +1,19 @@
+# Summary and payment-path checks on the published site, 2026-11-17 (Chrome driven by Playwright, guest, new context)
+# Token masked. Emails are example.com only.
+
+== Anonymous summary (also AC3 of DON-09) ==
+AC3 paso 1: elegido «other» (Otro monto) con 75 escrito; el sugerido $250 ya no está marcado
+AC3 paso 2: elegido «500»; campo de Otro monto presente en pantalla: false
+RESUMEN A (anónimo, último monto): {"campaign":"Fondo general SF Vibe Lab","amount":"$500 MXN","email":"prueba.portal@example.com","visibility":"Anónima. Tu nombre no será visible en el portal.","invoice":"No solicitaste factura."}
+Foco al llegar al resumen: h1#summary-title.summary__title "Revisa tu donación"
+Controles del resumen: ["Editar donación","Editar donación","Confirmar y continuar al pago","Confirmar y continuar al pago"]
+Llamadas Apex hasta el resumen: getAvailableCampaigns(POST 200), getCampaignDetail(POST 200), getDonorRecognition(POST 200), getAmountSettings(GET 200), startDonation(POST 200), getDonationSummary(POST 200)
+POST startDonation cuerpo (token enmascarado): {"namespace":"","classname":"@udd/01pVC000004fuOy","method":"startDonation","isContinuation":false,"params":{"request":{"campaignId":"a1bVC000008jeEPYAY","amount":"500","email":"prueba.portal@example.com","visibility":"Anonymous","publicName":null,"invoiceRequested":false,"legalName":null,"rfc":null,"taxPostalCode":null,"taxRegime":null,"privacyNoticeAccepted":false}},"cacheable":false}
+startDonation respuesta (token enmascarado): {"returnValue":{"accessToken":"<TOKEN-64-HEX-MASKED>"},"cacheable":false}
+
+== Attempt for the real payment (public + invoice, 250.50) ==
+RESUMEN del intento de pago real: {"campaign":"Fondo general SF Vibe Lab","amount":"$250.50 MXN","email":"prueba.portal@example.com","visibility":"Pública. Aparecerá como: Donante de Prueba","invoice":"Sí, solicitaste factura."}
+Llamadas hasta el resumen: getAvailableCampaigns > getCampaignDetail > getDonorRecognition > getAmountSettings > startDonation > getDonationSummary
+Antes de confirmar se llamó a confirmDonation u openPayment: false
+Llamadas tras confirmar: getDonationSummary(200) > confirmDonation(200) > openPayment(200)
+Mercado Pago payment page, opened again with a normal user agent (the first try with headless Chrome showed «Hubo un error accediendo a esta pagina»): payment details «Donación: Fondo general SF Vibe Lab $ 250.50».

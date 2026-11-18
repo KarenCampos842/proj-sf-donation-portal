@@ -27,6 +27,7 @@ This log keeps the most useful **best-prompt** and **worst-result** examples. Ea
 | 17 | 2026-11-17 | Karen Elizabeth Campos | Claude Code, VS Code | DON-09 (#8), DON-18 (#14) | Best | Custom amount as exact text and a review step with a server-side token; the AI found that an Id alone could open a payment and closed it. Jest 336/336 and a check-only with 177/177 Apex tests before any deployment. Time impact not measured. |
 | 18 | 2026-11-17 | Karen Elizabeth Campos | Claude Code, VS Code | DON-09 (#8), DON-18 (#14) | Worst | An independent read-only review found five problems in the first pass: `BigInt` untested under Lightning Web Security, a payment error message that offered a retry that no longer exists, `invalidate` acting on an attempt that already opened a payment, no focus tests, and gaps in this log. All were corrected. Final check-only `0AfVC00000PJ0h40AD` is **Failed**: 459/465 tests, and the 6 failures belong to org code outside the repository. Time impact not measured. |
 | 19 | 2026-11-17 | Rodrigo Colli | Claude Code (Opus 5.5), VS Code | DON-18 (#14), ADM-13 (#39) | Best | Workstream A review of PR #72. The AI noticed that the minimum-amount rule ran on every save of an attempt, so raising the minimum could revert the donation of a payment already charged; the rule now runs only on create or amount change. The generic payment message was copied in two classes; it is now one constant, checked against the flow by tests. Double-payment mitigation decided: not applied. Time not measured. |
+| 20 | 2026-11-17 | Karen Elizabeth Campos | Claude Code, VS Code | DON-09 (#8), DON-18 (#14), DON-13 (#12) | Worst | Evidence on the published site as a guest, a real $250.50 payment made by the owner, and the real records read again. Six AI errors, all caught by checking: a documented behavior (the failed attempt is deleted) that a real Mercado Pago rejection contradicted, a guest check that passed for the wrong reason, an Apex method that could not read the fields, an error page captured as evidence, a Jest count that predated the last tests, and two prompt claims found wrong in review. Author's estimate, not measured: about 2 h 15 min with AI against 5 to 7 h without (2 to 3 times). |
 
 ---
 
@@ -670,6 +671,8 @@ Act as an independent reviewer and try to break the implementation; then apply o
 - Review by Rodrigo of `DonationPaymentController` (two methods lost `@AuraEnabled`) and of the `Donation_Register` flow (risk H2 in `docs/security.md`).
 - Deployment and publication in one window, then a smoke test.
 
+**Corrección 2026-11-17.** The bullet «H5, payment error message» above, `docs/payments-api.md` and the assertion message at `DonationIntakeServiceTest.cls:1145` said that Workstream A's flow deletes the attempt when the provider fails. What was observed: after a real Mercado Pago rejection of `99999999999999.99`, the attempt `a1dVC00000Gr47VYAR` still exists with `Status__c` = `Started` and no `Preference_Id__c` (read at 19:54 hora de México, `docs/evidence/DON-13/records-recheck-2026-11-17.txt`); PAY-07 deletes it after 7 days. The cause is not investigated (a rollback of the failed call is only a hypothesis). It was detected when the owner provoked the real rejection and the records were read: the test that assumed the deletion uses a double of the gateway, which is why it passed. The form behavior is unaffected (the donor sees the message, «Editar donación» is enabled and «Confirmar y continuar al pago» is disabled). `docs/payments-api.md` is corrected; the code and the assertion message of the test were not changed and are left for the Workstream A owner to review.
+
 ---
 
 ### Entry 19 — Workstream A review of DON-09 / DON-18 (PR #72)
@@ -697,3 +700,49 @@ Review Karen's new PR. Then, in another branch, fix what you reported and open t
 
 - Before the fixes, on PR #72 as it is: Jest 9 suites, 376/376; check-only `0AfVC00000PJ8Uv0AL` with `RunSpecifiedTests` (the 32 test classes of the repository, which avoids the 6 org-only failures): Succeeded, 201/201 components, 320/320 tests.
 - After the fixes: Jest 376/376; check-only `0AfVC00000PJAEz0AP` with the same `RunSpecifiedTests`: Succeeded, 201/201 components, 320/320 tests. The first check-only of the fixes failed because a validation rule description cannot pass 255 characters; the description was shortened. Nothing was deployed or published.
+
+---
+
+### Entry 20 — Evidence for DON-09, DON-18 and DON-13 on the published site (entry with AI errors)
+
+- **Date:** 2026-11-17
+- **Author:** Karen Elizabeth Campos
+- **Tool / model:** Claude Code, VS Code
+- **Related stories:** DON-09 (#8), DON-18 (#14), DON-13 (#12); DON-17 (#13) is only referenced
+- **Result type:** Worst result (entry with AI errors)
+- **Verification:** Evidence taken as a guest on the published site with the code of merge `1ba02f3`, deployed by `0AfVC00000PJJLV0A5` (check-only `0AfVC00000PJGST0A5`; both Succeeded, 24/24 components, 192/192 tests, `RunSpecifiedTests`). Jest, whole project, run locally: 9 suites, 376/376. Guest checks 11 of 11. The real records were read twice with `SELECT`. DON-13 AC2 verified on real records (acceptance and its date identical in the attempt and the donation). `RunLocalTests` of the whole org did **not** pass (`0AfVC00000PJ0h40AD`: 459/465; six inherited tests of classes that are not in the repository). Not covered: screen reader, the maximum of the Mercado Pago test account, the double-payment risk, and the stored values of `Donor_Confirmed_At__c`, `Superseded_At__c` and the hash (no permission set can read them, by design).
+- **Estimated speed-up:** Estimate given by the author, not measured: «con IA tardé aproximadamente 2 horas y 15 minutos esta ronda de evidencias (incluye el pago real con la cuenta Comprador, el intento extra de AC6, la revisión de las capturas y la gestión de permisos). Sin IA estimo entre 5 y 7 horas, por experiencia propia en una ocasión anterior en que hice evidencias sin IA y me tomó ese tiempo. Aceleración aproximada: 2 a 3 veces. La verificación y la corrección de errores de la IA no se aceleraron: las hice yo.»
+
+**Prompt / decision summary**
+
+```text
+Produce evidence for each acceptance criterion of DON-09 and DON-18 on the published site, as a guest, and revalidate DON-13.
+The AI does not pay: the owner pays with the Mercado Pago test buyer account. Read the real records without printing the hash.
+Never include tokens, the hash or real emails. Do not claim a criterion without a capture or a query. Then correct the documentation, commit, push and open the PR without merging.
+```
+
+The prompt is not stored in the repository, so there is no link.
+
+**What happened**
+
+- The AI drove Chrome with Playwright as a guest and took the captures of `docs/evidence/DON-09`, `DON-18` and `DON-13`: the amount step at 1280 and 360 px, the validation cases, the last-amount-wins rule, the three summaries (public, anonymous, anonymous with invoice), the edit flow, the Mercado Pago page, keyboard focus, the token checks and 11 guest checks. It created seven attempts that evening (six by the AI, one by the owner).
+- The owner paid the attempt of $250.50 and, by hand, provoked the real rejection of 99999999999999.99. That gave DON-09 AC4 and AC6 with real records, and showed that the rejected attempt is not deleted.
+- The owner's capture of the rejection showed an email that is not `example.com`. The AI made a copy with it covered and left the original out of the commit.
+- To read the privacy fields, the owner authorized one exception to the rule of not touching permissions: the AI assigned `Payment_Attempt_Viewer` and `Donation_Admin` to the owner's user, read, and removed those two assignments by Id, checking afterwards that the fields were unreadable again. Ids and times are in `docs/evidence/DON-13/revalidation-2026-11-17.md`.
+
+**AI errors, how they were detected and how they were corrected**
+
+1. **A documented behavior that was false.** An earlier AI session wrote in `docs/payments-api.md` and in Entry 18 that the payment flow deletes the attempt when the provider fails, and a test message repeated it. The test uses a double of the gateway. Detected by reading the real records after the real rejection: attempt `a1dVC00000Gr47VYAR` still exists with `Status__c` = `Started` and no `Preference_Id__c`. Corrected in `docs/payments-api.md` and with a dated note in Entry 18; the assertion message of `DonationIntakeServiceTest` was not changed and is left for the Workstream A owner. The cause was not investigated.
+2. **A guest check that passed for the wrong reason.** The first run called the Apex route with the 18-character class Id; the site uses the 15-character one. Every call answered «The Apex request is invalid», so three checks failed and two passed by accident. Detected by reading the response bodies. Corrected with the right Id and a positive control (`getPaymentResult`, still exposed, answers HTTP 200 on the same route).
+3. **The method chosen to read records did not work.** Read-only anonymous Apex applies the field visibility of the user: «No such column 'Status__c'», in three variants (static, dynamic, `WITH SYSTEM_MODE`). Detected when it ran. Corrected by reading with `sf data query` on the readable fields, and later with the temporary permission sets.
+4. **An error page captured as evidence.** The first capture of the Mercado Pago page said «Hubo un error accediendo a esta página», because it blocks headless Chrome. Detected by looking at the image. Replaced by a capture of the same payment page opened with a normal user agent, which shows $ 250.50; no new attempt was created.
+5. **A Jest count that predated the last tests.** An implementation report said «372/372 after the focus tests», but that run was before the four focus tests. The AI recognized it when reviewing the diff. Corrected: Entry 18 states what was really run, and the whole project was run again: 9 suites, 376/376.
+6. **Two claims of the prompts found wrong in review.** A review (by a person and by another AI) of the prompts, before implementing, found that `FOR UPDATE` was said to prevent two simultaneous openings of the payment (Salesforce releases those locks when a callout starts) and that the cents were compared with `Number`, which loses precision with `Currency(16, 2)`. Corrected before the code existed: the simultaneous opening is documented as a risk that is not prevented (`docs/security.md`, Entry 17), and the amounts are compared as strings of normalized digits (Entries 17 and 18).
+
+**What we verified and corrected**
+
+- The Salesforce CLI prints 16-digit amounts one cent low (99999999999999.98), because it converts them to floating point. It looked like a lost cent in the org. Checked with `FORMAT(Amount__c)` and exact filters: the stored amount is exactly 99999999999999.99.
+- Each criterion in the `technical-evidence.md` files is marked verified only when it has a capture or a query; the rest is stated as not covered.
+- `DON-13/records-recheck-2026-11-17.txt` holds the second reading of the records; the first one is `DON-09/records-check.txt`.
+
+---

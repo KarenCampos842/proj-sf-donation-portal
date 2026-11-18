@@ -1,0 +1,5 @@
+# DON-13 revalidation after DON-09 and DON-18, 2026-11-17 (published site, guest)
+
+DON-13 revalidación: casilla de privacidad aparece sin marcar: true | texto visible: «* Acepto el aviso de privacidad»
+DON-13 revalidación: sin aceptar -> mensaje «Acepto el aviso de privacidad Acepta el aviso de privacidad para solicitar factura.» | sigue en el formulario: true | se llamó a startDonation: false
+RESUMEN F (anónimo + factura): {"campaign":"Fondo general SF Vibe Lab","amount":"$100 MXN","email":"prueba.portal@example.com","visibility":"Anónima. Tu nombre no será visible en el portal.","invoice":"Sí, solicitaste factura."}

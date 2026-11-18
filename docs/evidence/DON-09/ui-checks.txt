@@ -1,0 +1,30 @@
+# DON-09 checks on the published site, 2026-11-17 (Chrome driven by Playwright, guest, new context)
+# Minimum read from Donation_Amount_Setting__mdt (Default): 50. Suggested: 100, 250, 500, 1000, 2000, 5000, 10000, 20000.
+# None of the cases of AC5 or the two accepted limits was submitted: no record was created by them.
+
+== AC1 (1280 and 360 px) ==
+[1280] sin desplazamiento horizontal en el formulario: true
+[1280] opciones del paso del monto: $100 MXN | $250 MXN | $500 MXN | $1,000 MXN | $2,000 MXN | $5,000 MXN | $10,000 MXN | $20,000 MXN | Otro monto
+[1280] «Otro monto» revela el campo en el mismo paso: true
+[360] sin desplazamiento horizontal en el formulario: true
+[360] opciones del paso del monto: $100 MXN | $250 MXN | $500 MXN | $1,000 MXN | $2,000 MXN | $5,000 MXN | $10,000 MXN | $20,000 MXN | Otro monto
+[360] «Otro monto» revela el campo en el mismo paso: true
+
+== AC5 and accepted limits (1280 px) ==
+AC5 [vacio] mensaje junto al campo: «Escribe el monto que quieres donar.» | sigue en el paso del monto: true
+AC5 [abc] mensaje junto al campo: «Escribe solo números, con punto decimal. Por ejemplo: 250 o 250.50.» | sigue en el paso del monto: true
+AC5 [1,000] mensaje junto al campo: «Escribe solo números, con punto decimal. Por ejemplo: 250 o 250.50.» | sigue en el paso del monto: true
+AC5 [0] mensaje junto al campo: «El monto debe ser mayor a cero.» | sigue en el paso del monto: true
+AC5 [-5] mensaje junto al campo: «El monto debe ser mayor a cero.» | sigue en el paso del monto: true
+AC5 [0.001] mensaje junto al campo: «Usa como máximo dos decimales.» | sigue en el paso del monto: true
+AC5 [49.99] mensaje junto al campo: «El monto mínimo es de $50 MXN.» | sigue en el paso del monto: true
+AC5 [1e3] mensaje junto al campo: «Escribe solo números, con punto decimal. Por ejemplo: 250 o 250.50.» | sigue en el paso del monto: true
+AC5 [.5] mensaje junto al campo: «Escribe solo números, con punto decimal. Por ejemplo: 250 o 250.50.» | sigue en el paso del monto: true
+AC5 [5.] mensaje junto al campo: «Escribe solo números, con punto decimal. Por ejemplo: 250 o 250.50.» | sigue en el paso del monto: true
+ACEPTADO [50] mensaje junto al campo: «» | sigue en el paso del monto: true
+ACEPTADO [99999999999999.99] mensaje junto al campo: «» | sigue en el paso del monto: true
+
+== AC3 (last amount wins) and summary ==
+AC3 paso 1: elegido «other» (Otro monto) con 75 escrito; el sugerido $250 ya no está marcado
+AC3 paso 2: elegido «500»; campo de Otro monto presente en pantalla: false
+RESUMEN A (anónimo, último monto): {"campaign":"Fondo general SF Vibe Lab","amount":"$500 MXN","email":"prueba.portal@example.com","visibility":"Anónima. Tu nombre no será visible en el portal.","invoice":"No solicitaste factura."}
