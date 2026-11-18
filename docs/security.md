@@ -152,3 +152,16 @@ Deployed in `donations-dev` on 2026-11-16. Details in `payments-api.md`, section
 - **Check (2026-11-16).** An unsigned `POST` from the internet was answered and logged (`REJ-000001`, secret not configured yet). A forged signature sent from the internet got HTTP 400 and was logged with a masked id (`REJ-000004`, `REJ-000005`). Real approved and rejected test payments were processed by signed notices 1–3 seconds after payment (evidence in `docs/evidence/43-pay-06`).
 - **Notice URL in the preference.** Each preference sends `notification_url` (custom label `Donation_Notification_Url`), because payments made with the test seller account are `live_mode=true` and Mercado Pago does not send their notices to the panel's test-mode URL. The URL is public by design; what protects it is the signature check, not the secrecy of the URL.
 
+## 7. Delivery 2 update: internal roles and campaign closing (workstream C)
+
+Deployed in `donations-dev` on 2026-11-17 (dry run, then deployment of 15 components).
+
+- **Role assignment (ADM-01).** `Donation_Admin` now has the system permissions "Assign Permission Sets", "View Setup" and "View Roles". Salesforce requires the last two for the first one: the first dry run failed with "El permiso ViewSetup depende de los permisos: ViewRoles".
+  - **Risk:** whoever holds `Donation_Admin` can assign any permission set, including `Portal_Developer` (full access to the three objects) or itself to others. Assign `Donation_Admin` only to the person responsible for the system, and review the assignments of `Portal_Developer` before the final demo.
+  - "View Setup" lets the role open Setup pages in read-only mode; it does not let it change configuration.
+- **Email access (MOD-06).** The three roles read `Donation__c.Email__c` and none can edit it. The guest user has no access to `Donation__c`, and the portal's Apex classes never return the email (section 2).
+- **Public name moderation (MOD-03).** `Moderator` can edit only `Public_Name__c`; amount, email, campaign and payment status stay read-only, and `Anonymous_Cannot_Become_Public` blocks exposing an anonymous donor. Field history keeps who changed the name, when and the previous value. Known gap: a name corrected from the Salesforce UI is not passed through `PublicNameSanitizer` (that class runs only on the portal's server path).
+- **Campaign closing (GES-11, GES-12).** The scheduled flow `Campaign_Close_Expired` runs in system mode without sharing, only updates `Status__c` and `Close_Reason__c` of campaigns, and never touches donations. Payments already in progress are still registered after the close (DON-24, workstream A).
+- **New list views (MOD-01, ADM-04, GES-15)** respect the permission sets: "Nombres publicados" shows no email.
+- **Per-role proof (pending).** Every team member uses the System Administrator profile, which can see and edit everything, and the sandbox has one spare full Salesforce license. A test with one user per role was therefore not run. The permission sets were checked by their content (object and field permissions) and by the dry run.
+- **Receipt email (DON-23) not built.** Email deliverability is "System email only" in the shared sandbox (2026-11-17), so no receipt reaches donors. Changing it affects all teams and needs the staff's decision.
