@@ -14,28 +14,37 @@ Goal: show that a visitor without login cannot **read** or **modify** other dono
 - Org alias: `donations-dev`
 - Site URL: `https://uady--class2026b.sandbox.my.site.com/portal/` (published Sandbox site, prefix `portal`; academic demonstration, not a production website)
 - Seed data: the Sandbox already holds the fictitious demo data: five campaigns and six confirmed donations loaded by an administrator (public, anonymous, with invoice for a company and for an individual, and anonymous with invoice), plus donations and payment attempts created later through the portal with test-mode payments. Describe in the evidence which of them each test used. Do not re-import the demo data: it would create duplicates.
-- Tester: _name pending_. A second team member repeats the steps and records the result.
+- Tester: Alan Pérez, 2026-11-17, 22:15–22:20 (Mérida time), Windows PowerShell.
+- Second tester (RF-V2 CA3): Rodrigo Colli repeated R4 and M1–M3 on 2026-11-17, 23:02–23:03, with `curl` on macOS, and got the same four `401 INVALID_SESSION_ID` responses (`evidence/SEG-01/CA3_rodrigo_1.png`, `CA3_rodrigo_2.png`).
+- Donation used: `DON-000001` (fictitious demo data), Id `a1cVC00000ABJHhYAP`. Any other donation Id gives the same result.
 
 ### 1.2 Read attempts
 
 | # | Vector | Steps | Expected | Obtained | Evidence |
 |---|---|---|---|---|---|
-| R1 | Browse the public site | Open every page as a visitor without login | Only campaigns, progress, credited donors (name + amount), the donation form and the closed-campaign history | _..._ | _screenshot_ |
-| R2 | Direct record URL | Type `/s/donation/<id>` and the record detail URL by hand, with a real donation Id | No access | _..._ | _..._ |
-| R3 | Experience Cloud / Aura / Apex actions | From the browser console or Postman, call the site's actions with a real donation Id | No donation data returned | _..._ | _..._ |
-| R4 | REST API as guest | Query donations and attempts through the REST API without a session | Denied | _..._ | _..._ |
-| R5 | Global site search | Search for a donor name and an email | No donation data in results | _..._ | _..._ |
-| R6 | Thank-you page parameters | Change `status`, `external_reference` or the payment id in the URL to another person's | No donation is registered and no data of another donor is shown | _..._ | _..._ |
-| R7 | Emails and tax data | Try to read emails and RFC by any route above | Nothing returned | _..._ | _..._ |
+| R1 | Browse the public site | In a private window, open the portal, a campaign, the donation form and the closed campaigns | Only campaigns, progress, credited donors (name + amount), the donation form and the closed-campaign history | As expected: no email, RFC or tax data on any page | `evidence/SEG-01/R1.png` |
+| R2 | Direct record URL | In a private window, open `https://uady--class2026b.sandbox.lightning.force.com/lightning/r/Donation__c/a1cVC00000ABJHhYAP/view` | No access | Redirected to the Salesforce login page; no donation data shown | `evidence/SEG-01/R2.png` |
+| R3 | Experience Cloud / Aura / Apex actions | Call the site's actions from the browser console with a real donation Id | No donation data returned | **Not run** (needs to rebuild the Aura request by hand). The guest's Apex classes are reviewed in section 2 | — |
+| R4 | REST API without a session | `curl.exe -s -i "https://uady--class2026b.sandbox.my.salesforce.com/services/data/v67.0/query?q=SELECT+Id,Email__c,RFC__c+FROM+Donation__c"` | Denied | `HTTP/1.1 401 Unauthorized`, `INVALID_SESSION_ID`; no records | `evidence/SEG-01/R4_M1.png` |
+| R5 | Global site search | Search for a donor name and an email | No donation data in results | **Not run** | — |
+| R6 | Thank-you page parameters | Change `status`, `external_reference` or the payment id in the result URL | No donation registered, no data of another donor | **Not run** in this test; the result page asks Mercado Pago for the payment instead of trusting the URL (workstream A) | — |
+| R7 | Emails and tax data | Try to read emails and RFC by the routes above | Nothing returned | Nothing returned by R1, R2 or R4 (R4 asked for `Email__c` and `RFC__c` explicitly) | see R1, R2, R4 |
 
 ### 1.3 Modify attempts
 
 | # | Vector | Steps | Expected | Obtained | Evidence |
 |---|---|---|---|---|---|
-| M1 | Update an existing donation | Try to change its amount from the site and from the API | Fails | _..._ | _..._ |
-| M2 | Delete an existing donation | Try to delete it | Fails | _..._ | _..._ |
-| M3 | Create or force a confirmed donation | Try to create one already confirmed, or change its payment status | Fails | _..._ | _..._ |
-| M4 | Read or modify a payment attempt | Try with your own attempt and with another person's | Fails | _..._ | _..._ |
+| M1 | Update an existing donation | `curl.exe -s -i -X PATCH "https://uady--class2026b.sandbox.my.salesforce.com/services/data/v67.0/sobjects/Donation__c/a1cVC00000ABJHhYAP" -H "Content-Type: application/json" -d "{}"` | Fails | `401 Unauthorized`, `INVALID_SESSION_ID`; record unchanged | `evidence/SEG-01/R4_M1.png` |
+| M2 | Delete an existing donation | `curl.exe -s -i -X DELETE "https://uady--class2026b.sandbox.my.salesforce.com/services/data/v67.0/sobjects/Donation__c/a1cVC00000ABJHhYAP"` | Fails | `401 Unauthorized`, `INVALID_SESSION_ID`; record still exists | `evidence/SEG-01/M2_M3.png` |
+| M3 | Create a donation | `curl.exe -s -i -X POST "https://uady--class2026b.sandbox.my.salesforce.com/services/data/v67.0/sobjects/Donation__c" -H "Content-Type: application/json" -d "{}"` | Fails | `401 Unauthorized`, `INVALID_SESSION_ID` | `evidence/SEG-01/M2_M3.png` |
+| M4 | Read or modify a payment attempt | Same requests on `Payment_Attempt__c` | Fails | **Not run separately.** The REST API rejected every request without a session before checking the object (R4, M1–M3) | — |
+
+### 1.4 Result and limits
+
+- **Result:** a visitor without login could not read or modify donations through the site (R1, R2) or through the REST API (R4, M1–M3). This covers reading and modifying, by the site and by one more route (RF-V2 CA1, CA2).
+- **Not covered:** R3, R5, R6 and M4 were not run. The REST tests use no session at all; they do not test the site's guest session through the site domain.
+- **Org-wide warning:** Setup → "Estado y uso de organización" reported on 2026-11-17 that guest users in the shared sandbox can reach 4 objects, 75 records and 14 potentially sensitive fields. It was not yet checked which sites and objects that refers to (`evidence/SEG-01/org_guest_exposure.png`). To review before the final presentation.
+- **To repeat (CA3):** run the commands above with any donation Id; Windows PowerShell needs `curl.exe`, macOS and Linux use `curl`. Repeated by a second team member with the same result (section 1.1).
 
 ## 2. Guest user permissions
 

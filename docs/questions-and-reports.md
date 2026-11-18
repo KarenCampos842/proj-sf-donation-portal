@@ -199,3 +199,45 @@ Our six business questions were sent on **2026-11-03**. The answers came on **20
 **Answer received:** the advisor sent the password reset on 2026-11-09. He also announced on Slack that teammates with administrator access in the sandbox can help when someone cannot log in.
 
 **What we did next:** logged in on 2026-11-09, connected the sandbox to the Salesforce CLI and deployed the workstream C configuration (permission sets, list views, tabs, donation validation rules and the RFC flow). Resolved. Lesson: verify new Salesforce accounts the day the email arrives, and ask a teammate with admin access before waiting for the advisor.
+
+---
+
+### Q-08 - Test-account credentials committed to the public repository
+
+- **Author:** Alan Pérez
+- **Date:** 2026-11-10
+- **Answered:** 2026-11-11 (Slack)
+- **Type:** Leaked key
+- **Where asked:** Slack (direct message)
+- **Related story:** minimum M3 (no secret exposed)
+
+1. **What we were trying to achieve:** keep every secret out of the public repository and its history (M3).
+2. **What we did:** while preparing Delivery 1, found the file `docs/payment-test-data.local`, with the passwords of the Mercado Pago test accounts, committed to `main` at 10:10 (commit `dba1654`). It was removed and added to `.gitignore` at 19:00 (commit `11c3c9f`), and the passwords of the test accounts were changed the same day. The advisor was notified the same day, as the guide asks.
+3. **What we expected:** no credential in any commit.
+4. **What happened:** the file was readable in the public repository for about nine hours and is still in the commit history.
+5. **What we consulted:** Claude and the project guide: deleting the file is not enough because the history keeps it; the credentials must be rotated and the staff told the same day.
+
+**Answer received:** the advisor asked in which commit the file appeared; the links to both commits were sent.
+
+**What we did next:** the old passwords no longer work, so the copy in the history is useless. The history was not rewritten: that needs the repository owner and a force push, and the advisor did not ask for it. Lesson: check `git status` and the diff for local files before every commit.
+
+---
+
+### Q-09 - The sandbox cannot send the receipt email (DON-23)
+
+- **Author:** Alan Pérez
+- **Date:** 2026-11-17
+- **Answered:** 2026-11-17 (Slack)
+- **Type:** Platform blocker
+- **Where asked:** Slack (direct message)
+- **Related story:** DON-23, RF-D5 CA2
+
+1. **What we were trying to achieve:** send the donor a receipt by email when a donation is confirmed (DON-23, RF-D5 CA2).
+2. **What we did:** before building the flow, checked Setup → Deliverability in `donations-dev`.
+3. **What we expected:** an access level that lets the org send email to the addresses donors type.
+4. **What happened:** the access level is "Solo correo electrónico del sistema", so no receipt would leave the org. Changing it is an org-wide setting, and other people from the class also have users in this sandbox.
+5. **What we consulted:** Claude and the project guide. The guide lists "the receipt email does not leave the org" as a platform case the professor resolves with alternative evidence. Claude also warned that a failing email action in a flow on `Donation__c` could roll back the donation insert.
+
+**Answer received:** the advisor asked why the change would affect other teams; it was explained that the setting applies to the whole org. He said the question came late (he expected it over the weekend) and that documenting it was right.
+
+**What we did next:** DON-23 was not built and stays not met. The blocker is documented in `security.md` §7 and `data-model.md` V-06. Lesson: check platform settings that a story depends on when the story is planned, not on delivery day.
