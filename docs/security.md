@@ -1,6 +1,6 @@
 # Security and Personal Data
 
-> Status: draft for Delivery 1, reviewed against the Sandbox on 2026-11-10. Update for Delivery 2 (Mercado Pago webhook).
+> Status: Delivery 1 draft reviewed against the Sandbox on 2026-11-10, updated on 2026-11-17 for Delivery 2: Mercado Pago webhook (section 6), internal roles and campaign closing (section 7), privacy-notice fields (DON-13) and the access token of the review step (DON-18). The SEG-01 table in section 1 has not been run by a second team member and is still empty.
 > Never include secrets, real personal data or real emails in this file or its screenshots.
 > The payment provider is **Mercado Pago in test mode (Checkout Pro)**, not Stripe.
 > The "Obtained" and "Evidence" columns stay empty until the test is really run. Do not fill them in advance.
@@ -68,7 +68,7 @@ Owner of the records created by the guest: to be confirmed (TEC-01).
 
 **Known limit: two simultaneous openings.** Two parallel `openPayment` calls for the same confirmed attempt can both pass the `Preference_Id__c` check before either saves its preference, because the check comes before the callout and the save after it; `FOR UPDATE` is released when a callout starts. The Mercado Pago page that was consulted does not mention an idempotency key for preferences, so none is used and the case is **not completely prevented**. See `docs/payments-api.md`, section 1.
 
-No permission set other than the integration one `Mercado_Pago_Callout` and the team set `Portal_Developer` gives read access to the fields of `Payment_Attempt__c`. The source of `Portal_Developer` is only in the unmerged PR #48 although the set exists in the Sandbox.
+No permission set other than the integration one `Mercado_Pago_Callout` and the team set `Portal_Developer` gives read access to the fields of `Payment_Attempt__c`. The source of `Portal_Developer` has been in `main` since PR #48 was merged on 2026-11-11. None of the permission sets or profiles in the repository references the three review-step fields (`Portal_Access_Token_Hash__c`, `Donor_Confirmed_At__c`, `Superseded_At__c`).
 
 Internal read access to payment attempts: permission set `Payment_Attempt_Viewer` (read-only, view all, no create/edit/delete) lets the payments owner audit attempts and take evidence. `Donation_Admin` still has no access to attempts. Never assign `Payment_Attempt_Viewer` to the site guest user. Assigned to the payments developer on 2026-11-10.
 
