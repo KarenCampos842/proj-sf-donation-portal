@@ -1,0 +1,6 @@
+# Keyboard focus and layout checks on the published site (DON-18), 2026-11-17
+# Chrome driven by Playwright, new context without session. «document.activeElement» followed through shadow roots.
+
+Foco al llegar al resumen: h1#summary-title.summary__title "Revisa tu donación"
+Foco tras «Editar donación»: h1#form-title.form__title "Haz tu donación"
+[360] resumen sin desplazamiento horizontal: true

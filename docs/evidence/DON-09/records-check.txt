@@ -1,0 +1,51 @@
+# Records check in donations-dev (read only), 2026-11-17 (UTC times are 2026-11-18)
+# No record was created, changed or deleted by these queries. The owner's email, the buyer account and any email that is not
+# example.com are not reproduced anywhere in this folder.
+
+== Method ==
+1. The owner of the project decided not to assign or change any permission set, so the checks were run with the permissions of the
+   verifier user, as they are.
+2. First choice, as instructed: read-only anonymous Apex (sf apex run) with SELECT statements only. It did NOT work, in three variants:
+   static SOQL, dynamic SOQL (Database.query) and dynamic SOQL with WITH SYSTEM_MODE. All three stop with
+   "No such column 'Status__c' on entity 'Payment_Attempt__c'": anonymous Apex applies the field visibility of the running user.
+   No other route (a deployed helper class, a permission change) was tried.
+3. Fallback: plain "sf data query" (SELECT only, --all-rows to include deleted records) on the fields the verifier user can read.
+   Readable on Payment_Attempt__c: Id, Amount__c, Email__c, Visibility__c, Campaign__c, CreatedDate, IsDeleted.
+   Readable on Donation__c: Id, Name, Amount__c, Payment_Status__c, Provider_Payment_Id__c, Confirmed_At__c, Attempt_Id__c, CreatedDate.
+   NOT readable (no field permission): Payment_Attempt__c.Status__c, Preference_Id__c, Invoice_Requested__c, Public_Name__c,
+   Privacy_Notice_Accepted__c, Privacy_Notice_Accepted_At__c, Donor_Confirmed_At__c, Superseded_At__c, Portal_Access_Token_Hash__c, and
+   Donation__c.Privacy_Notice_Accepted__c / Privacy_Notice_Accepted_At__c. The value of the hash was never read or printed.
+4. Precision: the Salesforce CLI turns numbers into JavaScript floating point before printing them, so a 16-digit amount shows one cent
+   less (99999999999999.98). The amounts below were read as text with FORMAT(Amount__c) and confirmed with exact filters
+   (Amount__c = 99999999999999.99 returns 1 record; Amount__c = 99999999999999.98 returns 0).
+
+== Attempts created on 2026-11-18T00:30Z or later (7; live attempts went from 51 to 58) ==
+Id                   | created (UTC) | Amount__c (FORMAT)         | visibility | who / why
+a1dVC00000Gr2bxYAB   | 01:02:18      | $500.00                    | Anonymous  | verifier: AC3 of DON-09 (last amount wins), anonymous summary
+a1dVC00000Gr2gnYAB   | 01:03:37      | $100.00                    | Anonymous  | verifier: anonymous summary with invoice (DON-13 revalidation)
+a1dVC00000Gr2ldYAB   | 01:04:43      | $90.00                     | Anonymous  | verifier: AC4 of DON-18, first attempt (then edited)
+a1dVC00000Gr2nFYAR   | 01:04:47      | $95.00                     | Anonymous  | verifier: AC4 of DON-18, new attempt after editing
+a1dVC00000GqvAgYAJ   | 01:05:02      | $100.00                    | Anonymous  | verifier: summary at 360 px
+a1dVC00000Gr2thYAB   | 01:07:17      | $250.50                    | Public     | verifier created it; the owner paid it (see below)
+a1dVC00000Gr47VYAR   | 01:27:40      | $99,999,999,999,999.99     | Anonymous  | the owner, by hand on the site (AC6); created 19:27:40 in Mérida
+All seven: IsDeleted = false. Deleted attempts today (SystemModstamp >= 00:30Z): 0. Deleted attempts in total: 18, all older.
+Test email of the verifier attempts: prueba.portal@example.com. The attempt of the owner has an email that is not example.com; it is not quoted.
+
+== Real payment (owner, Mercado Pago test buyer, test card, approved, returned to /portal/gracias; the AI did not pay) ==
+Attempt a1dVC00000Gr2thYAB: Amount__c $250.50; last modified 01:23:23Z.
+Donation a1cVC00000AJ9WTYA1 (Name DON-000026), IsDeleted false:
+  Amount__c                $250.50
+  Payment_Status__c        Confirmed
+  Provider_Payment_Id__c   189169112107
+  Confirmed_At__c          2026-11-18T01:23:18Z
+  Created                  2026-11-18T01:23:23Z (same second as the last change of the attempt)
+  Attempt_Id__c            a1dVC00000Gr2thYAB
+Donations with Attempt_Id__c = a1dVC00000Gr2thYAB: 1 (exactly one). Donations went from 25 to 26.
+Same amount in the three places: attempt $250.50 = Mercado Pago payment page "Donación: Fondo general SF Vibe Lab $ 250.50"
+(DON-18/AC3_mercado-pago-1280.png, taken before paying) = donation $250.50.
+No Donation__c exists for the other six attempts (none was paid).
+
+== AC6 attempt of the owner ==
+Attempt a1dVC00000Gr47VYAR: Amount__c exactly 99999999999999.99 (FORMAT: $99,999,999,999,999.99; filter = .99 returns 1, = .98 returns 0).
+It still exists (IsDeleted = false), last modified 01:28:20Z, 40 seconds after it was created. The documentation says the payment flow
+deletes the attempt when the provider fails; for this real failure it was not deleted. The cause was not investigated.

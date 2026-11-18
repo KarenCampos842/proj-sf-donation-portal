@@ -1,0 +1,22 @@
+# Token checks on the published site, 2026-11-17 (Chrome driven by Playwright, new context without session)
+# The token is masked everywhere: only presence, counts and lengths are recorded.
+
+Resumen 1: {"campaign":"Fondo general SF Vibe Lab","amount":"$90 MXN","email":"prueba.portal@example.com","visibility":"Anónima. Tu nombre no será visible en el portal.","invoice":"No solicitaste factura."}
+Token 1 recibido: sí, 64 caracteres hexadecimales (enmascarado)
+Respuestas que contienen el token: ["startDonation"] (debe ser solo startDonation)
+Peticiones que lo envían en el cuerpo POST: ["getDonationSummary"]
+Apariciones del token en alguna URL (peticiones y barra de direcciones): 0
+Token en el DOM (incluido shadow DOM): false | en localStorage/sessionStorage/cookie de página: false | en cookies del contexto: false
+URL con el resumen abierto: https://uady--class2026b.sandbox.my.site.com/portal/?campana=a1bVC000008jeEPYAY&donar=1
+Formulario tras «Editar donación» (datos conservados): {"custom":"90","email":"prueba.portal@example.com","checked":"other"}
+Resumen 2 (tras cambiar el monto): {"campaign":"Fondo general SF Vibe Lab","amount":"$95 MXN","email":"prueba.portal@example.com","visibility":"Anónima. Tu nombre no será visible en el portal.","invoice":"No solicitaste factura."}
+Token 2 distinto del token 1: true
+Secuencia de llamadas Apex del flujo: getAvailableCampaigns > getCampaignDetail > getDonorRecognition > getAmountSettings > startDonation > getDonationSummary > invalidateDonation > startDonation > getDonationSummary
+Se llamó a confirmDonation u openPayment en todo el flujo: false
+getDonationSummary con el token 1 (reemplazado): HTTP 400 {"error":[{"message":"|Tu donación ya no está disponible. Edítala para volver a capturar tus datos."}]}
+getDonationSummary con el token 2 (vigente): HTTP 200 {"returnValue":{"amount":"95.00","campaignName":"Fondo general SF Vibe Lab","email":"<example.com>","invoiceRequested":false,"visibility":"Anonymous"},"cacheable":false}
+getDonationSummary con un token inventado de 64 caracteres: HTTP 400 {"error":[{"message":"|Tu donación ya no está disponible. Edítala para volver a capturar tus datos."}]}
+getDonationSummary usando un Id de intento como token: HTTP 400 {"error":[{"message":"|Tu donación ya no está disponible. Edítala para volver a capturar tus datos."}]}
+Tras recargar: resumen visible: false | URL: https://uady--class2026b.sandbox.my.site.com/portal/?campana=a1bVC000008jeEPYAY&donar=1
+Tras recargar: opciones de monto en pantalla: 9, marcadas: 0 (el formulario vuelve a empezar)
+Resumen a 360 px: {"campaign":"Fondo general SF Vibe Lab","amount":"$100 MXN","email":"prueba.portal@example.com","visibility":"Anónima. Tu nombre no será visible en el portal.","invoice":"No solicitaste factura."}
