@@ -57,6 +57,8 @@ A custom campaign object is used instead of the standard `Campaign` (decision D-
 | Visible en el portal | `Is_Publicly_Visible__c` | Formula (Checkbox) | Used by the portal to list campaigns | D1 |
 | Causa de cierre | `Close_Reason__c` | Picklist | `By_Date` "Por fecha", `Manual` "Manual" | D2 |
 
+**Status 2026-11-17 (D2):** `Close_Reason__c` is deployed (restricted picklist, read-only for the three roles, field history on). Field history is also on for `Status__c`, `Start_Date__c` and `End_Date__c`, so the time a campaign was closed is recorded (GES-11, GES-12). Two flows fill the reason: `Campaign_Close_Expired` writes "Por fecha" and `Campaign_Set_Close_Reason` writes "Manual" when a campaign is saved as Closed without a reason. Campaigns closed before 2026-11-17 keep an empty reason.
+
 **Formulas**
 
 ```
@@ -194,6 +196,11 @@ Both rules belong to D2 (MOD-03, RF-D2) and are not part of the D1 metadata. The
 - "Todas las donaciones": folio, campaign, amount, modality, status, date, email (RF-S2, ADM-03).
 - "Solicitan factura": filter `Invoice_Requested__c = true`, showing legal name, RFC, postal code and regime (RF-F2, ADM-05).
 
+**List views for staff (D2, deployed 2026-11-17)**
+- "Nombres publicados" (`Public_Names`): filter `Visibility__c = Public`; public name, campaign, amount, confirmation date and folio, no email (MOD-01). Filter by campaign with the list search box or the campaign's related list.
+- "Donaciones anónimas" (`Anonymous_Donations`) and "Donaciones con nombre" (`Public_Donations`): filter by visibility (ADM-04). Filter by campaign as above; by date with the list's sort or filter panel.
+- "Campañas cerradas" (`Closed_Campaigns`, on `Fundraising_Campaign__c`): goal, total raised, number of donations, progress, end date and close reason (GES-15).
+
 ---
 
 ## 5. Delivery 2 objects
@@ -309,6 +316,22 @@ Three roles, as defined by the client: campaign manager, moderator and system ad
 | General campaign | `Is_General__c`, `General_Campaign_Always_Open` |
 | MOD-03 Correct a public name (D2) | `Moderator` permission set, `Anonymous_Cannot_Become_Public`. The field history on `Public_Name__c` is configured in D1 (section 4); the moderation feature is D2 |
 
+**Workstream C, Delivery 2 (status 2026-11-17)**
+
+| Story | Model elements |
+|---|---|
+| GES-10 Donations of a campaign | "Donaciones" related list on the campaign layout with folio, amount, confirmation date, payment reference and modality; `Campaign_Manager` reads donations and cannot edit them |
+| GES-11 Close on the end date | Scheduled flow `Campaign_Close_Expired` (daily, 00:05 org time): Active or Paused, not general, `End_Date__c` before today → `Closed`, reason "Por fecha". `Accepts_Donations__c` already stops donations at the end of the day |
+| GES-12 Close before the date | `Status__c` = Closed by the campaign manager; flow `Campaign_Set_Close_Reason` records "Manual" |
+| GES-15 Final result | "Campañas cerradas" list view; roll-ups count confirmed donations only |
+| MOD-01 Published names | "Nombres publicados" list view |
+| MOD-03 Correct a public name | Donation layout: "Donante" section (public name editable; modality, email and tax data read-only) and field history list; `Moderator` edits only `Public_Name__c`; `Anonymous_Cannot_Become_Public` |
+| MOD-06 Donor email | `Moderator` reads `Email__c` (read-only); the guest has no access to `Donation__c` |
+| ADM-01 Assign internal roles | `Donation_Admin` has "Assign Permission Sets" (with "View Setup" and "View Roles", required by Salesforce); see `security.md` §7 |
+| ADM-04 Filter donations | "Donaciones anónimas" and "Donaciones con nombre" list views |
+| ADM-13 Amounts and minimum | Implemented by workstream A (PR #70) |
+| DON-23 Receipt email | **Not implemented.** The shared sandbox has email deliverability set to "System email only", so no email reaches donors. A failing email action in a flow on `Donation__c` could also roll back the donation insert. Kept pending; see §12 |
+
 ---
 
 ## 10. Automation: Flow or Apex
@@ -320,9 +343,10 @@ Declarative tools first; Apex only where Flow cannot do the job. Every Apex clas
 | Objects, fields, formulas, roll-ups, validation rules, permission sets, sharing, list views | Configuration | |
 | RFC to uppercase without spaces (`UPPER(SUBSTITUTE(RFC__c, " ", ""))`) | Before-save record-triggered flow | Runs before validation rules |
 | Privacy notice required with an invoice, and its server timestamp (DON-13) | Check in `Payment_Attempt_Create` (flow) and in `DonationPaymentController.startDonation` | Until DON-18 the guest could call the controller directly; since then only `DonationIntakeService` can, and the check stays in the controller and the flow as defense in depth. It is not a validation rule on purpose: a rule would also block updating the status of attempts created before DON-13 |
-| Close campaigns by date (GES-11, D2) | Scheduled-triggered flow | |
+| Close campaigns by date (GES-11, D2) | Scheduled-triggered flow `Campaign_Close_Expired` | Deployed 2026-11-17 |
+| Close reason "Manual" (GES-12, D2) | Before-save record-triggered flow `Campaign_Set_Close_Reason` | Deployed 2026-11-17 |
 | Delete attempts older than 7 days (PAY-07) | Scheduled-triggered flow | |
-| Receipt email when a donation is created (DON-23, D2) | Record-triggered flow with Send Email | `Receipt_Sent__c` prevents duplicates |
+| Receipt email when a donation is created (DON-23, D2) | Record-triggered flow with Send Email | `Receipt_Sent__c` prevents duplicates. **Not implemented:** deliverability is "System email only" in the shared sandbox |
 | Campaign list and detail for the guest (workstream B) | Standard components or LWC UI API / GraphQL wire adapters | The guest user has read access to campaigns |
 | Donor recognition for the guest (workstream B) | Apex or a system-context flow | The guest user has no access to `Donation__c` |
 | Create the attempt and the provider payment (workstream A, D1) | Apex, or Flow with the HTTP Callout action | Decided by workstream A |
@@ -344,9 +368,10 @@ Declarative tools first; Apex only where Flow cannot do the job. Every Apex clas
 |---|---|---|
 | V-01 | Time zone used by `TODAY()` for the site guest user | Between 18:00 and 24:00 Mérida time (already the next day in UTC), create a campaign starting tomorrow and open the portal as a guest. If it is listed before midnight, the guest user's time zone needs fixing (TEC-01) |
 | V-02 | Owner of records created through the site | Create an attempt from the portal and check its owner (default owner for guest-created records, TEC-01) |
-| V-03 | System permissions needed by `Donation_Admin` to assign permission sets | Assign a permission set while logged in as a test admin user |
+| V-03 | System permissions needed by `Donation_Admin` to assign permission sets | **Partly answered 2026-11-17:** the deployment required "View Setup", which in turn requires "View Roles", besides "Assign Permission Sets". Still to check with a non-administrator user (no spare license; see `security.md` §7) |
 | V-04 | Custom metadata reference syntax in validation rules (D2) | Create the rule in the org |
 | V-05 | Tax regime catalog | Compare the appendix with c_RegimenFiscal in the SAT's Anexo 20 |
+| V-06 | Email deliverability for DON-23 | Setup → Deliverability shows "System email only" (2026-11-17). Changing it affects every team in the shared sandbox, so it needs the staff's decision before DON-23 can be built |
 
 ---
 

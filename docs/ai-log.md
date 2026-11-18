@@ -28,6 +28,7 @@ This log keeps the most useful **best-prompt** and **worst-result** examples. Ea
 | 18 | 2026-11-17 | Karen Elizabeth Campos | Claude Code, VS Code | DON-09 (#8), DON-18 (#14) | Worst | An independent read-only review found five problems in the first pass: `BigInt` untested under Lightning Web Security, a payment error message that offered a retry that no longer exists, `invalidate` acting on an attempt that already opened a payment, no focus tests, and gaps in this log. All were corrected. Final check-only `0AfVC00000PJ0h40AD` is **Failed**: 459/465 tests, and the 6 failures belong to org code outside the repository. Time impact not measured. |
 | 19 | 2026-11-17 | Rodrigo Colli | Claude Code (Opus 5.5), VS Code | DON-18 (#14), ADM-13 (#39) | Best | Workstream A review of PR #72. The AI noticed that the minimum-amount rule ran on every save of an attempt, so raising the minimum could revert the donation of a payment already charged; the rule now runs only on create or amount change. The generic payment message was copied in two classes; it is now one constant, checked against the flow by tests. Double-payment mitigation decided: not applied. Time not measured. |
 | 20 | 2026-11-17 | Karen Elizabeth Campos | Claude Code, VS Code | DON-09 (#8), DON-18 (#14), DON-13 (#12) | Worst | Evidence on the published site as a guest, a real $250.50 payment made by the owner, and the real records read again. Six AI errors, all caught by checking: a documented behavior (the failed attempt is deleted) that a real Mercado Pago rejection contradicted, a guest check that passed for the wrong reason, an Apex method that could not read the fields, an error page captured as evidence, a Jest count that predated the last tests, and two prompt claims found wrong in review. Author's estimate, not measured: about 2 h 15 min with AI against 5 to 7 h without (2 to 3 times). |
+| 21 | 2026-11-17 | Alan Pérez | Claude (Opus 5.5) | GES-10/11/12/15, MOD-01/03/06, ADM-01/04; DON-23 | Worst | Workstream C Delivery 2 metadata deployed (15 components). The dry run caught a missing permission dependency; the AI also prepared ADM-13 while a teammate had already built it, and suggested the wrong evidence-folder naming. ~2 h vs. ~5 h, estimate. |
 
 ---
 
@@ -746,3 +747,42 @@ The prompt is not stored in the repository, so there is no link.
 - `DON-13/records-recheck-2026-11-17.txt` holds the second reading of the records; the first one is `DON-09/records-check.txt`.
 
 ---
+
+### Entry 21 — Workstream C, Delivery 2: closing campaigns, moderation views and role assignment
+
+- **Date:** 2026-11-17
+- **Author:** Alan Pérez
+- **Tool / model:** Claude (Opus 5.5)
+- **Related stories:** GES-10, GES-11, GES-12, GES-15, MOD-01, MOD-03, MOD-06, ADM-01, ADM-04; DON-23 (not built)
+- **Result type:** Worst result (useful output, but with avoidable errors)
+- **Verification:** `--dry-run` first, then a deployment of 15 components. In the org: the scheduled job "Campaign_Close_Expired" shows its next run at 00:05 on 2026-11-18; a test campaign saved as Closed got the close reason "Manual"; the four new list views appear for the team.
+- **Estimated speed-up:** About 2 hours with AI vs. about 5 hours without; estimate, not timed.
+
+**Prompt summary**
+
+```text
+Read the acceptance criteria of my Delivery 2 stories and the current metadata in main.
+Tell me which stories already work and only need evidence, and generate the metadata
+for the rest, Flow first. Do not deploy or push anything: I review and deploy it myself.
+```
+
+**What we got**
+
+- An analysis of which stories already worked with the Delivery 1 configuration (MOD-03, MOD-06) and which needed new metadata.
+- `Close_Reason__c`, field history on status and dates, a scheduled flow for GES-11, a before-save flow for GES-12, four list views (GES-15, MOD-01, ADM-04) and the system permissions for ADM-01.
+
+**What we verified and corrected**
+
+- **AI error:** the AI added "View Setup" to `Donation_Admin` without "View Roles", which Salesforce requires. The dry run failed on that component only; the permission was added and the second dry run passed 15/15.
+- **AI error:** the AI prepared ADM-13 without checking open branches; a teammate had already built it (PR #70). The work was discarded and the teammate's version was used.
+- **AI error:** it suggested evidence folders named like another workstream (`27-ges-11`) instead of the `GES-11` style used by workstream C; corrected before saving.
+- **AI error:** it first said GES-10 was already met, but the campaign's donations related list only showed the folio; amount, date, payment reference and modality were added to the layout.
+- **AI error:** it set a personal address as author of a local commit; it was replaced with the GitHub no-reply address before anything was pushed.
+- DON-23 was not built: the sandbox only sends system email, and a failing email action could roll back the donation. Documented in `security.md` §7 and `data-model.md` V-06.
+
+**Better prompt**
+
+```text
+Before generating anything, list the open branches and PRs that touch my stories,
+and check every permission you add for dependencies before the dry run.
+```

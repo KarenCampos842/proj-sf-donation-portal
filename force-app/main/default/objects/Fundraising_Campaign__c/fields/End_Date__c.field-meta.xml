@@ -5,5 +5,6 @@
     <inlineHelpText>Déjala vacía si la campaña no tiene fecha de cierre.</inlineHelpText>
     <label>Fecha de cierre</label>
     <required>false</required>
+    <trackHistory>true</trackHistory>
     <type>Date</type>
 </CustomField>

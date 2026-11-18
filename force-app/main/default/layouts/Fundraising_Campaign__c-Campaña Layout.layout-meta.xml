@@ -17,6 +17,10 @@
                 <field>Status__c</field>
             </layoutItems>
             <layoutItems>
+                <behavior>Readonly</behavior>
+                <field>Close_Reason__c</field>
+            </layoutItems>
+            <layoutItems>
                 <behavior>Edit</behavior>
                 <field>Description__c</field>
             </layoutItems>
@@ -104,6 +108,10 @@
     </layoutSections>
     <relatedLists>
         <fields>NAME</fields>
+        <fields>Amount__c</fields>
+        <fields>Confirmed_At__c</fields>
+        <fields>Provider_Payment_Id__c</fields>
+        <fields>Modality__c</fields>
         <relatedList>Donation__c.Campaign__c</relatedList>
     </relatedLists>
     <relatedLists>
