@@ -121,7 +121,7 @@ describe('c-campaign-list', () => {
 
         const tags = element.shadowRoot.querySelectorAll('.card__tag');
         expect(tags).toHaveLength(1);
-        expect(tags[0].textContent).toBe('Campaña general');
+        expect(tags[0].textContent).toBe('Siempre abierto');
     });
 
     it('shows the image with its alt text', async () => {

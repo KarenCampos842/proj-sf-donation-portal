@@ -9,15 +9,15 @@ export const MESSAGES = {
         ENDED: 'Campaña finalizada'
     },
     list: {
-        title: 'Campañas disponibles',
-        subtitle: 'Elige la campaña con la que quieres apoyar a nuestra comunidad en Mexico Dreamin´.',
+        title: 'Apoya a SF Vibe Lab',
+        subtitle: 'En SF Vibe Lab, estudiantes de la UADY aprenden Salesforce construyendo proyectos reales. Tu donación les ayuda a seguir creciendo: elige el fondo general, siempre abierto, o una campaña de recaudación de fondos con un propósito concreto.',
         loading: 'Cargando campañas…',
         empty: 'No hay campañas disponibles por ahora',
         error: 'No pudimos cargar las campañas. Intenta de nuevo en unos momentos.',
         retry: 'Reintentar',
         viewDetail: 'Ver detalle',
         viewDetailOf: 'Ver detalle de la campaña {0}',
-        generalCampaign: 'Campaña general',
+        generalCampaign: 'Siempre abierto',
         viewHistory: 'Ver campañas cerradas',
         closesOn: 'Cierra el {0}',
         pausedNote: 'Pausada por ahora: todavía no recibe donaciones.',
