@@ -1,6 +1,6 @@
 # Security and Personal Data
 
-> Status: draft for Delivery 1, reviewed against the Sandbox on 2026-11-10. Update for Delivery 2 (Mercado Pago webhook).
+> Status: Delivery 1 draft reviewed against the Sandbox on 2026-11-10, updated on 2026-11-17 for Delivery 2: Mercado Pago webhook (section 6), internal roles and campaign closing (section 7), privacy-notice fields (DON-13) and the access token of the review step (DON-18). The SEG-01 table in section 1 has not been run by a second team member and is still empty.
 > Never include secrets, real personal data or real emails in this file or its screenshots.
 > The payment provider is **Mercado Pago in test mode (Checkout Pro)**, not Stripe.
 > The "Obtained" and "Evidence" columns stay empty until the test is really run. Do not fill them in advance.
@@ -68,7 +68,7 @@ Owner of the records created by the guest: to be confirmed (TEC-01).
 
 **Known limit: two simultaneous openings.** Two parallel `openPayment` calls for the same confirmed attempt can both pass the `Preference_Id__c` check before either saves its preference, because the check comes before the callout and the save after it; `FOR UPDATE` is released when a callout starts. The Mercado Pago page that was consulted does not mention an idempotency key for preferences, so none is used and the case is **not completely prevented**. See `docs/payments-api.md`, section 1.
 
-No permission set other than the integration one `Mercado_Pago_Callout` and the team set `Portal_Developer` gives read access to the fields of `Payment_Attempt__c`. The source of `Portal_Developer` is only in the unmerged PR #48 although the set exists in the Sandbox.
+No permission set other than the integration one `Mercado_Pago_Callout` and the team set `Portal_Developer` gives read access to the fields of `Payment_Attempt__c`. The source of `Portal_Developer` has been in `main` since PR #48 was merged on 2026-11-11. None of the permission sets or profiles in the repository references the three review-step fields (`Portal_Access_Token_Hash__c`, `Donor_Confirmed_At__c`, `Superseded_At__c`).
 
 Internal read access to payment attempts: permission set `Payment_Attempt_Viewer` (read-only, view all, no create/edit/delete) lets the payments owner audit attempts and take evidence. `Donation_Admin` still has no access to attempts. Never assign `Payment_Attempt_Viewer` to the site guest user. Assigned to the payments developer on 2026-11-10.
 
@@ -138,7 +138,7 @@ Internal read access to payment attempts: permission set `Payment_Attempt_Viewer
 - **Spam on the public form** (accepted risk, WON-08): someone can fill the form many times. Minimum mitigation: limit attempts per email and per hour.
 - **Abandoned attempts** keep personal data of people who did not donate. Mitigation: the scheduled flow `Payment_Attempt_Delete_Stale` runs daily and deletes attempts whose status is not `Confirmed` and that are older than 7 days (PAY-07). Two open points: deleted records stay in the Recycle Bin for up to 15 days (flows cannot hard-delete), and confirmed attempts are kept, which differs from decision D-01 in `data-model.md` (to be settled by the team).
 - **Salesforce System Administrator profile** can edit everything in the org. No project role can edit amount, reference or payment status; this profile is outside that rule and is documented here (RNF-03).
-- **Daily email limit** of the Developer Edition org for external addresses (DON-23). Tests use only team emails.
+- **Daily email limit** of the sandbox org (DON-23). A read-only query of the org `limits` resource on 2026-11-17 reported `SingleEmail` Max 5000 per day; this does not show how the limit applies to external addresses. Tests use only team emails.
 - **Payment confirmed without a return to the portal.** Solved in Delivery 2 by the webhook (section 6). Remaining risks:
   - Unconfirmed attempts are deleted after 7 days, so a notice that arrives more than 7 days after the attempt (for example a long-pending payment) can no longer be matched and is logged as "Intento no encontrado".
   - Mercado Pago does not guarantee that a notice arrives. If the donor does not return and the notice never arrives, the payment is approved in Mercado Pago but no donation is registered, and the attempt is deleted after 7 days. Mitigated by the hourly reconciliation (PAY-08, `payments-api.md` section 6): it reads the approved payments of the last 7 days from Mercado Pago and registers those whose attempt is still `Started` after 30 minutes. It only reads Mercado Pago and writes through `Donation_Register`; it needs no new permission for the guest user. Remaining risk: it only helps if the job is scheduled, and it stops if the scheduling user is deactivated.

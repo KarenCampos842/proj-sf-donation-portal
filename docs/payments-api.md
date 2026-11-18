@@ -1,7 +1,7 @@
 # Payments API for the portal (LWC)
 
 Owner: Rodrigo Colli (workstream A). For: the public portal (workstream B).
-Everything below is deployed in `donations-dev`. Stories: PAY-07, DON-19, DON-20, DON-21, PAY-02.
+Everything below is deployed in `donations-dev`. Stories: PAY-07, DON-19, DON-20, DON-21, PAY-02 (Delivery 1); PAY-06, PAY-01, PAY-03, DON-24, ADM-12 and PAY-08 (Delivery 2). The calls of the donation form also serve the Workstream B stories DON-09, DON-13, DON-17 and DON-18.
 
 **Two ways a donation is registered.**
 - **Return page (Delivery 1):** when the donor returns to the thank-you page (`/portal/gracias`), `getPaymentResult` looks the payment up in Mercado Pago and registers the donation.

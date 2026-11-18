@@ -2,6 +2,8 @@
 
 **Owner:** Alan Pérez (workstream C) · **Version:** draft 1 · 2026-11-08
 **Sources:** backlog v2, project guide, Q&A session, and the client's answers on Slack (Maliachi, 2026-11-04).
+**Update 2026-11-17:** the Delivery 2 elements built by Workstreams A, B and C are noted in place with their own status (sections 2 to 5 and 9); DON-23 (receipt email) is not built, and DON-26 (portal in another language) is out of scope and has no field or object.
+
 **Implementation status (checked 2026-11-10):** the three Delivery 1 objects are deployed in `donations-dev`, together with `Rejected_Notice__c`, which the payment flows of Workstream A already use. The notes marked "Status 2026-11-10" below record where the deployed Sandbox differs from this draft; the draft text itself is kept as written.
 
 This document is the single reference for objects, fields and API names. Any new field or rename is proposed here before it is created in the org.

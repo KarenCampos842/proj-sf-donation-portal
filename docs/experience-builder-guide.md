@@ -2,7 +2,9 @@
 
 **Audience:** Salesforce team administrator.  
 **Sandbox:** `donations-dev` (confirm the local CLI alias before running commands).  
-**Scope:** Workstream B stories DON-01, DON-02, DON-03, DON-04, DON-08, DON-10, DON-11 and DON-12 (Delivery 1).
+**Scope:** Workstream B stories DON-01, DON-02, DON-03, DON-04, DON-08, DON-10, DON-11 and DON-12 (Delivery 1), and DON-05, DON-09, DON-13, DON-17 and DON-18 (Delivery 2). DON-26 (portal in another language) is out of scope and is not built.
+
+> **Update 2026-11-17 (Delivery 2).** The deployed and published portal now also has the closed-campaign history (`?vista=historial`), the custom-amount field, the review step before paying, field-level error messages and the privacy-notice checkbox for invoice requests. The signed webhook and the hourly reconciliation (Workstream A) also register payments when the donor does not return. The sections below were written on 2026-11-10 and are kept as a record; the component list in section 0 and the checklist at the end of section 7 are updated. Acceptance evidence is in `docs/evidence/` (see `docs/story-tracking-board.md`).
 
 > **Status as of November 10, 2026.** The **Mexico Dreamin Donation Portal** Experience Cloud site (Build Your Own LWR, URL prefix `portal`) is deployed and published in the team Sandbox. The public site is [https://uady--class2026b.sandbox.my.site.com/portal/](https://uady--class2026b.sandbox.my.site.com/portal/). The site has been tested as an unauthenticated Guest visitor. This is a Sandbox demonstration, not a production donation website.
 >
@@ -16,10 +18,10 @@ Salesforce metadata is stored under `force-app/main/default/`.
 
 | Area | Main components |
 |---|---|
-| Workstream B Apex | `CampaignPortalController`, `DonorRecognitionService`, `DonationIntakeService`, `CampaignDTO`, `DonorRecognitionDTO` |
-| Workstream A payment Apex | `DonationPaymentController` (`startDonation`, `openPayment`, `getPaymentResult`), `MercadoPagoPreferenceAction`, `MercadoPagoPaymentLookupAction` |
-| Apex tests | `CampaignPortalControllerTest`, `DonorRecognitionServiceTest`, `DonationIntakeServiceTest`, `DonationPaymentControllerTest`, `MercadoPagoPreferenceActionTest`, `MercadoPagoPaymentLookupActionTest`, `PortalTestDataFactory` |
-| Main LWCs | `donationPortal`, `campaignList`, `campaignDetail`, `campaignProgress`, `donorRecognitionList`, `donationForm`, `donationThankYou` |
+| Workstream B Apex | `CampaignPortalController`, `DonorRecognitionService`, `DonationIntakeService`, `CampaignDTO`, `DonorRecognitionDTO`; since Delivery 2 also `DonationReview`, `DonationAccessToken`, `PaymentAttemptAccess`, `DonationStartDTO`, `DonationSummaryDTO`, `DonationAmountValidator` and `PublicNameSanitizer` |
+| Workstream A payment Apex | `DonationPaymentController` (`getPaymentResult` is the only `@AuraEnabled` method since DON-18; `startDonation` and `openPayment` are `public static` and only `DonationIntakeService` calls them), `MercadoPagoPreferenceAction`, `MercadoPagoPaymentLookupAction`; webhook and reconciliation classes (see `payments-api.md` §5 and §6) |
+| Apex tests | `CampaignPortalControllerTest`, `DonorRecognitionServiceTest`, `DonationIntakeServiceTest`, `DonationPaymentControllerTest`, `MercadoPagoPreferenceActionTest`, `MercadoPagoPaymentLookupActionTest`, `PortalTestDataFactory`; since Delivery 2 also `DonationReviewTest`, `DonationAccessTokenTest`, `DonationAmountValidatorTest`, `DonationCustomAmountTest`, `DonationPrivacyNoticeTest` and `PublicNameSanitizerTest` |
+| Main LWCs | `donationPortal`, `campaignList`, `campaignDetail`, `campaignProgress`, `donorRecognitionList`, `donationForm`, `donationThankYou`; since Delivery 2 also `closedCampaignHistory` and `donationSummary` |
 | Supporting LWCs | `portalMessages`, `portalUtils`, `portalDemoData`, `portalTheme`, `donationFormMessages`, `donationFormRules`, `donationThankYouMessages` |
 | Custom label | `Donation_Return_Url` = `https://uady--class2026b.sandbox.my.site.com/portal/gracias` |
 | Guest security metadata | `profiles/Mexico Dreamin Donation Portal Profile`, `sharingRules/Fundraising_Campaign__c`, `permissionsets/Mercado_Pago_Callout` |
@@ -216,7 +218,7 @@ The actual effect of the Builder `--dxp-g-*` variables was not independently ver
 
 ## 5. Campaign records and public catalog (current Sandbox data)
 
-The five intended portal campaigns are **existing Salesforce records**. They were renamed and their descriptions updated in place; their IDs and donation relationships were preserved. The demo data is already loaded and has been adjusted by hand since. Do not import the original demo JSON (or run `data/demo/plan.json`, which exists only in the unmerged PR #48) again: the tree import uses inserts and would create duplicate campaigns and donations.
+The five intended portal campaigns are **existing Salesforce records**. They were renamed and their descriptions updated in place; their IDs and donation relationships were preserved. The demo data is already loaded and has been adjusted by hand since. Do not import the original demo JSON (or run `data/demo/plan.json`, which PR #48 added to `main` on 2026-11-11) again: the tree import uses inserts and would create duplicate campaigns and donations.
 
 | Public campaign name | Salesforce record ID | Status | Goal | Current image state |
 |---|---|---|---:|---|
@@ -322,8 +324,8 @@ These are previously reported results, not a claim that the entire suite was rer
 - [x] Complete a manual Checkout Pro test with the project's Mercado Pago **test buyer** account for an approved payment (portal-created donations exist in the Sandbox).
 - [ ] Document the rejected and pending/unknown return behavior with test accounts. Do not use production credentials or real cards.
 - [x] The four newly uploaded Salesforce Files are matched, distributed publicly without expiration, saved to the four campaign records and visible as Guest (checked 2026-11-10).
-- [ ] Commit the evidence folders `docs/evidence/DON-04`, `DON-08`, `DON-10`, `DON-11` and `DON-12` and the reorganized files of DON-01 to DON-03 (they are local only), cropping the personal email address in `DON-11/AC1.png` first. The status of every story is in `docs/story-tracking-board.md`.
-- [ ] Commit the Apex source of the DON-11 public-name cleaning (`PublicNameSanitizer` and the related changes), which is already deployed to the Sandbox.
+- [x] The evidence folders `docs/evidence/DON-01` to `DON-12` are committed in `main` (2026-11-11 and 2026-11-17). Still open: crop or replace the personal email address in `DON-04/AC1.png`, `DON-08/AC1.png` and `DON-11/AC1.png`, which are the same image. The status of every story is in `docs/story-tracking-board.md`.
+- [x] The Apex source of the DON-11 public-name cleaning (`PublicNameSanitizer` and the related changes) is in `main` since PR #58 (2026-11-17).
 - [ ] Complete keyboard testing for donation amount controls and form buttons.
 - [ ] Complete a screen-reader check.
 - [ ] Run the full empty-catalog scenario in the live portal if required for evidence; automated tests already cover the empty-state message.
